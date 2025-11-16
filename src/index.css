@@ -1,0 +1,9 @@
+@import "./index-scrollbar.css";
+@import "tailwindcss";
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* evita el scroll */
+  height: 100%;
+}

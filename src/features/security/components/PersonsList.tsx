@@ -1,0 +1,510 @@
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { getEnum } from "../../../Api/Services/Helper";
+import { DataSelectRequest } from "../../../shared/types/HelperTypes";
+import { Person } from "../types/Person";
+
+
+
+interface AddPersonFormProps {
+  onClose: () => void;
+  onAdded: () => void;
+}
+
+const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
+  const [identificationNumber, setIdentificationNumber] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [firstLastName, setFirstLastName] = useState("");
+  const [secondLastName, setSecondLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailInstitutional, setEmailInstitutional] = useState("");
+  const [phone, setPhone] = useState("");
+  const [codeDane, setCodeDane] = useState("");
+  const [documentType, setDocumentType] = useState<number | string>("");
+  const [documentTypes, setDocumentTypes] = useState<DataSelectRequest[]>([]);
+  const [codigoDaneOptions, setCodigoDaneOptions] = useState<DataSelectRequest[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchEnums = async () => {
+      try {
+        const dt = await getEnum("DocumentType");
+        setDocumentTypes(dt || []);
+        const cd = await getEnum("CodeDane");
+        setCodigoDaneOptions(cd || []);
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchEnums();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const token = localStorage.getItem("token");
+    try {
+      await axios.post(
+        "/api/Person",
+        {
+          identificationNumber,
+          firstName,
+          middleName,
+          firstLastName,
+          secondLastName,
+          email,
+          emailInstitutional,
+          phone: phone ? parseInt(phone, 10) : undefined,
+          codeDane,
+          documentType: documentType || undefined,
+          state: true,
+          createdAt: new Date().toISOString(),
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onAdded();
+      onClose();
+    } catch (err) {
+      setError("Error al crear la persona. Por favor verifica los datos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl! shadow-lg w-full max-w-lg">
+        <h3 className="text-xl font-bold mb-4 text-sky-700">Agregar Persona</h3>
+        {error && <div className="text-red-500 mb-2">{error}</div>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block mb-2 font-semibold">Tipo de Documento</label>
+            <select className="w-full p-2 border rounded" value={String(documentType)} onChange={e => setDocumentType(e.target.value)} required>
+              <option value="">Seleccione...</option>
+              {documentTypes.map(d => <option key={d.id} value={d.id}>{d.displayText}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Número de Identificación</label>
+            <input className="w-full p-2 border rounded" value={identificationNumber} onChange={e => setIdentificationNumber(e.target.value)} required />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Primer Nombre</label>
+            <input className="w-full p-2 border rounded" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Segundo Nombre</label>
+            <input className="w-full p-2 border rounded" value={middleName} onChange={e => setMiddleName(e.target.value)} />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Primer Apellido</label>
+            <input className="w-full p-2 border rounded" value={firstLastName} onChange={e => setFirstLastName(e.target.value)} required />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Segundo Apellido</label>
+            <input className="w-full p-2 border rounded" value={secondLastName} onChange={e => setSecondLastName(e.target.value)} />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Email</label>
+            <input type="email" className="w-full p-2 border rounded" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Email Institucional</label>
+            <input type="email" className="w-full p-2 border rounded" value={emailInstitutional} onChange={e => setEmailInstitutional(e.target.value)} />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Teléfono</label>
+            <input className="w-full p-2 border rounded" value={phone} onChange={e => setPhone(e.target.value)} />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Código Dane</label>
+            <select className="w-full p-2 border rounded" value={codeDane} onChange={e => setCodeDane(e.target.value)}>
+              <option value="">Seleccione...</option>
+              {codigoDaneOptions.map(c => <option key={c.id} value={c.displayText}>{c.displayText}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-4 justify-end mt-6">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">Cancelar</button>
+          <button type="submit" disabled={loading} className="px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700">{loading ? 'Guardando...' : 'Guardar'}</button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+interface EditPersonFormProps {
+  person: Person;
+  onClose: () => void;
+  onUpdated: () => void;
+}
+
+const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onClose, onUpdated }) => {
+  const [firstName, setFirstName] = useState(person.firstName);
+  const [middleName, setMiddleName] = useState(person.middleName);
+  const [firstLastName, setFirstLastName] = useState(person.firstLastName);
+  const [secondLastName, setSecondLastName] = useState(person.secondLastName);
+  const [email, setEmail] = useState(person.email);
+  const [phone, setPhone] = useState(person.phone.toString());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const token = localStorage.getItem("token");
+    try {
+      await axios.put(
+        `/api/Person`,
+        {
+          id: person.id,
+          firstName,
+          middleName,
+          firstLastName,
+          secondLastName,
+          email,
+          phone: parseInt(phone, 10),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      onUpdated(); // Refrescar la lista
+      onClose(); // Cerrar el formulario
+    } catch (err: any) {
+      setError("Error al actualizar la persona. Por favor, verifica los datos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[1100] overflow-auto p-4">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+        <h3 className="text-lg font-bold mb-4 text-sky-700">Editar Persona</h3>
+        {error && <p className="text-red-600 mb-4">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-700 font-semibold mb-1">Primer Nombre</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-1">Segundo Nombre</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={middleName}
+                onChange={(e) => setMiddleName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-1">Primer Apellido</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={firstLastName}
+                onChange={(e) => setFirstLastName(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-1">Segundo Apellido</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={secondLastName}
+                onChange={(e) => setSecondLastName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-1">Email</label>
+              <input
+                type="email"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-1">Teléfono</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-4 mt-6">
+            <button
+              type="button"
+              className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-black"
+              onClick={onClose}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700"
+              disabled={loading}
+            >
+              {loading ? "Guardando..." : "Guardar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const PersonsList: React.FC = () => {
+  const [persons, setPersons] = useState<Person[]>([]);
+  const [editPerson, setEditPerson] = useState<Person | null>(null);
+  const [addPersonOpen, setAddPersonOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+    const onlyActive = true; // Estado para filtrar personas activas/inactivos (const since no toggle UI present)
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 5;
+
+  const fetchPersons = () => {
+    const token = localStorage.getItem("token");
+    axios
+      .get("/api/Person/getAll", {
+        params: { OnlyActive: onlyActive },
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        if (Array.isArray(res.data.data)) {
+          const personsNormalized = res.data.data.map((person: Person) => ({
+            ...person,
+            state: onlyActive ? true : false, // Adjust state interpretation based on OnlyActive
+          }));
+          setPersons(personsNormalized);
+        } else {
+          setPersons([]);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Error al cargar personas");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchPersons();
+  }, [onlyActive]); // Refrescar cuando cambie el filtro
+
+  if (loading) return <div>Cargando personas...</div>;
+  if (error) return <div>{error}</div>;
+
+  const filteredPersons = persons.filter(p => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    return (`${p.firstName || ''} ${p.firstLastName || ''} ${p.identificationNumber || ''} ${p.email || ''}`).toLowerCase().includes(q);
+  });
+
+  const handleDeactivate = async (id: number) => {
+    const token = localStorage.getItem("token");
+    try {
+      await axios.delete(`/api/Person/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchPersons(); // Refrescar lista
+    } catch (err) {
+      console.error("Error al desactivar persona:", err);
+    }
+  };
+
+  const handleActivate = async (id: number) => {
+    const token = localStorage.getItem("token");
+    try {
+      await axios.patch(`/api/Person/restore/${id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchPersons(); // Refrescar lista
+    } catch (err) {
+      console.error("Error al activar persona:", err);
+    }
+  };
+
+  return (
+  <div className="w-full mx-0 mt-6 px-6 py-6">
+      {/* header moved into white card so the card 'grabs' the title and CTA too */}
+
+  <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-6 w-full">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-sky-700">Lista de Personas</h2>
+            <p className="text-sm text-gray-500 mt-1">Administra las personas registradas en el sistema</p>
+          </div>
+          <div>
+            <button
+              onClick={() => setAddPersonOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl shadow hover:bg-sky-700"
+            >
+              Agregar Persona
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-6 flex items-center gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <input
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                placeholder="Buscar personas..."
+                className="pl-12 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm"
+              />
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
+              </div>
+            </div>
+          </div>
+          <div>
+            <button className="px-4 py-2 rounded bg-white border text-sm flex items-center gap-2">
+              {/* funnel icon */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-gray-600"><path d="M3 5h18v2L13 13v6l-2-1v-5L3 7V5z" fill="currentColor"/></svg>
+              <span>Filtrar</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-white border border-gray-100 p-4 overflow-auto">
+          <table className="min-w-full w-full rounded-lg overflow-hidden table-auto">
+            <thead className="text-left text-sm text-gray-600 bg-gray-50">
+              <tr>
+                <th className="py-4 px-6">Persona</th>
+                <th className="py-4 px-6">Tipo Documento</th>
+                <th className="py-4 px-6">Número Identificación</th>
+                <th className="py-4 px-6">Código Dane</th>
+                <th className="py-4 px-6">Email Institucional</th>
+                <th className="py-4 px-6">Email</th>
+                <th className="py-4 px-6">Teléfono</th>
+                <th className="py-4 px-6">Estado</th>
+                <th className="py-4 px-6">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm text-gray-700">
+              {filteredPersons.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-6 px-4 text-center text-gray-500">No hay personas para mostrar.</td>
+                </tr>
+              ) : (
+                (() => {
+                  const totalPages = Math.max(1, Math.ceil(filteredPersons.length / pageSize));
+                  if (currentPage > totalPages) setCurrentPage(totalPages);
+                  const paginated = filteredPersons.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+                  return paginated.map((person) => (
+                  <tr key={person.id} className="border-b hover:bg-gray-50">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-sky-600" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 2a4 4 0 100 8 4 4 0 000-8zM2 18a8 8 0 1116 0H2z" clipRule="evenodd"/></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-800">{`${person.firstName || ''} ${person.firstLastName || ''}`.trim()}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">{person.documentType}</td>
+                    <td className="py-4 px-6">{person.identificationNumber || ''}</td>
+                    <td className="py-4 px-6">{person.codeDane || ''}</td>
+                    <td className="py-4 px-6">{person.emailInstitutional || ''}</td>
+                    <td className="py-4 px-6">{person.email}</td>
+                    <td className="py-4 px-6">{person.phone}</td>
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      {person.state ? (
+                        <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm">Activo</span>
+                      ) : (
+                        <span className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">Inactivo</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <div className="flex items-center gap-4">
+                        <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditPerson(person)} title="Editar">✏️</button>
+                        {person.state ? (
+                          <button className="text-red-500 hover:text-red-700" onClick={() => handleDeactivate(person.id)} title="Desactivar">🗑️</button>
+                        ) : (
+                          <button className="text-emerald-500 hover:text-emerald-700" onClick={() => handleActivate(person.id)} title="Activar">♻️</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  ));
+                })()
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            {filteredPersons.length === 0 ? (
+              <>Mostrando 0 personas</>
+            ) : (
+              (() => {
+                const start = (currentPage - 1) * pageSize + 1;
+                const end = Math.min(filteredPersons.length, currentPage * pageSize);
+                return <>Mostrando {start}-{end} de {filteredPersons.length} personas</>;
+              })()
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>Anterior</button>
+            {(() => {
+              const pages: number[] = [];
+              const totalPages = Math.max(1, Math.ceil(filteredPersons.length / pageSize));
+              let start = Math.max(1, currentPage - 2);
+              let end = Math.min(totalPages, start + 4);
+              if (end - start < 4) start = Math.max(1, end - 4);
+              for (let i = start; i <= end; i++) pages.push(i);
+              return pages.map((p) => (
+                <button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
+              ));
+            })()}
+            <button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.min(Math.max(1, Math.ceil(filteredPersons.length / pageSize)), currentPage + 1))} disabled={currentPage === Math.max(1, Math.ceil(filteredPersons.length / pageSize))}>Siguiente</button>
+          </div>
+        </div>
+      </div>
+
+      {editPerson && (
+        <EditPersonForm
+          person={editPerson}
+          onClose={() => setEditPerson(null)}
+          onUpdated={() => {
+            setLoading(true);
+            fetchPersons();
+          }}
+        />
+      )}
+      {addPersonOpen && (
+        <AddPersonForm
+          onClose={() => setAddPersonOpen(false)}
+          onAdded={() => {
+            setLoading(true);
+            fetchPersons();
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default PersonsList;

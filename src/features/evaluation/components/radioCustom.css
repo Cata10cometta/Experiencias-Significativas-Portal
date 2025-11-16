@@ -1,0 +1,18 @@
+.custom-radio {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border: 2px solid #00aaff;
+  border-radius: 50%;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s;
+}
+.custom-radio:checked {
+  background: #00aaff;
+  box-shadow: 0 0 0 4px #e6f7ff;
+  border-color: #00aaff;
+}
