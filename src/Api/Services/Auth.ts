@@ -22,14 +22,26 @@ export function getToken(): string | null {
   const tokenData = localStorage.getItem("token");
   if (!tokenData) return null;
 
-  const parsed: TokenData = JSON.parse(tokenData);
-  if (new Date().getTime() > parsed.expiresAt) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    return null;
+  // Support two storage formats:
+  // 1) JSON string produced by this module: { value: string, expiresAt: number }
+  // 2) Plain token string (some parts of the app save token directly)
+  try {
+    const parsed = JSON.parse(tokenData) as TokenData;
+    if (parsed && typeof parsed.value === 'string' && typeof parsed.expiresAt === 'number') {
+      if (new Date().getTime() > parsed.expiresAt) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        return null;
+      }
+      return parsed.value;
+    }
+    // if parsing produced something unexpected, fall back to raw tokenData
+  } catch {
+    // tokenData is not JSON, treat it as raw token
   }
 
-  return parsed.value;
+  // At this point treat tokenData as a raw token string
+  return tokenData;
 }
 
 export const login = async (username: string, password: string) => {

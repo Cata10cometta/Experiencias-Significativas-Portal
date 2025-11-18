@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getToken } from "../Services/Auth";
 
 let setSessionExpired: (expired: boolean) => void = () => {}; // Variable para activar el modal
 
@@ -17,9 +18,14 @@ const configApi = axios.create({
 
 // Interceptor para adjuntar token automáticamente
 configApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const token = getToken();
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (e) {
+    // fallback: don't attach header
   }
   return config;
 });

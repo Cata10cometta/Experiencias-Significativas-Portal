@@ -1,11 +1,11 @@
 // src/components/AgregarExperiencia/FollowUpEvaluation.tsx
 import React from "react";
-import type { Objective } from "../types/experienceTypes";
+import type { SupportInformation } from "../types/experienceTypes";
 
 
 interface FollowUpEvaluationProps {
-  value: Objective;
-  onChange: (val: Objective) => void;
+  value: SupportInformation;
+  onChange: (val: SupportInformation) => void;
 }
 
 const MAX_CHARACTERS = {
@@ -20,135 +20,114 @@ const FollowUpEvaluation: React.FC<FollowUpEvaluationProps> = ({ value, onChange
     return text.length >= max ? "text-green-500" : "text-red-500";
   };
 
-  // valor para mostrar en textarea (usa optional chaining y fallback)
-  const monitoringText = value.monitorings?.[0]?.monitoringEvaluation ?? "";
-  // valor para el campo 'resultados' que ahora vive en monitorings[0].result
-  const monitoringResult = value.monitorings?.[0]?.result ?? "";
-  // valor para sostenibilidad y transferencia que ahora viven en monitorings[0]
-  const monitoringSustainability = value.monitorings?.[0]?.sustainability ?? "";
-  const monitoringTranfer = value.monitorings?.[0]?.tranfer ?? "";
+  // (antes se usaban como textareas; ahora son radios 'si'/'no')
 
   return (
     <div className=" mb-6">
-      <h2 className="text-lg font-semibold mb-4">SEGUIMIENTO Y EVALUACIÓN</h2>
+      <h2 className="text-lg font-semibold mb-4">TESTIMONIOS / SOPORTE</h2>
 
-      {/* Seguimiento y evaluación */}
-      <div className="mb-6 relative">
-        <label className="block font-medium">SEGUIMIENTO Y EVALUACIÓN</label>
-        <p className="text-sm text-gray-600 mb-2">
-          Describa la metodología y los mecanismos establecidos...
-        </p>
-        <textarea
-          rows={4}
-          className="w-full border rounded p-2"
-          value={monitoringText}
-          onChange={(e) => {
-            const newMonitoring = {
-              ...(value.monitorings?.[0] ?? {}),
-              monitoringEvaluation: e.target.value,
-            };
-            onChange({
-              ...value,
-              monitorings: [newMonitoring],
-            });
-          }}
-          maxLength={MAX_CHARACTERS.followEvaluation} // Restricción de caracteres
-        />
-        <span
-          className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(
-            value.monitorings?.[0]?.monitoringEvaluation || "",
-            MAX_CHARACTERS.followEvaluation
-          )}`}
-        >
-          {(value.monitorings?.[0]?.monitoringEvaluation?.length || 0)}/{MAX_CHARACTERS.followEvaluation}
-        </span>
+      {/*  */}
+      <div className="mb-6">
+        <label className="block font-medium mb-3">¿Durante el desarrollo de la Experiencia Significativa se evidencio reorganización y actualización permanente desde el análisis de la implementación, nuevos conocimientos, comprensiones, enfoques y métodos que contribuyen al mejoramiento de la práctica pedagógica?:</label>
+        <div className="flex flex-col gap-3">
+          {[
+            { id: 'si', label: 'Si' },
+            { id: 'no', label: 'No' },
+          ].map((opt) => (
+            <label key={opt.id} className="flex items-center gap-3 text-sm">
+              <input
+                type="radio"
+                name="monitoringEvaluation"
+                value={opt.id}
+                checked={String((value as any).summary?.[0]?.monitoringEvaluation || '') === opt.id}
+                onChange={() => {
+                  const newSummary = {
+                    ...((value as any).summary?.[0] ?? {}),
+                    monitoringEvaluation: opt.id,
+                  };
+                  onChange({ ...value, summary: [newSummary] } as unknown as SupportInformation);
+                }}
+                className="h-5 w-5 accent-green-600"
+              />
+              <span className="leading-tight">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {/* Resultados */}
-      <div className="mb-6 relative">
-        <label className="block font-medium">RESULTADOS</label>
-        <p className="text-sm text-gray-600 mb-2">
-          Especifique cuáles han sido los logros obtenidos...
-        </p>
-        <textarea
-          rows={3}
-          className="w-full border rounded p-2"
-          value={monitoringResult}
-          onChange={(e) => {
-            const newMonitoring = {
-              ...(value.monitorings?.[0] ?? {}),
-              result: e.target.value,
-            };
-            onChange({ ...value, monitorings: [newMonitoring] });
-          }}
-          maxLength={MAX_CHARACTERS.resulsExperience} // Restricción de caracteres
-        />
-        <span
-          className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(
-            value.monitorings?.[0]?.result || "",
-            MAX_CHARACTERS.resulsExperience
-          )}`}
-        >
-          {value.monitorings?.[0]?.result?.length || 0}/{MAX_CHARACTERS.resulsExperience}
-        </span>
+      <div className="mb-6">
+        <label className="block font-medium mb-3">¿Existe un nivel alto de empoderamiento, participación y apropiación por parte de toda la comunidad educativa?:</label>
+        <div className="flex flex-col gap-3">
+          {[
+            { id: 'si', label: 'Si' },
+            { id: 'no', label: 'No' },
+          ].map((opt) => (
+            <label key={opt.id} className="flex items-center gap-3 text-sm">
+              <input
+                type="radio"
+                name="monitoringResult"
+                value={opt.id}
+                checked={String((value as any).metaphoricalPhrase || '') === opt.id}
+                onChange={() => {
+                  onChange({ ...value, metaphoricalPhrase: opt.id } as SupportInformation);
+                }}
+                className="h-5 w-5 accent-green-600"
+              />
+              <span className="leading-tight">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {/* Sostenibilidad */}
-      <div className="mb-6 relative">
-        <label className="block font-medium">SOSTENIBILIDAD</label>
-        <p className="text-sm text-gray-600 mb-2">
-          Mencione las estrategias previstas para garantizar la continuidad...
-        </p>
-        <textarea
-          rows={3}
-          className="w-full border rounded p-2"
-          value={monitoringSustainability}
-          onChange={(e) => {
-            const newMonitoring = {
-              ...(value.monitorings?.[0] ?? {}),
-              sustainability: e.target.value,
-            };
-            onChange({ ...value, monitorings: [newMonitoring] });
-          }}
-          maxLength={MAX_CHARACTERS.sustainabilityExperience} // Restricción de caracteres
-        />
-        <span
-          className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(
-            value.monitorings?.[0]?.sustainability || "",
-            MAX_CHARACTERS.sustainabilityExperience
-          )}`}
-        >
-          {value.monitorings?.[0]?.sustainability?.length || 0}/{MAX_CHARACTERS.sustainabilityExperience}
-        </span>
+      <div className="mb-6">
+        <label className="block font-medium mb-3">¿Cuenta con acciones, recursos tecnológicos o no tecnológicos, materiales, métodos, contenidos entre otros novedosos para su desarrollo?:</label>
+        <div className="flex flex-col gap-3">
+          {[
+            { id: 'si', label: 'Si' },
+            { id: 'no', label: 'No' },
+          ].map((opt) => (
+            <label key={opt.id} className="flex items-center gap-3 text-sm">
+              <input
+                type="radio"
+                name="monitoringSustainability"
+                value={opt.id}
+                checked={String((value as any).testimony || '') === opt.id}
+                onChange={() => {
+                  onChange({ ...value, testimony: opt.id } as SupportInformation);
+                }}
+                className="h-5 w-5 accent-green-600"
+              />
+              <span className="leading-tight">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {/* Transferencia */}
-      <div className="relative">
-        <label className="block font-medium">TRANSFERENCIA</label>
-        <p className="text-sm text-gray-600 mb-2">
-          Especifique los procesos, metodologías, mecanismos...
-        </p>
-        <textarea
-          rows={3}
-          className="w-full border rounded p-2"
-          value={monitoringTranfer}
-          onChange={(e) => {
-            const newMonitoring = {
-              ...(value.monitorings?.[0] ?? {}),
-              tranfer: e.target.value,
-            };
-            onChange({ ...value, monitorings: [newMonitoring] });
-          }}
-          maxLength={MAX_CHARACTERS.tranfer} // Restricción de caracteres
-        />
-        <span
-          className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(
-            value.monitorings?.[0]?.tranfer || "",
-            MAX_CHARACTERS.tranfer
-          )}`}
-        >
-          {value.monitorings?.[0]?.tranfer?.length || 0}/{MAX_CHARACTERS.tranfer}
-        </span>
+      <div className="relative mb-6">
+        <label className="block font-medium mb-3">¿La Experiencia Significativa cuenta con estrategias y procesos que garantizan la permanencia y mejora continua?:</label>
+        <div className="flex flex-col gap-3">
+          {[
+            { id: 'si', label: 'Si' },
+            { id: 'no', label: 'No' },
+          ].map((opt) => (
+            <label key={opt.id} className="flex items-center gap-3 text-sm">
+              <input
+                type="radio"
+                name="followEvaluation"
+                value={opt.id}
+                checked={String((value as any).followEvaluation || '') === opt.id}
+                onChange={() => {
+                  onChange({ ...value, followEvaluation: opt.id } as SupportInformation);
+                }}
+                className="h-5 w-5 accent-green-600"
+              />
+              <span className="leading-tight">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
     </div>
   );

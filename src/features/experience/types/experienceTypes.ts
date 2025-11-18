@@ -20,10 +20,12 @@ export interface NameItem {
 }
 
 export interface ExperienceDocument {
-  name: string;
-  urlPdf: string;
-  urlLink: string;
+      name: string,
+      urlLink: string,
+      urlPdf: string,
+      urlPdfExperience: string
 }
+
 
 export interface Grade {
   gradeId: number;
@@ -39,7 +41,8 @@ export interface Objective {
   resulsExperience: string;
   sustainabilityExperience: string;
   tranfer: string;
-  // support informations and monitoring arrays
+  pmi?: string;
+  nnaj?: string;
   supportInformations?: SupportInformation[];
   monitorings?: Monitoring[];
 }

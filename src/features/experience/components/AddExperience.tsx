@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import Swal from 'sweetalert2';
+import { getToken } from "../../../Api/Services/Auth";
 import LeadersForm from "./LeadersForm";
 import IdentificationForm from "./IdentificationForm";
 import ThematicForm from "./ThematicForm";
@@ -82,12 +84,12 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
   const steps: string[] = [
     "Identificación Institucional",
     "Líder",
-    "Identificación",
-    "Temática",
-    "Objetivos",
-    "Seguimiento",
-    "Apoyos",
-    "PDF",
+    "Identificación Experiencia",
+    "Temática y Desarrollo",
+    "Componentes",
+    "Testimonios / Soportes",
+    "Monitoreos",
+    "Documentos",
   ];
 
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
@@ -146,65 +148,332 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
         },
     ];
 
-    // 7) PAYLOAD FINAL
-    const payload = {
-      nameExperiences: identificacionInstitucional.nameExperiences,
-      code: formData.code,
-      nameFirstLeader: lideres[0]?.nameFirstLeader || "",
-      firstIdentityDocument: lideres[0]?.firstIdentityDocument || "",
-      firdtEmail: lideres[0]?.firdtEmail || "",
-      firstPosition: lideres[0]?.firstPosition || "",
-      firstPhone: lideres[0]?.firstPhone || 0,
+    // 7) PAYLOAD FINAL (match Swagger JSON structure)
+    // Build documents[] from pdfFile: single document that contains two PDFs
+    // - `urlPdf`: first PDF (pdfFile.urlPdf)
+    // - `urlPdfExperience`: second PDF (pdfFile.urlPdf2)
+    const documentsSwagger: any[] = [];
+    if (pdfFile) {
+      const stripDataPrefix = (s: any) => {
+        if (!s || typeof s !== 'string') return s;
+        const idx = s.indexOf(',');
+        if (s.startsWith('data:') && idx > -1) return s.substring(idx + 1);
+        return s;
+      };
 
-      nameSecondLeader: lideres[1]?.nameFirstLeader || "",
-      secondIdentityDocument: lideres[1]?.firstIdentityDocument || "",
-      secondEmail: lideres[1]?.firdtEmail || "",
-      secondPosition: lideres[1]?.firstPosition || "",
-      secondPhone: lideres[1]?.firstPhone || 0,
+      const rawPdf = pdfFile.urlPdf || "";
+      const rawPdfExperience = pdfFile.urlPdf2 || pdfFile.urlPdfExperience || "";
+      const doc: any = {
+        name: pdfFile.name || pdfFile.name2 || "Documento PDF",
+        urlLink: pdfFile.urlLink || "",
+        // send raw base64 payload (without data:...;base64, prefix) which some backends expect
+        urlPdf: stripDataPrefix(rawPdf) || "",
+        urlPdfExperience: stripDataPrefix(rawPdfExperience) || "",
+        // Compatibility fallbacks: also include the original base64 strings with prefix
+        fileBase64: rawPdf || undefined,
+        fileBase64Experience: rawPdfExperience || undefined,
+      };
+      documentsSwagger.push(doc);
+    }
 
+    // Debug: log follow-up / support states to inspect shapes
+    try { console.log("seguimientoEvaluacion (state):", JSON.stringify(seguimientoEvaluacion, null, 2)); } catch (e) { console.log("seguimientoEvaluacion (raw)", seguimientoEvaluacion); }
+    try { console.log("informacionApoyo (state):", JSON.stringify(informacionApoyo, null, 2)); } catch (e) { console.log("informacionApoyo (raw)", informacionApoyo); }
+
+    // Build objectives array matching Swagger: supportInformations[] and monitorings[] inside each objective
+    // Normalize inputs because some subcomponents store values as arrays (e.g., summary: [{...}]) while backend expects objects/strings
+    const normalizeSupportInformation = (info: any) => {
+      if (!info) return { summary: "", metaphoricalPhrase: "", testimony: "", followEvaluation: "" };
+      // if info.summary is an array with object(s), prefer its first element
+      if (Array.isArray(info.summary) && info.summary.length > 0 && typeof info.summary[0] === 'object') {
+        const first = info.summary[0];
+        return {
+          summary: first.summary ?? first.monitoringEvaluation ?? info.summaryText ?? "",
+          metaphoricalPhrase: info.metaphoricalPhrase ?? first.metaphoricalPhrase ?? "",
+          testimony: info.testimony ?? first.testimony ?? "",
+          followEvaluation: info.followEvaluation ?? first.followEvaluation ?? "",
+        };
+      }
+      // if info itself looks like the object we need
+      return {
+        summary: (typeof info.summary === 'string' && info.summary) ? info.summary : (info.summaryText || ""),
+        metaphoricalPhrase: info.metaphoricalPhrase || "",
+        testimony: info.testimony || "",
+        followEvaluation: info.followEvaluation || "",
+      };
+    };
+
+    const normalizeMonitoring = (mon: any) => {
+      if (!mon) return { monitoringEvaluation: "", result: "", sustainability: "", tranfer: "" };
+      // some components may put relevant monitoring data under summary[0]
+      if (Array.isArray(mon.summary) && mon.summary.length > 0 && typeof mon.summary[0] === 'object') {
+        const first = mon.summary[0];
+        return {
+          monitoringEvaluation: first.monitoringEvaluation ?? mon.monitoringEvaluation ?? "",
+          result: first.result ?? mon.result ?? mon.resulsExperience ?? "",
+          sustainability: first.sustainability ?? mon.sustainability ?? mon.sustainabilityExperience ?? "",
+          tranfer: first.tranfer ?? mon.tranfer ?? "",
+        };
+      }
+      return {
+        monitoringEvaluation: mon.monitoringEvaluation || "",
+        result: mon.result || mon.resulsExperience || "",
+        sustainability: mon.sustainability || mon.sustainabilityExperience || "",
+        tranfer: mon.tranfer || "",
+      };
+    };
+
+    const supportInfoNormalized = normalizeSupportInformation(informacionApoyo);
+    const monitoringNormalized = normalizeMonitoring(seguimientoEvaluacion);
+
+    const objectivesSwagger = [
+      {
+        descriptionProblem: objectiveExperience.descriptionProblem || "",
+        objectiveExperience: objectiveExperience.objectiveExperience || "",
+        enfoqueExperience: objectiveExperience.enfoqueExperience || "",
+        methodologias: objectiveExperience.methodologias || "",
+        innovationExperience: objectiveExperience.innovationExperience || "",
+        pmi: objectiveExperience.pmi || "",
+        nnaj: objectiveExperience.nnaj || "",
+        supportInformations: [
+          {
+            summary: supportInfoNormalized.summary || "",
+            metaphoricalPhrase: supportInfoNormalized.metaphoricalPhrase || "",
+            testimony: supportInfoNormalized.testimony || "",
+            followEvaluation: supportInfoNormalized.followEvaluation || "",
+          },
+        ],
+        monitorings: [
+          {
+            monitoringEvaluation: monitoringNormalized.monitoringEvaluation || "",
+            result: monitoringNormalized.result || "",
+            sustainability: monitoringNormalized.sustainability || "",
+            tranfer: monitoringNormalized.tranfer || "",
+          },
+        ],
+      },
+    ];
+
+    try { console.log("objectivesSwagger (mapeado):", JSON.stringify(objectivesSwagger, null, 2)); } catch (e) { console.log("objectivesSwagger (raw)", objectivesSwagger); }
+
+    // Build leaders array (map existing lideres state)
+    const leadersSwagger = Array.isArray(lideres)
+      ? lideres.map((l: any) => ({
+          nameLeaders: l.nameLeaders || l.name || "",
+          identityDocument: l.identityDocument || l.firstIdentityDocument || "",
+          email: l.email || l.firdtEmail || "",
+          position: l.position || l.firstPosition || "",
+          phone: l.phone || l.firstPhone || 0,
+        }))
+      : [];
+
+    // Build developments array from tematicaForm
+    const developmentsSwagger = [
+      {
+        crossCuttingProject: tematicaForm.coordinationTransversalProjects || "",
+        population: tematicaForm.population || "",
+        pedagogicalStrategies: tematicaForm.pedagogicalStrategies || "",
+        coverage: tematicaForm.coverage || "",
+        covidPandemic: tematicaForm.experiencesCovidPandemic || "",
+      },
+    ];
+
+    // Try to extract a numeric userId from the JWT token (if available)
+    const jwtToken = getToken();
+    const parseJwt = (t: string) => {
+      try {
+        const parts = t.split('.');
+        if (parts.length < 2) return null;
+        const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = decodeURIComponent(
+          atob(payload)
+            .split('')
+            .map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            })
+            .join('')
+        );
+        return JSON.parse(decoded);
+      } catch {
+        return null;
+      }
+    };
+
+    const tryExtractUserId = (t?: string | null) => {
+      if (!t) return null;
+      const parsed = parseJwt(t);
+      if (!parsed || typeof parsed !== 'object') return null;
+      const candidates = [
+        'sub',
+        'id',
+        'userId',
+        'user_id',
+        'nameid',
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier',
+      ];
+      for (const k of candidates) {
+        const v = (parsed as any)[k];
+        if (v !== undefined && v !== null) {
+          const num = Number(v);
+          if (!Number.isNaN(num) && Number.isFinite(num) && num > 0) return Math.trunc(num);
+        }
+      }
+      return null;
+    };
+
+    const extractedUserId = tryExtractUserId(jwtToken);
+
+    // Determine stateExperienceId from any subform where the user may have set it
+    const stateCandidate = identificacionInstitucional?.stateExperienceId ?? identificacionForm?.stateExperienceId ?? identificacionForm?.estado ?? identificacionInstitucional?.estado;
+    const parseStateId = (v: any): number | null => {
+      if (v === undefined || v === null) return null;
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0) return Math.trunc(v);
+      if (typeof v === 'string') {
+        const n = Number(v);
+        if (!Number.isNaN(n) && Number.isFinite(n) && n > 0) return Math.trunc(n);
+      }
+      return null;
+    };
+    const finalStateId = parseStateId(stateCandidate);
+
+    const payload: any = {
+      // Prefer the experience name entered in the Identification step; fall back to any institution-provided helper
+      nameExperiences: identificacionForm?.nameExperience || identificacionInstitucional.nameExperiences || identificacionInstitucional.name || "",
+      code: formData.code || "",
       thematicLocation: identificacionForm.thematicLocation || "",
-  // backend DTO expects `stateExperienceId` on the Experience object
-  stateExperienceId: formData.stateId || 0,
-      thematicLineIds: formData.thematicLineIds?.length
-        ? formData.thematicLineIds
-        : tematicaForm.thematicLineIds || [],
-      coordinationTransversalProjects: tematicaForm.coordinationTransversalProjects || "",
-      pedagogicalStrategies: tematicaForm.pedagogicalStrategies || "",
-      coverage: tematicaForm.coverage || "",
-      population: tematicaForm.population || "",
-      experiencesCovidPandemic: tematicaForm.experiencesCovidPandemic || "",
-
-      grades: grades,
-      populationGradeIds: populationGradeIds,
-      developmenttime: tiempo.developmenttime || "",
+      // Only include developmenttime when a value exists. If omitted, backend won't attempt to parse it.
+      ...(tiempo && tiempo.developmenttime ? { developmenttime: tiempo.developmenttime } : {}),
       recognition: tiempo.recognition || "",
       socialization: tiempo.socialization || "",
-  // Do not send userId from the client. The backend must set the experience creator from the authenticated token.
-
+      // Include stateExperienceId when any subform provided a valid numeric id
+      ...(finalStateId ? { stateExperienceId: finalStateId } : {}),
       institution: {
         name: identificacionInstitucional.name || "",
         address: identificacionInstitucional.address || "",
         phone: identificacionInstitucional.phone || 0,
         codeDane: identificacionInstitucional.codeDane || "",
         emailInstitucional: identificacionInstitucional.emailInstitucional || "",
-        departament: identificacionInstitucional.departament || "",
-        municipality: identificacionInstitucional.municipality || "",
-        commune: identificacionInstitucional.commune || "",
         nameRector: identificacionInstitucional.nameRector || "",
-        eZone: identificacionInstitucional.eZone || "",
         caracteristic: identificacionInstitucional.caracteristic || "",
         territorialEntity: identificacionInstitucional.territorialEntity || "",
         testsKnow: identificacionInstitucional.testsKnow || "",
+        // Build addresses as objects (AddressInfoRequest-like) instead of plain strings
+        addresses: (() => {
+          // If the institutional form already provides an `addresses` array, normalize it
+          const src = identificacionInstitucional.addresses ?? (identificacionInstitucional.address ? [identificacionInstitucional.address] : []);
+          if (!Array.isArray(src) || src.length === 0) return [];
+          return src.map((a: any) => {
+            if (!a) return null;
+            if (typeof a === 'string') {
+              return {
+                address: a,
+                municipality: identificacionInstitucional.municipality || undefined,
+                departament: identificacionInstitucional.departament || undefined,
+                commune: identificacionInstitucional.communes || undefined,
+                eZone: identificacionInstitucional.eZone || undefined,
+              };
+            }
+            // assume it's already an object with expected keys
+            return {
+              address: a.address || a.addressLine || a.street || identificacionInstitucional.address || "",
+              municipality: a.municipality || a.city || identificacionInstitucional.municipality || undefined,
+              departament: a.departament || a.department || identificacionInstitucional.departament || undefined,
+              commune: a.commune || a.communeName || identificacionInstitucional.communes || undefined,
+              eZone: a.eZone || a.zone || identificacionInstitucional.eZone || undefined,
+            };
+          }).filter((x: any) => x !== null);
+        })(),
+        // Normalize other lists to arrays of { name } objects (NameItem[]), but accept already-structured values
+        communes: Array.isArray(identificacionInstitucional.communes)
+          ? identificacionInstitucional.communes.map((c: any) => (typeof c === 'string' ? { name: c } : c))
+          : identificacionInstitucional.communes
+          ? [{ name: identificacionInstitucional.communes }]
+          : [],
+        departamentes: identificacionInstitucional.departament
+          ? [{ name: identificacionInstitucional.departament }]
+          : Array.isArray(identificacionInstitucional.departamentes)
+          ? identificacionInstitucional.departamentes.map((d: any) => (typeof d === 'string' ? { name: d } : d))
+          : [],
+        eeZones: identificacionInstitucional.eZone
+          ? [{ name: identificacionInstitucional.eZone }]
+          : Array.isArray(identificacionInstitucional.eeZones)
+          ? identificacionInstitucional.eeZones.map((z: any) => (typeof z === 'string' ? { name: z } : z))
+          : [],
+        municipalities: identificacionInstitucional.municipality
+          ? [{ name: identificacionInstitucional.municipality }]
+          : Array.isArray(identificacionInstitucional.municipalities)
+          ? identificacionInstitucional.municipalities.map((m: any) => (typeof m === 'string' ? { name: m } : m))
+          : [],
       },
-
-      documents: documents,
-      objectives: objectives,
-  // Do not send stateId inside historyExperiences if backend removed that relation
-  historyExperiences: historyExperiences.map(({ action, tableName }) => ({ action, tableName })),
-
-
+      documents: documentsSwagger,
+      objectives: objectivesSwagger,
+      leaders: leadersSwagger,
+      developments: developmentsSwagger,
+      // Send history entries; include userId only when we could extract it from the token
+      historyExperiences: historyExperiences.map(({ action, tableName }) => (
+        extractedUserId ? { action, tableName, userId: extractedUserId } : { action, tableName }
+      )),
+      populationGradeIds: populationGradeIds,
+      thematicLineIds: formData.thematicLineIds?.length ? formData.thematicLineIds : tematicaForm.thematicLineIds || [],
+      grades: grades,
     };
 
+    // Normalize userId usage: if we have an extractedUserId, ensure it's applied where appropriate.
+    // If we don't have a valid extractedUserId, remove any userId keys from the payload to avoid sending invalid ids.
+    const normalizeOrRemoveUserId = (obj: any, userIdValue: number | null) => {
+      if (!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach((k) => {
+        try {
+          const v = obj[k];
+          if (k === 'userId') {
+            if (userIdValue && Number.isFinite(userIdValue) && userIdValue > 0) {
+              obj[k] = userIdValue;
+            } else {
+              delete obj[k];
+            }
+            return;
+          }
+          if (Array.isArray(v)) {
+            v.forEach((item) => normalizeOrRemoveUserId(item, userIdValue));
+          } else if (typeof v === 'object') {
+            normalizeOrRemoveUserId(v, userIdValue);
+          }
+        } catch {}
+      });
+    };
+    // If there's an extracted user id (from token) or a stored userId in localStorage, include it at top-level
+    const storedUserId = Number(localStorage.getItem('userId')) || null;
+    const finalUserId = extractedUserId ?? (storedUserId && Number.isFinite(storedUserId) && storedUserId > 0 ? storedUserId : null);
+    if (finalUserId) {
+      payload.userId = finalUserId;
+    }
+
+    // Normalize/remove any nested userId keys according to whether we have a valid id
+    normalizeOrRemoveUserId(payload, finalUserId ?? null);
+
+    // debug: log lideres state and mapped leaders before sending
+    try {
+      console.log("Estado 'lideres' antes de enviar:", JSON.stringify(lideres, null, 2));
+    } catch (e) {
+      console.log("Estado 'lideres' (no serializable)", lideres);
+    }
+    try {
+      console.log("leadersSwagger (mapeado):", JSON.stringify(leadersSwagger, null, 2));
+    } catch (e) {
+      console.log("leadersSwagger (no serializable)", leadersSwagger);
+    }
+    try {
+      console.log("pdfFile (raw):", JSON.stringify(pdfFile, null, 2));
+    } catch (e) {
+      console.log("pdfFile (no serializable)", pdfFile);
+    }
+    try {
+      console.log("documentsSwagger (mapeado):", JSON.stringify(documentsSwagger, null, 2));
+    } catch (e) {
+      console.log("documentsSwagger (no serializable)", documentsSwagger);
+    }
+
+    // log payload for debugging
     console.log("Objeto enviado al backend:", JSON.stringify(payload, null, 2));
 
     try {
@@ -212,15 +481,41 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
       const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
       const endpoint = `${API_BASE}/api/Experience/register`;
 
-      const token = localStorage.getItem("token");
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
+      // Use the normalized token value from getToken() for Authorization header
+      const authToken = jwtToken ?? localStorage.getItem("token");
+      // Try primary endpoint; if network/protocol error occurs and we're targeting localhost via https,
+      // retry the call using http (useful for local dev where Kestrel may not serve HTTPS correctly).
+      let res: Response | null = null;
+      const doFetch = async (url: string) =>
+        await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+
+      try {
+        res = await doFetch(endpoint);
+      } catch (networkErr: any) {
+        console.warn("Network error when calling Experience/register:", networkErr);
+        // Only attempt http fallback for localhost targets using https
+        try {
+          const u = new URL(endpoint);
+          if ((u.hostname === 'localhost' || u.hostname === '127.0.0.1') && u.protocol === 'https:') {
+            const fallback = `http:${u.href.substring(u.origin.length)}`;
+            console.info(`Retrying Experience/register using HTTP fallback: ${fallback}`);
+            res = await doFetch(fallback);
+          } else {
+            throw networkErr;
+          }
+        } catch (innerErr) {
+          // rethrow the original network error if we couldn't recover
+          console.error('Fallback attempt failed:', innerErr);
+          throw networkErr;
+        }
+      }
 
       if (!res.ok) {
         // Mejor manejo de error: mostrar siempre el mensaje del backend
@@ -229,7 +524,20 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
         try {
           // Intenta parsear como JSON
           const errorData = await res.clone().json();
-          backendMsg = errorData?.message || errorData?.error || JSON.stringify(errorData);
+          // If the backend returns structured validation errors, show them clearly
+          if (errorData?.errors) {
+            backendMsg = JSON.stringify(errorData.errors);
+            // also attach field errors to state for inline display when possible
+            try {
+              const fieldErrs: Record<string, string> = {};
+              Object.entries(errorData.errors).forEach(([k, v]) => {
+                fieldErrs[k] = Array.isArray(v) ? (v as any[]).join(" ") : String(v);
+              });
+              setFieldErrors(fieldErrs);
+            } catch {}
+          } else {
+            backendMsg = errorData?.message || errorData?.error || JSON.stringify(errorData);
+          }
         } catch {
           try {
             // Si no es JSON, intenta como texto
@@ -240,15 +548,92 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
           errorText += `: ${backendMsg}`;
         }
         setErrorMessage(errorText);
+        // show styled alert like LoginPage
+        try {
+          Swal.fire({ title: 'Error', text: backendMsg || errorText, icon: 'error', confirmButtonText: 'Aceptar' });
+        } catch (e) {
+          // ignore if Swal not available for some reason
+        }
         // También loguea el payload para depuración
         console.error("Payload enviado:", payload);
         return;
       }
 
-      alert("Experiencia registrada correctamente");
+      // Try to parse created resource to obtain its id
+      let created: any = null;
+      try {
+        created = await res.clone().json();
+      } catch (e) {
+        // response may be empty or non-json
+      }
+
+      // Determine id from response body or Location header
+      const extractIdFromLocation = (loc: string | null) => {
+        if (!loc) return null;
+        const m = loc.match(/\/(\d+)(?:\/|$)/);
+        return m ? Number(m[1]) : null;
+      };
+
+      let createdId: number | null = null;
+      if (created) {
+        createdId = created?.id || created?.data?.id || created?.experience?.id || created?.result?.id || null;
+        if (typeof createdId === 'string') createdId = Number(createdId);
+        if (!createdId && created?.data && typeof created.data === 'number') createdId = created.data;
+      }
+
+      if (!createdId) {
+        const loc = res.headers.get('Location');
+        createdId = extractIdFromLocation(loc);
+      }
+
+      // If we have an id, call the generate-pdf endpoint and download/open the PDF
+      if (createdId && Number.isFinite(createdId) && createdId > 0) {
+        const pdfEndpoint = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/Experience/${createdId}/generate-pdf`;
+        try {
+          const pdfRes = await fetch(pdfEndpoint, {
+            method: 'GET',
+            headers: {
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            },
+          });
+          if (pdfRes.ok) {
+            const blob = await pdfRes.blob();
+            const url = URL.createObjectURL(blob);
+            // open in new tab
+            window.open(url, '_blank');
+            // trigger download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `experiencia-${createdId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            // revoke after a while
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+          } else {
+            console.warn('Fallo al generar PDF:', await pdfRes.text().catch(() => '')); 
+            try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. Falló la generación del PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
+            onVolver();
+            return;
+          }
+        } catch (pdfErr) {
+          console.error('Error al descargar PDF:', pdfErr);
+          try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. No se pudo obtener el PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
+          onVolver();
+          return;
+        }
+      }
+
+      try {
+        await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada correctamente', icon: 'success', confirmButtonText: 'Aceptar' });
+      } catch (e) {}
       onVolver();
     } catch (err: any) {
-      setErrorMessage(err?.message || "Error inesperado al registrar la experiencia");
+      const msg = err?.message || "Error inesperado al registrar la experiencia";
+      setErrorMessage(msg);
+      try {
+        Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'Aceptar' });
+      } catch (e) {}
     }
   };
 
@@ -288,7 +673,51 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
       return true;
     }
 
+    // Step 2: Identification required fields
+    if (currentStep === 2) {
+      const ident = identificacionForm || {};
+      const errors: Record<string, string> = {};
+      if (!ident.nameExperience || String(ident.nameExperience).trim() === "") errors.nameExperience = "Nombre de la experiencia es obligatorio";
+      if (!ident.thematicFocus || String(ident.thematicFocus).trim() === "") errors.thematicFocus = "Enfoque temático es obligatorio";
+      const dev = ident.development || {};
+      if (!(dev.days || dev.months || dev.years)) errors.development = "Seleccione el tiempo de desarrollo";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+
     // Other steps: no mandatory validation by default (can be extended)
+    return true;
+  };
+
+  // Synchronous check used to enable/disable the Next button (no state changes)
+  const isCurrentStepValidSync = (): boolean => {
+    if (currentStep === 0) {
+      const inst = identificacionInstitucional || {};
+      if (!inst.codeDane || String(inst.codeDane).trim() === "") return false;
+      if (!inst.name || String(inst.name).trim() === "") return false;
+      if (!inst.nameRector || String(inst.nameRector).trim() === "") return false;
+      if (!inst.departament || String(inst.departament).trim() === "") return false;
+      if (!inst.municipality || String(inst.municipality).trim() === "") return false;
+      return true;
+    }
+    if (currentStep === 1) {
+      const leader = (lideres && lideres[0]) || {};
+      if (!leader.nameLeaders || String(leader.nameLeaders).trim() === "") return false;
+      if (!leader.email || String(leader.email).trim() === "") return false;
+      return true;
+    }
+    if (currentStep === 2) {
+      const ident = identificacionForm || {};
+      if (!ident.nameExperience || String(ident.nameExperience).trim() === "") return false;
+      if (!ident.thematicFocus || String(ident.thematicFocus).trim() === "") return false;
+      const dev = ident.development || {};
+      if (!(dev.days || dev.months || dev.years)) return false;
+      return true;
+    }
     return true;
   };
 
@@ -341,7 +770,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => e.preventDefault()}>
           {/* step-level alert removed — errors shown inline per field */}
           <div className="space-y-4">
             {currentStep === 0 && (
@@ -412,16 +841,17 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
 
             {!isLastStep() ? (
               <button
-                  type="button"
-                  onClick={() => {
-                    if (validateCurrentStep()) nextStep();
-                  }}
-                  className="bg-sky-500 text-white px-4 py-2 rounded hover:bg-sky-600"
-                >
-                  Siguiente
-                </button>
+                type="button"
+                onClick={() => {
+                  if (validateCurrentStep()) nextStep();
+                }}
+                disabled={!isCurrentStepValidSync()}
+                className={`px-4 py-2 rounded ${!isCurrentStepValidSync() ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-sky-500 text-white hover:bg-sky-600"}`}
+              >
+                Siguiente
+              </button>
             ) : (
-              <button type="submit" className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
+              <button type="button" onClick={() => handleSubmit()} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
                 Guardar Experiencia
               </button>
             )}

@@ -1,5 +1,5 @@
 import "bootstrap/dist/css/bootstrap.min.css";
-import  { useEffect, useState } from "react";
+import  { useEffect, useState, useRef } from "react";
 import ExperienceModal from "../../features/experience/components/ExperienceModal";
 import Evaluation from "../../features/evaluation/components/Evaluation";
 import configApi from "../../Api/Config/Config";
@@ -84,6 +84,13 @@ const Experiences = ({ onAgregar }: ExperiencesProps) => {
   const [selectedModalMode, setSelectedModalMode] = useState<'view' | 'edit'>('edit');
   // Estado para las pestañas (mover arriba para evitar cambios en el orden de hooks)
   const [selectedTab, setSelectedTab] = useState<'admin' | 'profesor' | 'todas'>('admin');
+
+  // scroll container ref for horizontal navigation (must be a top-level hook)
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollBy = (delta: number) => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+  };
 
   const handleVisitarClick = (id: number) => {
     // Al hacer click en la tarjeta principal abrimos el modal de Evaluación
@@ -236,7 +243,7 @@ const Experiences = ({ onAgregar }: ExperiencesProps) => {
 
     const colors = ['bg-indigo-600', 'bg-sky-500', 'bg-amber-500'];
 
-    return list.slice(0, 3).map((exp, i) => {
+    return list.map((exp, i) => {
       const title = (exp as any).nameExperiences ?? (exp as any).name ?? 'Sin título';
       const subtitle = (exp as any).thematicLocation ?? '';
 
@@ -294,6 +301,8 @@ const Experiences = ({ onAgregar }: ExperiencesProps) => {
       );
     });
   };
+
+  
 
   return (
     <div className="p-8 min-h-screen">
@@ -413,15 +422,41 @@ const Experiences = ({ onAgregar }: ExperiencesProps) => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <div className="flex gap-6 py-4">
-            {renderTiles(
-              selectedTab === 'profesor'
-                ? experienceList.filter((e) => e.userId === currentUserId)
-                : selectedTab === 'admin'
-                ? experienceList.filter((e) => e.userId !== currentUserId)
-                : experienceList
-            )}
+        <div className="relative">
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-20">
+            <button
+              onClick={() => scrollBy(-300)}
+              className="w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+              aria-label="Desplazar izquierda"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.293 16.293a1 1 0 010-1.414L15.586 11H4a1 1 0 110-2h11.586l-3.293-3.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto" ref={scrollRef}>
+            <div className="flex gap-6 py-4 flex-nowrap">
+              {renderTiles(
+                selectedTab === 'profesor'
+                  ? experienceList.filter((e) => e.userId === currentUserId)
+                  : selectedTab === 'admin'
+                  ? experienceList.filter((e) => e.userId !== currentUserId)
+                  : experienceList
+              )}
+            </div>
+          </div>
+
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20">
+            <button
+              onClick={() => scrollBy(300)}
+              className="w-9 h-9 rounded-full bg-white shadow flex items-center justify-center"
+              aria-label="Desplazar derecha"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.707 3.707a1 1 0 010 1.414L4.414 9H16a1 1 0 110 2H4.414l3.293 3.293a1 1 0 11-1.414 1.414l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -447,7 +482,7 @@ const Experiences = ({ onAgregar }: ExperiencesProps) => {
               &times;
             </button>
             <Evaluation experienceId={selectedExperienceId ?? null} experiences={experienceList} onClose={handleCloseEvaluation} onExperienceUpdated={(id:number, url:string) => {
-              setExperienceList(prev => prev.map(e => e.id === id ? { ...e, documents: [{ name: e.documents?.[0]?.name ?? '', urlPdf: url, urlLink: e.documents?.[0]?.urlLink ?? '' }] } : e));
+              setExperienceList(prev => prev.map(e => e.id === id ? { ...e, documents: [{ name: e.documents?.[0]?.name ?? '', urlPdf: url, urlLink: e.documents?.[0]?.urlLink ?? '', urlPdfExperience: e.documents?.[0]?.urlPdfExperience ?? '' }] } : e));
             }} />
           </div>
         </div>
@@ -478,7 +513,7 @@ const Experiences = ({ onAgregar }: ExperiencesProps) => {
               &times;
             </button>
             <Evaluation onClose={handleCloseEvaluation} onExperienceUpdated={(id:number, url:string) => {
-              setExperienceList(prev => prev.map(e => e.id === id ? { ...e, documents: [{ name: e.documents?.[0]?.name ?? '', urlPdf: url, urlLink: e.documents?.[0]?.urlLink ?? '' }] } : e));
+              setExperienceList(prev => prev.map(e => e.id === id ? { ...e, documents: [{ name: e.documents?.[0]?.name ?? '', urlPdf: url, urlLink: e.documents?.[0]?.urlLink ?? '', urlPdfExperience: e.documents?.[0]?.urlPdfExperience ?? '' }] } : e));
             }} />
           </div>
         </div>

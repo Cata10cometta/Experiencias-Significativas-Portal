@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Institution, Experience } from "../types/experienceTypes";
 import { getEnum } from "../../../Api/Services/Helper";
 import { DataSelectRequest } from "../../../shared/types/HelperTypes";
+import axios from "axios";
 
 interface Props {
   value: (Institution & Partial<Experience>) & {
@@ -24,6 +25,41 @@ const MAX_CHARACTERS = {
 const InstitutionalIdentification: React.FC<Props> = ({ value, onChange, errors }) => {
   const [codigoDaneOptions, setCodigoDaneOptions] = useState<DataSelectRequest[]>([]);
   const [emailInstitucionalOptions, setEmailInstitucionalOptions] = useState<DataSelectRequest[]>([]);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [statesOptions, setStatesOptions] = useState<Array<{ id: number; name: string }>>([]);
+  const [statesError, setStatesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStates = async () => {
+      const token = localStorage.getItem("token");
+      const attempts = [
+        { url: `/api/StateExperience/getAll`, config: { params: { OnlyActive: true } } },
+        { url: `/api/State/getAll`, config: { params: { OnlyActive: true } } },
+      ];
+      for (const attempt of attempts) {
+        try {
+          const res = await axios.get(attempt.url, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            ...(attempt.config || {}),
+          } as any);
+          let items: any[] = [];
+          if (Array.isArray(res.data)) items = res.data;
+          else if (Array.isArray(res.data.data)) items = res.data.data;
+          else if (Array.isArray(res.data.data?.data)) items = res.data.data.data;
+
+          const normalized = (items || []).map((s: any) => ({ id: s.id ?? s.stateId ?? 0, name: s.name ?? s.displayText ?? String(s.id) }));
+          setStatesOptions(normalized);
+          setStatesError(null);
+          return;
+        } catch (err: any) {
+          // try next
+          continue;
+        }
+      }
+      setStatesError("No se pudieron cargar los estados");
+    };
+    fetchStates();
+  }, []);
   
 
   useEffect(() => {
@@ -44,6 +80,15 @@ const InstitutionalIdentification: React.FC<Props> = ({ value, onChange, errors 
     return text.length >= max ? "text-green-500" : "text-gray-500";
   };
 
+  const getFieldError = (field: string, val: any) => {
+    // priority to parent-provided errors
+    if (errors && errors[field]) return errors[field];
+    if (touched[field]) {
+      if (val === undefined || val === null || String(val).trim() === "") return "Este campo es obligatorio";
+    }
+    return "";
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="px-6 py-6 mb-6">
@@ -62,14 +107,17 @@ const InstitutionalIdentification: React.FC<Props> = ({ value, onChange, errors 
               value={value.codeDane || ""}
               onChange={(e) => onChange({ ...value, codeDane: e.target.value })}
               onFocus={() => onChange({ ...value, _codigoDaneFocus: true })}
-              onBlur={() =>
-                setTimeout(() => onChange({ ...value, _codigoDaneFocus: false }), 100)
-              }
-              className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 mt-1"
+              onBlur={() => {
+                setTimeout(() => onChange({ ...value, _codigoDaneFocus: false }), 100);
+                setTouched((s) => ({ ...s, codeDane: true }));
+              }}
+              aria-required
+              aria-invalid={!!getFieldError("codeDane", value.codeDane)}
+              className={`w-full bg-gray-50 border ${getFieldError("codeDane", value.codeDane) ? "border-red-500" : "border-gray-200"} rounded-md p-3 mt-1`}
               placeholder="Seleccione o escriba..."
               autoComplete="off"
             />
-            {errors?.codeDane && <p className="text-red-600 text-sm mt-1">{errors.codeDane}</p>}
+            {getFieldError("codeDane", value.codeDane) && <p className="text-red-600 text-sm mt-1">{getFieldError("codeDane", value.codeDane)}</p>}
             {value._codigoDaneFocus && (
               <ul className="absolute left-0 z-10 bg-white border border-gray-300 rounded-md w-full mt-1 max-h-40 overflow-y-auto shadow-lg">
                 {(value.codeDane
@@ -112,16 +160,14 @@ const InstitutionalIdentification: React.FC<Props> = ({ value, onChange, errors 
             type="text"
             name="name"
             value={value.name || ""}
-            onChange={e =>
-    onChange({
-      ...value,
-      name: e.target.value.replace(/[^A-Za-z\s]/g, ""), // solo letras y espacios
-    })
-  }
-            className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+            onChange={e => onChange({ ...value, name: e.target.value.replace(/[^A-Za-z\s]/g, "") })}
+            onBlur={() => setTouched((s) => ({ ...s, name: true }))}
+            aria-required
+            aria-invalid={!!getFieldError("name", value.name)}
+            className={`w-full bg-white border ${getFieldError("name", value.name) ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
             placeholder="Nombre del establecimiento"
           />
-          {errors?.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
+          {getFieldError("name", value.name) && <p className="text-red-600 text-sm mt-1">{getFieldError("name", value.name)}</p>}
         </div>
       </div>
 
@@ -133,16 +179,14 @@ const InstitutionalIdentification: React.FC<Props> = ({ value, onChange, errors 
             type="text"
             name="nameRector"
             value={value.nameRector || ""}
-            onChange={e =>
-    onChange({
-      ...value,
-      nameRector: e.target.value.replace(/[^A-Za-z\s]/g, ""),
-    })
-  }
-            className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+            onChange={e => onChange({ ...value, nameRector: e.target.value.replace(/[^A-Za-z\s]/g, "") })}
+            onBlur={() => setTouched((s) => ({ ...s, nameRector: true }))}
+            aria-required
+            aria-invalid={!!getFieldError("nameRector", value.nameRector)}
+            className={`w-full bg-white border ${getFieldError("nameRector", value.nameRector) ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
             placeholder="Nombre del rector o director"
           />
-          {errors?.nameRector && <p className="text-red-600 text-sm mt-1">{errors.nameRector}</p>}
+          {getFieldError("nameRector", value.nameRector) && <p className="text-red-600 text-sm mt-1">{getFieldError("nameRector", value.nameRector)}</p>}
         </div>
       </div>
 
@@ -154,16 +198,14 @@ const InstitutionalIdentification: React.FC<Props> = ({ value, onChange, errors 
             type="text"
             name="municipality"
             value={value.municipality || ""}
-            onChange={e =>
-    onChange({
-      ...value,
-      municipality: e.target.value.replace(/[^A-Za-z\s]/g, ""), // solo letras y espacios
-    })
-  }
-            className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+            onChange={e => onChange({ ...value, municipality: e.target.value.replace(/[^A-Za-z\s]/g, "") })}
+            onBlur={() => setTouched((s) => ({ ...s, municipality: true }))}
+            aria-required
+            aria-invalid={!!getFieldError("municipality", value.municipality)}
+            className={`w-full bg-white border ${getFieldError("municipality", value.municipality) ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
             placeholder="Municipio o ciudad"
           />
-          {errors?.municipality && <p className="text-red-600 text-sm mt-1">{errors.municipality}</p>}
+          {getFieldError("municipality", value.municipality) && <p className="text-red-600 text-sm mt-1">{getFieldError("municipality", value.municipality)}</p>}
         </div>
         <div>
           <label className="font-medium">Departamento <span className="text-red-500">*</span></label>
@@ -171,16 +213,14 @@ const InstitutionalIdentification: React.FC<Props> = ({ value, onChange, errors 
             type="text"
             name="departament"
             value={value.departament || ""}
-            onChange={e =>
-    onChange({
-      ...value,
-    departament: e.target.value.replace(/[^A-Za-z\s]/g, ""), // solo letras y espacios
-    })
-  }
-            className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+            onChange={e => onChange({ ...value, departament: e.target.value.replace(/[^A-Za-z\s]/g, "") })}
+            onBlur={() => setTouched((s) => ({ ...s, departament: true }))}
+            aria-required
+            aria-invalid={!!getFieldError("departament", value.departament)}
+            className={`w-full bg-white border ${getFieldError("departament", value.departament) ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
             placeholder="Departamento"
           />
-          {errors?.departament && <p className="text-red-600 text-sm mt-1">{errors.departament}</p>}
+          {getFieldError("departament", value.departament) && <p className="text-red-600 text-sm mt-1">{getFieldError("departament", value.departament)}</p>}
         </div>
       </div>
 
@@ -360,6 +400,8 @@ const InstitutionalIdentification: React.FC<Props> = ({ value, onChange, errors 
           {errors?.testsKnow && <p className="text-red-600 text-sm mt-1">{errors.testsKnow}</p>}
         </div>
       </div>
+
+
     </div>
   );
 };
