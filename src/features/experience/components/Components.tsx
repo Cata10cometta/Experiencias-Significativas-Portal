@@ -22,7 +22,7 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
   };
 
   return (
-    <div className="w-full border rounded-lg p-6 mb-6">
+    <div className="mb-6">
       <h2 className="text-lg font-semibold mb-4">COMPONENTES</h2>
 
       {/* Problema o necesidad */}

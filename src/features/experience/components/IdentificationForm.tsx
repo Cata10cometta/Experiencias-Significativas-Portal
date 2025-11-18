@@ -1,22 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { getEnum } from "../../../Api/Services/Helper";
 import { DataSelectRequest } from "../../../shared/types/HelperTypes";
+import { Experience } from "../types/experienceTypes";  
+
+type IdentificationValue = Partial<Experience> & {
+  estado?: string;
+  ubicaciones?: number[];
+  otroTema?: string;
+  thematicLocation?: string;
+  nameExperience?: string; // UI-only helper (will be mapped to backend field later)
+  development?: { days?: string; months?: string; years?: string };
+  thematicFocus?: string;
+};
 
 interface IdentificationFormProps {
-  value: {
-    estado: string;            // siempre será "Naciente"
-    ubicaciones: number[];     // ahora enviamos IDs (del enum en backend)
-    otroTema: string;
-    thematicLocation: string;  // texto con la descripción del enum o "Otro"
-  };
-  onChange: (
-    value: {
-      estado: string;
-      ubicaciones: number[];
-      otroTema: string;
-      thematicLocation: string;
-    }
-  ) => void;
+  value: IdentificationValue;
+  onChange: (value: IdentificationValue) => void;
 }
 
 const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange }) => {
@@ -41,13 +40,13 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
 
   const handleUbicacionChange = (tema: DataSelectRequest) => {
     const temaId = tema.id;
+    const current = value.ubicaciones ?? [];
     let nuevasUbicaciones: number[];
-    console.log(value.ubicaciones.includes(temaId));
 
-    if (value.ubicaciones.includes(temaId)) {
-      nuevasUbicaciones = value.ubicaciones.filter((t) => t !== temaId);
+    if (current.includes(temaId)) {
+      nuevasUbicaciones = current.filter((t) => t !== temaId);
     } else {
-      nuevasUbicaciones = [...value.ubicaciones, temaId];
+      nuevasUbicaciones = [...current, temaId];
     }
 
     onChange({
@@ -82,47 +81,78 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
   };
 
   return (
-    <div className="border rounded-lg p-4 mb-6">
-      <h2 className="font-semibold mb-4">
-        IDENTIFICACIÓN DE LA EXPERIENCIA SIGNIFICATIVA
-      </h2>
+    <div className="mb-6">
+      <h1 className="text-2xl font-semibold mb-1">Identificacion De La Experiencia Significativa</h1>
+      <p className="text-sm text-gray-600 mb-6">Registrar los datos solicitados de las experiencia significativa</p>
 
-      {/* Ubicación Temática */}
+      {/* Nombre experiencia - full width */}
       <div className="mb-4">
-        <p>{value.estado}</p>
-        <p className="mb-2">Ubicación Temática</p>
-        <div className="grid grid-cols-3 gap-2">
-          {temas.map((tema) => (
-            <label key={tema.id} className="flex items-center">
+        <label className="block font-medium">Nombre con que se conoce la experiencia <span className="text-red-500">*</span></label>
+        <input
+          className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+          placeholder="Nombre de la experiencia"
+          value={(value as any).nameExperience || ""}
+          onChange={(e) => onChange({ ...value, nameExperience: e.target.value })}
+        />
+      </div>
+
+      {/* Estado (radios) */}
+      <div className="mb-4">
+        <p className="mb-2 text-sm">Seleccione el Estado de desarrollo en el que se encuentra la Experiencia Significativa (realizar la autoevaluación)</p>
+        <div className="flex items-center gap-6">
+          {['Naciente','Creciente','Inspiradora'].map((opt) => (
+            <label key={opt} className="flex items-center gap-2">
               <input
-                type="checkbox"
-                checked={value.ubicaciones?.includes(Number(tema.id))}
-                onChange={() => handleUbicacionChange(tema)}
-                className="mr-2"
+                type="radio"
+                name="estado"
+                value={opt}
+                checked={value.estado === opt}
+                onChange={() => onChange({ ...value, estado: opt })}
+                className="form-radio h-4 w-4 text-yellow-400 border-yellow-300"
               />
-              {tema.displayText}
+              <span className="text-sm">{opt}</span>
             </label>
           ))}
-
-          {/* Otro */}
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={value.thematicLocation === "Otro"}
-              onChange={handleOtroCheckbox}
-              className="mr-2"
-            />
-            Otro
-            <input
-              placeholder="¿Cuál?"
-              className="ml-2 border rounded p-1 w-32"
-              value={value.otroTema}
-              onChange={handleOtroTemaChange}
-              disabled={value.thematicLocation !== "Otro"}
-            />
-          </label>
         </div>
       </div>
+
+      {/* Tiempo de desarrollo */}
+      <div className="mb-4">
+        <label className="block font-medium">Seleccione el tiempo de desarrollo de la Experiencia Significativa. <span className="text-red-500">*</span></label>
+        <div className="flex items-center gap-4 mt-2">
+          <input
+            placeholder="Días"
+            className="w-20 border border-gray-200 rounded-md p-2 text-sm"
+            value={(value as any).development?.days ?? ''}
+            onChange={(e) => onChange({ ...value, development: { ...(value as any).development, days: e.target.value } })}
+          />
+          <input
+            placeholder="Meses"
+            className="w-20 border border-gray-200 rounded-md p-2 text-sm"
+            value={(value as any).development?.months ?? ''}
+            onChange={(e) => onChange({ ...value, development: { ...(value as any).development, months: e.target.value } })}
+          />
+          <input
+            placeholder="Años"
+            className="w-20 border border-gray-200 rounded-md p-2 text-sm"
+            value={(value as any).development?.years ?? ''}
+            onChange={(e) => onChange({ ...value, development: { ...(value as any).development, years: e.target.value } })}
+          />
+        </div>
+      </div>
+
+      {/* Enfoque temático */}
+      <div className="mb-6">
+        <label className="block font-medium">Enfoque temático de la Experiencia Significativa <span className="text-red-500">*</span></label>
+        <input
+          className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+          placeholder="Enfoque temático"
+          value={(value as any).thematicFocus || ''}
+          onChange={(e) => onChange({ ...value, thematicFocus: e.target.value })}
+        />
+      </div>
+
+      {/* Ubicación Temática removed as requested */}
     </div>
   );
 };

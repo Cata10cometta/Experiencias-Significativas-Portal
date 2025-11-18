@@ -3,7 +3,8 @@ import axios from "axios";
 let setSessionExpired: (expired: boolean) => void = () => {}; // Variable para activar el modal
 
 // Base URL: preferir la variable de entorno VITE_API_BASE_URL, si no existe usar un valor por defecto
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:5000"; // ajusta el puerto por defecto a tu backend
+// Usar HTTPS por defecto porque el backend (Swagger) está en https://localhost:7263
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || "https://localhost:7263"; // ajusta el puerto por defecto a tu backend
 
 // Instancia de Axios
 const configApi = axios.create({

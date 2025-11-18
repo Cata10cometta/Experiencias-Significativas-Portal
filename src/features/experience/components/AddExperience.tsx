@@ -2,17 +2,14 @@ import React, { useState } from "react";
 import LeadersForm from "./LeadersForm";
 import IdentificationForm from "./IdentificationForm";
 import ThematicForm from "./ThematicForm";
-import PopulationGroupForm from "./PopulationGroup";
-import TimeForm from "./TimeForm";
 import InstitutionalIdentification from "./InstitutionalIdentification";
+import FormSection from "./ui/FormSection";
 import Components from "./Components";
 import FollowUpEvaluation from "./FollowUpEvaluation";
 import SupportInformationForm from "./SupportInformationForm";
 import PDFUploader from "./PDF";
 
 import type { Grade } from "../types/experienceTypes";
-import LevelsForm from "./LevelsForm";
-import type { LevelsFormValue, Nivel } from "./LevelsForm";
 
 interface AddExperienceProps {
   onVolver: () => void;
@@ -20,6 +17,7 @@ interface AddExperienceProps {
 
 const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
   const [errorMessage, setErrorMessage] = useState("");
+  const [currentStep, setCurrentStep] = useState<number>(0);
 
   // Estados principales
   const [formData] = useState({
@@ -48,12 +46,15 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
   });
 
   // Estados de subformularios
-  const [lideres, setLideres] = useState<any[]>([{}, {}]); // Array para 2 líderes
+  const [lideres, setLideres] = useState<any[]>([{}]); // Solo 1 líder
   const [identificacionForm, setIdentificacionForm] = useState<any>({
     estado: "",
     ubicaciones: [],
     otroTema: "",
-    thematicLocation: ""
+    thematicLocation: "",
+    nameExperience: "",
+    development: { days: "", months: "", years: "" },
+    thematicFocus: "",
   });
   const [tematicaForm, setTematicaForm] = useState<any>({
     thematicLineIds: [],
@@ -63,7 +64,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
     population: "",
     experiencesCovidPandemic: ""
   });
-  const [nivelesForm, setNivelesForm] = useState<LevelsFormValue>({
+  const [nivelesForm, setNivelesForm] = useState<any>({
     niveles: {
       Primaria: { checked: false, grados: [] },
       Secundaria: { checked: false, grados: [] },
@@ -78,12 +79,23 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
   const [identificacionInstitucional, setIdentificacionInstitucional] = useState<any>({});
   const [pdfFile, setPdfFile] = useState<any>({});
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const steps: string[] = [
+    "Identificación Institucional",
+    "Líder",
+    "Identificación",
+    "Temática",
+    "Objetivos",
+    "Seguimiento",
+    "Apoyos",
+    "PDF",
+  ];
+
+  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
 
 
     // 2) GRADES -> convertimos nivelesForm a array y filtramos solo los grados válidos
-    const nivelesArray: Nivel[] = Object.values(nivelesForm.niveles);
+    const nivelesArray: any[] = Object.values(nivelesForm.niveles);
 
     const grades: { gradeId: number; description: string }[] = nivelesArray
       .flatMap((nivel) => nivel.grados)
@@ -240,8 +252,52 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
     }
   };
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateCurrentStep = (): boolean => {
+    setFieldErrors({});
+    // Step 0: InstitutionalIdentification required fields (field-level errors)
+    if (currentStep === 0) {
+      const inst = identificacionInstitucional || {};
+      const errors: Record<string, string> = {};
+      if (!inst.codeDane || String(inst.codeDane).trim() === "") errors.codeDane = "Código DANE es obligatorio";
+      if (!inst.name || String(inst.name).trim() === "") errors.name = "Nombre del establecimiento es obligatorio";
+      if (!inst.nameRector || String(inst.nameRector).trim() === "") errors.nameRector = "Nombre del rector es obligatorio";
+      if (!inst.departament || String(inst.departament).trim() === "") errors.departament = "Departamento es obligatorio";
+      if (!inst.municipality || String(inst.municipality).trim() === "") errors.municipality = "Municipio es obligatorio";
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+
+    // Step 1: Leader required fields
+    if (currentStep === 1) {
+      const leader = (lideres && lideres[0]) || {};
+      const errors: Record<string, string> = {};
+      if (!leader.nameLeaders || String(leader.nameLeaders).trim() === "") errors.leaderName = "Nombre del líder es obligatorio";
+      if (!leader.email || String(leader.email).trim() === "") errors.leaderEmail = "Correo del líder es obligatorio";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+
+    // Other steps: no mandatory validation by default (can be extended)
+    return true;
+  };
+
+  const isLastStep = () => currentStep === steps.length - 1;
+  const nextStep = () => setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
+  const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
+
   return (
-    <div className="p-6 bg-white rounded-lg shadow max-h-[80vh] overflow-y-auto">
+    <div className="p-6 bg-white rounded-lg shadow max-h-[95vh] overflow-y-auto max-w-7xl mx-auto">
       {errorMessage && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded border border-red-300">
           <strong>Error:</strong> {errorMessage}
@@ -252,33 +308,126 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
         ← Volver
       </button>
 
-      <form onSubmit={handleSubmit}>
-  <InstitutionalIdentification value={identificacionInstitucional} onChange={setIdentificacionInstitucional} />
-  <LeadersForm value={lideres} onChange={setLideres} />
-  <IdentificationForm value={identificacionForm} onChange={setIdentificacionForm} />
-  <ThematicForm value={tematicaForm} onChange={setTematicaForm} />
-  <LevelsForm value={nivelesForm} onChange={setNivelesForm} />
-  <PopulationGroupForm value={grupoPoblacional} onChange={(val) => setGrupoPoblacional(val ?? [])} />
-  <TimeForm value={tiempo} onChange={setTiempo} />
-  <Components value={objectiveExperience} onChange={setObjectiveExperience} />
-  <FollowUpEvaluation value={seguimientoEvaluacion} onChange={setSeguimientoEvaluacion} />
-  <SupportInformationForm value={informacionApoyo} onChange={setInformacionApoyo} />
+      <div>
+        {/* Stepper header */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold text-center mb-3">Registro de Experiencia</h2>
+          <div className="w-full overflow-x-auto py-4">
+            <div className="relative w-full px-4">
+              {/* connecting line */}
+              <div className="absolute left-6 right-6 top-4 h-0.5 bg-gray-200" />
 
-        <div className="my-6">
-          <PDFUploader value={pdfFile} onChange={setPdfFile} />
-          {pdfFile && (
-            <div className="mt-2 text-center">
-              <span className="font-semibold">PDF seleccionado:</span> {pdfFile.name}
+              <div className="flex items-start justify-between">
+                {steps.map((label, idx) => {
+                  const isActive = idx === currentStep;
+                  const isCompleted = idx < currentStep;
+                  return (
+                    <div key={label} className="flex-1 flex flex-col items-center text-center min-w-[90px]">
+                      <div
+                        className={`z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                          isCompleted ? "bg-sky-500 text-white" : isActive ? "bg-pink-300 text-white border-2 border-pink-200" : "bg-white border border-gray-200 text-gray-500"
+                        }`}
+                      >
+                        {idx + 1}
+                      </div>
+                      <div className={`mt-2 text-xs ${isActive ? "text-pink-600 font-medium" : "text-gray-500"}`}>
+                        {label}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
-        <div className="mt-6 text-center">
-          <button type="submit" className="bg-sky-500 text-white px-4 py-2 rounded hover:bg-sky-600">
-            Guardar Experiencia
-          </button>
-        </div>
-      </form>
+        <form onSubmit={handleSubmit}>
+          {/* step-level alert removed — errors shown inline per field */}
+          <div className="space-y-4">
+            {currentStep === 0 && (
+              <FormSection>
+                <InstitutionalIdentification value={identificacionInstitucional} onChange={setIdentificacionInstitucional} errors={fieldErrors} />
+              </FormSection>
+            )}
+
+            {currentStep === 1 && (
+              <FormSection>
+                <LeadersForm value={lideres} onChange={setLideres} index={0} />
+              </FormSection>
+            )}
+
+            {currentStep === 2 && (
+              <FormSection>
+                <IdentificationForm value={identificacionForm} onChange={setIdentificacionForm} />
+              </FormSection>
+            )}
+
+            {currentStep === 3 && (
+              <FormSection>
+                <ThematicForm value={tematicaForm} onChange={setTematicaForm} />
+              </FormSection>
+            )}
+
+            {currentStep === 4 && (
+              <FormSection>
+                <Components value={objectiveExperience} onChange={setObjectiveExperience} />
+              </FormSection>
+            )}
+
+            {currentStep === 5 && (
+              <FormSection>
+                <FollowUpEvaluation value={seguimientoEvaluacion} onChange={setSeguimientoEvaluacion} />
+              </FormSection>
+            )}
+
+            {currentStep === 6 && (
+              <FormSection>
+                <SupportInformationForm value={informacionApoyo} onChange={setInformacionApoyo} />
+              </FormSection>
+            )}
+
+            {currentStep === 7 && (
+              <FormSection>
+                <div className="my-6">
+                  <PDFUploader value={pdfFile} onChange={setPdfFile} />
+                  {pdfFile && (
+                    <div className="mt-2 text-center">
+                      <span className="font-semibold">PDF seleccionado:</span> {pdfFile.name}
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+            )}
+          </div>
+
+          <div className="sticky bottom-0 z-20 bg-white/90 backdrop-blur-sm border-t border-gray-100 py-3 flex justify-between items-center mt-6">
+            <button
+              type="button"
+              disabled={currentStep === 0}
+              onClick={prevStep}
+              className={`px-4 py-2 rounded ${currentStep === 0 ? "bg-slate-200 text-slate-400" : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+            >
+              Atrás
+            </button>
+
+            {!isLastStep() ? (
+              <button
+                  type="button"
+                  onClick={() => {
+                    if (validateCurrentStep()) nextStep();
+                  }}
+                  className="bg-sky-500 text-white px-4 py-2 rounded hover:bg-sky-600"
+                >
+                  Siguiente
+                </button>
+            ) : (
+              <button type="submit" className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
+                Guardar Experiencia
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

@@ -29,7 +29,7 @@ const FollowUpEvaluation: React.FC<FollowUpEvaluationProps> = ({ value, onChange
   const monitoringTranfer = value.monitorings?.[0]?.tranfer ?? "";
 
   return (
-    <div className="w-full border rounded-lg p-6 mb-6">
+    <div className=" mb-6">
       <h2 className="text-lg font-semibold mb-4">SEGUIMIENTO Y EVALUACIÓN</h2>
 
       {/* Seguimiento y evaluación */}

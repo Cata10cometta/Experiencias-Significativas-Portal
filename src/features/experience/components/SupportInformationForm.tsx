@@ -18,7 +18,7 @@ const SupportInformationForm: React.FC<SupportInformationFormProps> = ({ value, 
   };
 
   return (
-    <div className="border rounded-lg p-4 mb-6">
+    <div className=" mb-6">
       <h2 className="font-semibold mb-4">INFORMACIÓN DE APOYO</h2>
 
       {/* Resumen */}
