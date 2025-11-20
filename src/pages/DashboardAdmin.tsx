@@ -51,7 +51,7 @@ const DashboardAdmin: React.FC = () => {
         {activeContent === "roles" && <RolesList />}
         {activeContent === "security" && <SecurityMain />}
         {activeContent === "permissions" && <Permissions />}
-        {activeContent === "informacion" && <Information /> }
+        {activeContent === "experiensGestion" && <Information /> }
         {activeContent === "modules" && <Modules />}
         {activeContent === "forms" && <Forms />}
         {activeContent === "usersRol" && <UsersRol />}

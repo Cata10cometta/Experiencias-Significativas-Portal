@@ -18,6 +18,25 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
   const [lineasTematicas, setLineasTematicas] = useState<LineThematic[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Fallback list to display when API doesn't provide the expected items
+  const FALLBACK_LINES: string[] = [
+    'CIENCIAS ECONOMICAS Y POLITICAS',
+    'TECNOLOGIA E INFORMATICA',
+    'CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL',
+    'CIENCIAS SOCIALES, HISTORIA, GEOGRAFÍA, CONSTITUCIÓN POLÍTICA Y DEMOCRACIA',
+    'CONVIVENCIA Y COMPORTAMIENTO',
+    'EDUCACIÓN ARTÍSTICA Y CULTURAL',
+    'EDUCACIÓN ÉTICA Y EN VALORES HUMANOS',
+    'EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES',
+    'EDUCACIÓN RELIGIOSA',
+    'EMPRENDIMIENTO',
+    'HUMANIDADES Y LENGUA CASTELLANA',
+    'IDIOMA EXTRANJERO',
+    'MATEMÁTICAS',
+    'FILOSOFÍA',
+    'QUIMICA'
+  ];
+
   useEffect(() => {
     const fetchLineasTematicas = async () => {
       try {
@@ -31,12 +50,9 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
-        // Normalize response: accept data array at root or under .data
-        const payload = response.data?.data ?? response.data ?? [];
-        const mapped = Array.isArray(payload)
-          ? payload.map((d: any) => ({ id: d.id ?? d.lineThematicId ?? d.lineId, name: d.name ?? d.title ?? d.displayText ?? String(d.id) }))
-          : [];
-        setLineasTematicas(mapped);
+        // Ignore API results and always use the user's provided list
+        const fallback = FALLBACK_LINES.map((name, idx) => ({ id: idx + 1, name }));
+        setLineasTematicas(fallback);
       } catch (err) {
         // axios error handling
         const status = (err as any)?.response?.status;
@@ -57,7 +73,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
   return (
     <div className="mb-6">
       <h2 className="text-3xl font-bold mb-2">Tematica y Desarrollo</h2>
-      <p className="text-lg text-black-600 mb-4">Señale el área principal en la que desarrolla la Experiencia Significativa <span className="text-red-500">*</span></p>
+      <p className="text-lg text-gray-600 mb-4">Señale el área principal en la que desarrolla la Experiencia Significativa <span className="text-red-500">*</span></p>
 
       {error && (
         <div className="mb-4 text-sm text-red-600">{error}</div>
@@ -70,33 +86,41 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
             <div className="col-span-3 text-sm text-gray-500">No hay líneas temáticas cargadas.</div>
           )}
 
-          {lineasTematicas.map((linea) => {
-            const checked = (value.thematicLineIds || []).includes(linea.id);
-            return (
-              <label key={linea.id} className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 border-gray-300 rounded"
-                  checked={checked}
-                  onChange={(e) => {
-                    const current = new Set(value.thematicLineIds || []);
-                    if (e.target.checked) current.add(linea.id);
-                    else current.delete(linea.id);
-                    onChange({ ...value, thematicLineIds: Array.from(current) });
-                  }}
-                />
-                <span className="leading-tight">{linea.name}</span>
-              </label>
-            );
-          })}
+              {lineasTematicas.map((linea) => {
+                // Determine checked state by supporting multiple shapes the parent may provide
+                const v: any = value || {};
+                const checked = (
+                  // thematicLocation might be the name (string) or numeric id in some cases
+                  v.thematicLocation === linea.name || v.thematicLocation === linea.id ||
+                  // older fields
+                  v.thematicLineId === linea.id || (Array.isArray(v.thematicLineIds) && v.thematicLineIds[0] === linea.id)
+                );
+
+                return (
+                  <label key={linea.id} className="flex items-start gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="thematicLine"
+                      className="mt-1 h-4 w-4 border-gray-300 rounded-full"
+                      checked={checked}
+                      onChange={() => {
+                        // set `thematicLocation` as the thematic name (string) which the backend expects,
+                        // and keep `thematicLineIds` as numeric compatibility fallback
+                        onChange({ ...v, thematicLocation: linea.name, thematicLineIds: [linea.id] });
+                      }}
+                    />
+                    <span className="leading-tight break-words whitespace-normal">{linea.name}</span>
+                  </label>
+                );
+              })}
         </div>
       </div>
 
       {/* Educational model box (styled to match screenshot) */}
       <div className="mb-6">
         <label className="block mb-2 font-medium">Indique el modelo educativo en el que se enmarca el desarrollo de la Experiencia Significativa</label>
-        <div className="bg-white px-0 py-4">
-          <div className="flex flex-col gap-2 pl-0">
+        <div className="px-0 py-4 bg-transparent border-0">
+          <div className="grid grid-cols-3 gap-3 p-0">
           {[
             { id: 'tradicional', label: 'Tradicional' },
             { id: 'escuelaNueva', label: 'Escuela Nueva' },
@@ -110,7 +134,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
           ].map((opt) => {
             const checked = (value as any).Population?.includes(opt.id) || false;
             return (
-              <label key={opt.id} className="flex items-center gap-3 text-sm">
+              <label key={opt.id} className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
                   className="h-5 w-5 accent-green-600 rounded"
@@ -122,7 +146,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                     onChange({ ...(value as any), Population: Array.from(current) });
                   }}
                 />
-                <span className="leading-tight">{opt.label}</span>
+                <span className="leading-tight break-words whitespace-normal">{opt.label}</span>
               </label>
             );
           })}
@@ -134,9 +158,9 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
         {/* SENA techniques checklist (placed below the last section) */}
         <div className="mb-6">
           <label className="block mb-2 font-medium">Seleccione la o las Técnicas en articulación con el SENA vinculadas <span className="text-red-500">*</span></label>
-          <div className="bg-white px-0 py-4">
-            <div className="flex flex-col gap-2 pl-0">
-                  {[
+          <div className="px-0 py-4 bg-transparent border-0">
+            <div className="grid grid-cols-3 gap-3 p-0">
+              {[
                 'CONTABILIZACIÓN DE OPERACIONES CONTABLES Y FINANCIERAS',
                 'ASISTENCIA ADMINISTRATIVA',
                 'MANTENIMIENTO DE EQUIPOS DE COMPUTO',
@@ -160,12 +184,12 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                 'AGROINDUSTRIA',
                 'ELABORACION DE PRODUCTOS ALIMENTICIOS',
                 'NINGUNA DE LAS ANTERIORES',
-              ].map((label) => {
+                ].map((label) => {
                 const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
                 const cross = (value as any).CrossCuttingProject || [];
                 const checked = Array.isArray(cross) ? cross.includes(id) : false;
                 return (
-                  <label key={id} className="flex items-start gap-3 text-sm">
+                  <label key={id} className="flex items-start gap-2 text-sm">
                     <input
                       type="checkbox"
                       className="h-5 w-5 accent-green-600 rounded mt-1"
@@ -177,7 +201,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                         onChange({ ...(value as any), CrossCuttingProject: Array.from(current) });
                       }}
                     />
-                    <span className="leading-tight">{label}</span>
+                    <span className="leading-tight break-words whitespace-normal">{label}</span>
                   </label>
                 );
               })}
@@ -187,8 +211,8 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
           {/* Grades checklist (placed below SENA, as requested) */}
         <div className="mb-6">
           <label className="block mb-2 font-medium">Indique el o los grados en el que se desarrolla la experiencia significativa <span className="text-red-500">*</span></label>
-          <div className="bg-white px-0 py-4">
-            <div className="flex flex-col gap-2 pl-0">
+          <div className="px-0 py-4 bg-transparent border-0">
+            <div className="grid grid-cols-3 gap-3 p-0">
               {[
                 'Preescolar',
                 'Primero',
@@ -203,24 +227,33 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                 'Décimo',
                 'Undecimo',
                 'Todas las anteriores',
-              ].map((label) => {
+                ].map((label) => {
                 const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-                const gradeArr = (value as any).gradeId || (value as any).grades || [];
-                const checked = Array.isArray(gradeArr) ? gradeArr.includes(id) : false;
+                // normalize existing values to strings for reliable comparison
+                const gradeArr = Array.isArray((value as any).gradeId)
+                  ? (value as any).gradeId.map((v: any) => String(v))
+                  : Array.isArray((value as any).grades)
+                  ? (value as any).grades.map((v: any) => String(v))
+                  : [];
+                const checked = gradeArr.includes(id);
                 return (
-                  <label key={id} className="flex items-start gap-3 text-sm">
+                  <label key={id} className="flex items-start gap-2 text-sm">
                     <input
                       type="checkbox"
                       className="h-5 w-5 accent-green-600 rounded mt-1"
                       checked={checked}
                       onChange={(e) => {
-                        const current = new Set((value as any).gradeId || (value as any).grades || []);
+                        const current = new Set(gradeArr);
                         if (e.target.checked) current.add(id);
                         else current.delete(id);
-                        onChange({ ...(value as any), gradeId: Array.from(current) });
+                        const arr = Array.from(current);
+                        // update both common property names to maximize compatibility
+                        const payload: any = { ...(value as any), gradeId: arr, grades: arr };
+                        console.debug("ThematicForm - grades changed:", arr);
+                        onChange(payload);
                       }}
                     />
-                    <span className="leading-tight">{label}</span>
+                    <span className="leading-tight break-words whitespace-normal">{label}</span>
                   </label>
                 );
               })}
@@ -232,7 +265,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
       <div className="mb-6">
         <label className="block mb-2 font-medium">Grupo poblacional que hacen parte de la experiencia significativa <span className="text-red-500">*</span></label>
         <div className="bg-white px-0 py-4">
-          <div className="flex flex-col gap-2 pl-0">
+          <div className="grid grid-cols-3 gap-3 pl-0">
             {[
               'Negritudes',
               'Afrodescendiente',
@@ -247,21 +280,29 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
               'Ninguno de los anteriores',
             ].map((label) => {
               const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-              const checked = (value as any).populationGradeIds?.includes(id) || false;
+              const existing = Array.isArray((value as any).populationGradeIds)
+                ? (value as any).populationGradeIds.map((v: any) => String(v))
+                : Array.isArray((value as any).populationGrades)
+                ? (value as any).populationGrades.map((v: any) => String(v))
+                : [];
+              const checked = existing.includes(id);
               return (
-                <label key={id} className="flex items-start gap-3 text-sm">
+                <label key={id} className="flex items-start gap-2 text-sm">
                   <input
                     type="checkbox"
                     className="h-5 w-5 accent-green-600 rounded mt-1"
                     checked={checked}
                     onChange={(e) => {
-                      const current = new Set((value as any).populationGradeIds || []);
+                      const current = new Set(existing);
                       if (e.target.checked) current.add(id);
                       else current.delete(id);
-                      onChange({ ...(value as any), populationGradeIds: Array.from(current) });
+                      const arr = Array.from(current);
+                      const payload: any = { ...(value as any), populationGradeIds: arr, populationGrades: arr };
+                      console.debug("ThematicForm - population changed:", arr);
+                      onChange(payload);
                     }}
                   />
-                  <span className="leading-tight">{label}</span>
+                  <span className="leading-tight break-words whitespace-normal">{label}</span>
                 </label>
               );
             })}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Swal from 'sweetalert2';
 import { getToken } from "../../../Api/Services/Auth";
 import LeadersForm from "./LeadersForm";
@@ -14,10 +14,14 @@ import PDFUploader from "./PDF";
 import type { Grade } from "../types/experienceTypes";
 
 interface AddExperienceProps {
-  onVolver: () => void;
+  onVolver?: () => void;
+  initialData?: any;
+  readOnly?: boolean;
+  disableValidation?: boolean;
+  showBackButton?: boolean;
 }
 
-const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
+const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = null, readOnly = false, disableValidation = false, showBackButton = true }) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [currentStep, setCurrentStep] = useState<number>(0);
 
@@ -81,6 +85,27 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
   const [identificacionInstitucional, setIdentificacionInstitucional] = useState<any>({});
   const [pdfFile, setPdfFile] = useState<any>({});
 
+  // hydrate states when initialData is provided (used for view/edit existing experience)
+  useEffect(() => {
+    if (!initialData) return;
+    try {
+      if (initialData.leaders) setLideres(initialData.leaders);
+      if (initialData.identificacionForm) setIdentificacionForm(initialData.identificacionForm);
+      if (initialData.tematicaForm) setTematicaForm(initialData.tematicaForm);
+      if (initialData.nivelesForm) setNivelesForm(initialData.nivelesForm);
+      if (initialData.grupoPoblacional) setGrupoPoblacional(initialData.grupoPoblacional);
+      if (initialData.tiempo) setTiempo(initialData.tiempo);
+      if (initialData.objectiveExperience) setObjectiveExperience(initialData.objectiveExperience);
+      if (initialData.seguimientoEvaluacion) setSeguimientoEvaluacion(initialData.seguimientoEvaluacion);
+      if (initialData.informacionApoyo) setInformacionApoyo(initialData.informacionApoyo);
+      if (initialData.identificacionInstitucional) setIdentificacionInstitucional(initialData.identificacionInstitucional);
+      if (initialData.pdfFile) setPdfFile(initialData.pdfFile);
+      if (initialData.documents && Array.isArray(initialData.documents) && initialData.documents.length > 0) setPdfFile(initialData.documents[0]);
+    } catch (err) {
+      console.warn('AddExperience hydrate initialData failed', err);
+    }
+  }, [initialData]);
+
   const steps: string[] = [
     "Identificación Institucional",
     "Líder",
@@ -108,7 +133,12 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
       }));
 
     // 3) POPULATION GRADE IDS
-    const populationGradeIds = Array.isArray(grupoPoblacional) ? grupoPoblacional : [];
+    // Prefer explicit `grupoPoblacional` state; fallback to any array provided by `tematicaForm.population`
+    const populationGradeIds = Array.isArray(grupoPoblacional)
+      ? grupoPoblacional
+      : Array.isArray(tematicaForm?.population)
+      ? tematicaForm.population
+      : [];
 
     // 4) OBJECTIVES
     const objectives = [
@@ -119,11 +149,11 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
         methodologias: objectiveExperience.methodologias || "",
         innovationExperience: objectiveExperience.innovationExperience || "",
         resulsExperience: seguimientoEvaluacion.resulsExperience || "",
-        sustainabilityExperience: seguimientoEvaluacion.sustainabilityExperience || "",
+        sustainabilityExperience: informacionApoyo.sustainabilityExperience || "",
         tranfer: seguimientoEvaluacion.tranfer || "",
-        summary: informacionApoyo.summary || "",
-        metaphoricalPhrase: informacionApoyo.metaphoricalPhrase || "",
-        testimony: informacionApoyo.testimony || "",
+        summary: seguimientoEvaluacion.summary || "",
+        metaphoricalPhrase: seguimientoEvaluacion.metaphoricalPhrase || "",
+        testimony: seguimientoEvaluacion.testimony || "",
         followEvaluation: seguimientoEvaluacion.followEvaluation || "",
       },
     ];
@@ -183,29 +213,43 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
     // Build objectives array matching Swagger: supportInformations[] and monitorings[] inside each objective
     // Normalize inputs because some subcomponents store values as arrays (e.g., summary: [{...}]) while backend expects objects/strings
     const normalizeSupportInformation = (info: any) => {
-      if (!info) return { summary: "", metaphoricalPhrase: "", testimony: "", followEvaluation: "" };
-      // if info.summary is an array with object(s), prefer its first element
-      if (Array.isArray(info.summary) && info.summary.length > 0 && typeof info.summary[0] === 'object') {
-        const first = info.summary[0];
-        return {
-          summary: first.summary ?? first.monitoringEvaluation ?? info.summaryText ?? "",
-          metaphoricalPhrase: info.metaphoricalPhrase ?? first.metaphoricalPhrase ?? "",
-          testimony: info.testimony ?? first.testimony ?? "",
-          followEvaluation: info.followEvaluation ?? first.followEvaluation ?? "",
-        };
-      }
-      // if info itself looks like the object we need
+      const empty = { summary: "", metaphoricalPhrase: "", testimony: "", followEvaluation: "" };
+      if (!info) return empty;
+
+      const coerceToString = (v: any): string => {
+        if (v === undefined || v === null) return "";
+        if (typeof v === 'string') return v;
+        if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+        if (Array.isArray(v)) {
+          return v
+            .map((x) => (typeof x === 'string' ? x : (x && typeof x === 'object' ? (x.summary ?? x.monitoringEvaluation ?? x.text ?? "") : String(x))))
+            .filter(Boolean)
+            .join("\n");
+        }
+        if (typeof v === 'object') {
+          return String(v.summary ?? v.monitoringEvaluation ?? v.text ?? "");
+        }
+        return String(v);
+      };
+
+      const rawSummary = (() => {
+        if (Array.isArray(info.summary) && info.summary.length > 0) return info.summary;
+        if (info.summary !== undefined) return info.summary;
+        if (info.summaryText) return info.summaryText;
+        if (info.monitoringEvaluation) return info.monitoringEvaluation;
+        return undefined;
+      })();
+
       return {
-        summary: (typeof info.summary === 'string' && info.summary) ? info.summary : (info.summaryText || ""),
-        metaphoricalPhrase: info.metaphoricalPhrase || "",
-        testimony: info.testimony || "",
-        followEvaluation: info.followEvaluation || "",
+        summary: coerceToString(rawSummary),
+        metaphoricalPhrase: coerceToString(info.metaphoricalPhrase ?? info.metaphoricalPhraseText ?? info.metaphoricalPhraseValue),
+        testimony: coerceToString(info.testimony ?? info.testimonyText),
+        followEvaluation: coerceToString(info.followEvaluation ?? info.followEvaluationText),
       };
     };
 
     const normalizeMonitoring = (mon: any) => {
       if (!mon) return { monitoringEvaluation: "", result: "", sustainability: "", tranfer: "" };
-      // some components may put relevant monitoring data under summary[0]
       if (Array.isArray(mon.summary) && mon.summary.length > 0 && typeof mon.summary[0] === 'object') {
         const first = mon.summary[0];
         return {
@@ -223,7 +267,11 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
       };
     };
 
-    const supportInfoNormalized = normalizeSupportInformation(informacionApoyo);
+    // Prefer FollowUpEvaluation (`seguimientoEvaluacion`) when it contains data, otherwise use `informacionApoyo`.
+    const supportSource = (seguimientoEvaluacion && (seguimientoEvaluacion.summary || seguimientoEvaluacion.followEvaluation || seguimientoEvaluacion.testimony))
+      ? seguimientoEvaluacion
+      : informacionApoyo;
+    const supportInfoNormalized = normalizeSupportInformation(supportSource);
     const monitoringNormalized = normalizeMonitoring(seguimientoEvaluacion);
 
     const objectivesSwagger = [
@@ -270,11 +318,13 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
     // Build developments array from tematicaForm
     const developmentsSwagger = [
       {
-        crossCuttingProject: tematicaForm.coordinationTransversalProjects || "",
-        population: tematicaForm.population || "",
-        pedagogicalStrategies: tematicaForm.pedagogicalStrategies || "",
-        coverage: tematicaForm.coverage || "",
-        covidPandemic: tematicaForm.experiencesCovidPandemic || "",
+        crossCuttingProject:
+          tematicaForm.coordinationTransversalProjects || tematicaForm.crossCuttingProject || tematicaForm.coordinationTransversalProject || tematicaForm.coordinationTransversal || tematicaForm.coordination || "",
+        // population: prefer tematicaForm.population (string or array) but if it's an array, join to a comma list for the backend text field
+        population: Array.isArray(tematicaForm.population) ? tematicaForm.population.join(', ') : (tematicaForm.population || (Array.isArray(grupoPoblacional) ? grupoPoblacional.join(', ') : '')),
+        pedagogicalStrategies: tematicaForm.pedagogicalStrategies || tematicaForm.pedagogicalStrategy || "",
+        coverage: tematicaForm.coverage || tematicaForm.coverageLevel || "",
+        covidPandemic: tematicaForm.experiencesCovidPandemic || tematicaForm.covidPandemic || "",
       },
     ];
 
@@ -339,8 +389,9 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
     const payload: any = {
       // Prefer the experience name entered in the Identification step; fall back to any institution-provided helper
       nameExperiences: identificacionForm?.nameExperience || identificacionInstitucional.nameExperiences || identificacionInstitucional.name || "",
-      code: formData.code || "",
-      thematicLocation: identificacionForm.thematicLocation || "",
+      // Prefer code from identification subform or institutional identification (codeDane), fall back to legacy formData.code
+      code: identificacionForm?.code || identificacionInstitucional?.code || identificacionInstitucional?.codeDane || formData.code || "",
+      thematicLocation: tematicaForm.thematicLocation || "",
       // Only include developmenttime when a value exists. If omitted, backend won't attempt to parse it.
       ...(tiempo && tiempo.developmenttime ? { developmenttime: tiempo.developmenttime } : {}),
       recognition: tiempo.recognition || "",
@@ -599,27 +650,35 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
           if (pdfRes.ok) {
             const blob = await pdfRes.blob();
             const url = URL.createObjectURL(blob);
-            // open in new tab
-            window.open(url, '_blank');
-            // trigger download
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `experiencia-${createdId}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            // revoke after a while
-            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            // Show a link to the generated PDF and let the user open it manually.
+            // Avoid forcing an automatic download.
+            try {
+              await Swal.fire({
+                title: 'PDF generado',
+                html: `La experiencia fue registrada. Abra el PDF desde <a href="${url}" target="_blank" rel="noopener noreferrer">aquí</a>.`,
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Abrir en nueva pestaña',
+                cancelButtonText: 'Cerrar',
+              }).then((result) => {
+                if (result.isConfirmed) window.open(url, '_blank');
+              });
+            } catch (e) {
+              // Fallback: open in new tab if Swal fails
+              window.open(url, '_blank');
+            }
+            // revoke after a while to allow user to open the link
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
           } else {
             console.warn('Fallo al generar PDF:', await pdfRes.text().catch(() => '')); 
             try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. Falló la generación del PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
-            onVolver();
+            if (onVolver) onVolver();
             return;
           }
         } catch (pdfErr) {
           console.error('Error al descargar PDF:', pdfErr);
           try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. No se pudo obtener el PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
-          onVolver();
+          if (onVolver) onVolver();
           return;
         }
       }
@@ -627,7 +686,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
       try {
         await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada correctamente', icon: 'success', confirmButtonText: 'Aceptar' });
       } catch (e) {}
-      onVolver();
+      if (onVolver) onVolver();
     } catch (err: any) {
       const msg = err?.message || "Error inesperado al registrar la experiencia";
       setErrorMessage(msg);
@@ -640,6 +699,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const validateCurrentStep = (): boolean => {
+    if (disableValidation) return true;
     setFieldErrors({});
     // Step 0: InstitutionalIdentification required fields (field-level errors)
     if (currentStep === 0) {
@@ -695,6 +755,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
 
   // Synchronous check used to enable/disable the Next button (no state changes)
   const isCurrentStepValidSync = (): boolean => {
+    if (disableValidation) return true;
     if (currentStep === 0) {
       const inst = identificacionInstitucional || {};
       if (!inst.codeDane || String(inst.codeDane).trim() === "") return false;
@@ -733,9 +794,11 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
         </div>
       )}
 
-      <button onClick={onVolver} className="mb-4 text-sky-600 hover:underline">
-        ← Volver
-      </button>
+      {showBackButton && (
+        <button onClick={onVolver} className="mb-4 text-sky-600 hover:underline">
+          ← Volver
+        </button>
+      )}
 
       <div>
         {/* Stepper header */}
@@ -830,30 +893,44 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
           </div>
 
           <div className="sticky bottom-0 z-20 bg-white/90 backdrop-blur-sm border-t border-gray-100 py-3 flex justify-between items-center mt-6">
-            <button
-              type="button"
-              disabled={currentStep === 0}
-              onClick={prevStep}
-              className={`px-4 py-2 rounded ${currentStep === 0 ? "bg-slate-200 text-slate-400" : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
-            >
-              Atrás
-            </button>
-
-            {!isLastStep() ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (validateCurrentStep()) nextStep();
-                }}
-                disabled={!isCurrentStepValidSync()}
-                className={`px-4 py-2 rounded ${!isCurrentStepValidSync() ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-sky-500 text-white hover:bg-sky-600"}`}
-              >
-                Siguiente
-              </button>
+            {readOnly ? (
+              <div className="w-full flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => { if (onVolver) onVolver(); }}
+                  className="px-4 py-2 rounded bg-white border"
+                >
+                  Cerrar
+                </button>
+              </div>
             ) : (
-              <button type="button" onClick={() => handleSubmit()} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
-                Guardar Experiencia
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={currentStep === 0}
+                  onClick={prevStep}
+                  className={`px-4 py-2 rounded ${currentStep === 0 ? "bg-slate-200 text-slate-400" : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+                >
+                  Atrás
+                </button>
+
+                {!isLastStep() ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (validateCurrentStep()) nextStep();
+                    }}
+                    disabled={!isCurrentStepValidSync()}
+                    className={`px-4 py-2 rounded ${!isCurrentStepValidSync() ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-sky-500 text-white hover:bg-sky-600"}`}
+                  >
+                    Siguiente
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => handleSubmit()} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
+                    Guardar Experiencia
+                  </button>
+                )}
+              </>
             )}
           </div>
         </form>
