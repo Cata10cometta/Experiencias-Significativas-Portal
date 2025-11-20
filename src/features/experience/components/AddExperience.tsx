@@ -133,11 +133,60 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       }));
 
     // 3) POPULATION GRADE IDS
-    // Prefer explicit `grupoPoblacional` state; fallback to any array provided by `tematicaForm.population`
+    // Prefer explicit `grupoPoblacional` state; fallback to any array provided by `tematicaForm.populationGradeIds` / `populationGrades` / `tematicaForm.population`
     const populationGradeIds = Array.isArray(grupoPoblacional)
       ? grupoPoblacional
+      : Array.isArray(tematicaForm?.populationGradeIds)
+      ? tematicaForm.populationGradeIds
+      : Array.isArray(tematicaForm?.populationGrades)
+      ? tematicaForm.populationGrades
       : Array.isArray(tematicaForm?.population)
       ? tematicaForm.population
+      : [];
+
+    // Try to convert common slug names to numeric ids the backend expects.
+    const populationSlugToId: Record<string, number> = {
+      negritudes: 1,
+      afrodescendiente: 2,
+      palenquero: 3,
+      raizal: 4,
+      rom_gitano: 5,
+      victima_del_conflicto: 6,
+      discapacidad: 7,
+      talentos_excepcionales: 8,
+      indigenas: 9,
+      trastornos_especificos: 10,
+      ninguno_de_los_anteriores: 11,
+    };
+
+    const numericPopulationGradeIds = Array.isArray(populationGradeIds)
+      ? populationGradeIds
+          .map((v: any) => {
+            if (v === null || v === undefined) return null;
+            if (typeof v === 'number') return Number.isFinite(v) ? Math.trunc(v) : null;
+            if (typeof v === 'string' && v.trim() !== '') {
+              const s = v.trim();
+              const n = Number(s);
+              if (!Number.isNaN(n) && Number.isFinite(n)) return Math.trunc(n);
+              const normalized = s.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+              return populationSlugToId[normalized] ?? null;
+            }
+            if (typeof v === 'object') {
+              if (v.id) return Number.isFinite(Number(v.id)) ? Math.trunc(Number(v.id)) : null;
+              if (v.name) {
+                const normalized = String(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                return populationSlugToId[normalized] ?? null;
+              }
+            }
+            return null;
+          })
+          .filter((x: any) => x !== null)
+      : [];
+
+    const stringPopulationGrades = Array.isArray(populationGradeIds)
+      ? populationGradeIds
+          .map((v: any) => (v === null || v === undefined ? '' : (typeof v === 'string' ? v : (typeof v === 'number' ? String(v) : (v?.name ?? v?.label ?? '')))))
+          .filter((s: string) => s && s.length > 0)
       : [];
 
     // 4) OBJECTIVES
@@ -319,12 +368,18 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     const developmentsSwagger = [
       {
         crossCuttingProject:
-          tematicaForm.coordinationTransversalProjects || tematicaForm.crossCuttingProject || tematicaForm.coordinationTransversalProject || tematicaForm.coordinationTransversal || tematicaForm.coordination || "",
-        // population: prefer tematicaForm.population (string or array) but if it's an array, join to a comma list for the backend text field
-        population: Array.isArray(tematicaForm.population) ? tematicaForm.population.join(', ') : (tematicaForm.population || (Array.isArray(grupoPoblacional) ? grupoPoblacional.join(', ') : '')),
-        pedagogicalStrategies: tematicaForm.pedagogicalStrategies || tematicaForm.pedagogicalStrategy || "",
-        coverage: tematicaForm.coverage || tematicaForm.coverageLevel || "",
-        covidPandemic: tematicaForm.experiencesCovidPandemic || tematicaForm.covidPandemic || "",
+          tematicaForm.CrossCuttingProject || tematicaForm.crossCuttingProject || tematicaForm.coordinationTransversalProjects || tematicaForm.coordinationTransversalProject || tematicaForm.coordinationTransversal || tematicaForm.coordination || "",
+        // population: prefer explicit populationGradeIds/populationGrades coming from ThematicForm; if it's an array, join to a comma list for the backend text field
+        population: Array.isArray(tematicaForm.populationGradeIds)
+          ? tematicaForm.populationGradeIds.join(', ')
+          : Array.isArray(tematicaForm.populationGrades)
+          ? tematicaForm.populationGrades.join(', ')
+          : Array.isArray(tematicaForm.population)
+          ? tematicaForm.population.join(', ')
+          : (Array.isArray(grupoPoblacional) ? grupoPoblacional.join(', ') : (tematicaForm.population || '')),
+        pedagogicalStrategies: tematicaForm.pedagogicalStrategies || tematicaForm.pedagogicalStrategy || tematicaForm.PedagogicalStrategies || "",
+        coverage: tematicaForm.coverage || tematicaForm.coverageLevel || tematicaForm.Coverage || "",
+        covidPandemic: tematicaForm.experiencesCovidPandemic || tematicaForm.covidPandemic || tematicaForm.CovidPandemic || "",
       },
     ];
 
@@ -394,8 +449,20 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       thematicLocation: tematicaForm.thematicLocation || "",
       // Only include developmenttime when a value exists. If omitted, backend won't attempt to parse it.
       ...(tiempo && tiempo.developmenttime ? { developmenttime: tiempo.developmenttime } : {}),
-      recognition: tiempo.recognition || "",
-      socialization: tiempo.socialization || "",
+      // recognition: prefer value from tematicaForm (where ThematicForm stores it), fallback to tiempo
+      recognition: tematicaForm?.recognitionText || tematicaForm?.recognition || tiempo.recognition || "",
+      // socialization: ThematicForm now stores an array of slugs/labels under `socialization`/`socializationLabels`.
+      // Backend expects a text field; send joined string and also provide an auxiliary array if needed.
+      socialization: Array.isArray(tematicaForm?.socialization)
+        ? tematicaForm.socialization.join(', ')
+        : Array.isArray(tematicaForm?.socializationLabels)
+        ? tematicaForm.socializationLabels.join(', ')
+        : (typeof tematicaForm?.socialization === 'string' ? tematicaForm.socialization : (typeof tematicaForm?.socializationLabels === 'string' ? tematicaForm.socializationLabels : (tiempo.socialization || ""))),
+      socializationLabels: Array.isArray(tematicaForm?.socialization)
+        ? tematicaForm.socialization
+        : Array.isArray(tematicaForm?.socializationLabels)
+        ? tematicaForm.socializationLabels
+        : undefined,
       // Include stateExperienceId when any subform provided a valid numeric id
       ...(finalStateId ? { stateExperienceId: finalStateId } : {}),
       institution: {
@@ -464,9 +531,17 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       historyExperiences: historyExperiences.map(({ action, tableName }) => (
         extractedUserId ? { action, tableName, userId: extractedUserId } : { action, tableName }
       )),
-      populationGradeIds: populationGradeIds,
+      // populationGradeIds: prefer numeric ids; include populationGrades (names) as fallback if needed
+      populationGradeIds: numericPopulationGradeIds,
+      populationGrades: stringPopulationGrades.length ? stringPopulationGrades : undefined,
       thematicLineIds: formData.thematicLineIds?.length ? formData.thematicLineIds : tematicaForm.thematicLineIds || [],
-      grades: grades,
+      grades: (grades && grades.length > 0)
+        ? grades
+        : Array.isArray(tematicaForm?.grades)
+        ? tematicaForm.grades.map((g: any) => (typeof g === 'string' ? { gradeId: 0, description: g } : g))
+        : Array.isArray(tematicaForm?.gradeId)
+        ? tematicaForm.gradeId.map((g: any) => (typeof g === 'string' ? { gradeId: 0, description: g } : g))
+        : [],
     };
 
     // Normalize userId usage: if we have an extractedUserId, ensure it's applied where appropriate.

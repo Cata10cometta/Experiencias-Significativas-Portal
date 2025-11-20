@@ -208,7 +208,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
             </div>
           </div>
 
-          {/* Grades checklist (placed below SENA, as requested) */}
+              {/* Grades checklist (placed below SENA, as requested) */}
         <div className="mb-6">
           <label className="block mb-2 font-medium">Indique el o los grados en el que se desarrolla la experiencia significativa <span className="text-red-500">*</span></label>
           <div className="px-0 py-4 bg-transparent border-0">
@@ -261,6 +261,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
           </div>
         </div>
       </div>
+      
       {/* Population group checklist (placed below grades) */}
       <div className="mb-6">
         <label className="block mb-2 font-medium">Grupo poblacional que hacen parte de la experiencia significativa <span className="text-red-500">*</span></label>
@@ -299,6 +300,160 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                       const arr = Array.from(current);
                       const payload: any = { ...(value as any), populationGradeIds: arr, populationGrades: arr };
                       console.debug("ThematicForm - population changed:", arr);
+                      onChange(payload);
+                    }}
+                  />
+                  <span className="leading-tight break-words whitespace-normal">{label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+          {/* Support received checklist (new) */}
+          <div className="mb-6">
+            <label className="block mb-2 font-medium">Seleccione de quien o quienes a recibido apoyo para la formulación, fundamentación y/o desarrollo <span className="text-red-500">*</span></label>
+            <div className="bg-white px-0 py-4">
+              <div className="grid grid-cols-1 gap-3 pl-0">
+                {[
+                  'Tutor PTA asignado a la Institución Educativa',
+                  'Practicante de Universidad pública',
+                  'Practicante de Universidad privada',
+                  'Empresa del Sector público',
+                  'Empresa del sector privado',
+                  'Docentes Universitarios',
+                  'Ninguno',
+                ].map((label) => {
+                  const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                  const existing = Array.isArray((value as any).PedagogicalStrategies)
+                    ? (value as any).PedagogicalStrategies.map((v: any) => String(v))
+                    : [];
+                  const checked = existing.includes(id);
+                  return (
+                    <label key={id} className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-green-600 rounded mt-1"
+                        checked={checked}
+                        onChange={(e) => {
+                          const current = new Set(existing);
+                          if (e.target.checked) current.add(id);
+                          else current.delete(id);
+                          const arr = Array.from(current);
+                          const payload: any = { ...(value as any), PedagogicalStrategies: arr };
+                          console.debug("ThematicForm - PedagogicalStrategies changed:", arr);
+                          onChange(payload);
+                        }}
+                      />
+                      <span className="leading-tight break-words whitespace-normal">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+      
+      
+              {/* PEI linkage (radio) - new field inserted below supportReceived) */}
+              <div className="mb-6">
+                <label className="block mb-2 font-medium">La Experiencia Significativa se encuentra vinculada en el Proyecto Educativo Institucional <span className="text-red-500">*</span></label>
+                <div className="px-0 py-4 bg-transparent border-0">
+                  <div className="grid grid-cols-1 gap-3 p-0">
+                    {[
+                      'Sí, Componente pedagógico - Plan de estudios',
+                      'Sí, Componente pedagógico - Proyectos Pedagógicos Transversales',
+                      'Sí, Componente pedagógico - Experiencias Significativas',
+                      'Sí, Componente pedagógico -Proyectos de Investigación - Ondas',
+                      'Sí , Componente Gestión Comunitaria',
+                      'No',
+                    ].map((label) => {
+                      const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                      const checked = (value as any).Coverage === id || (value as any).CoverageText === label;
+                      return (
+                        <label key={id} className="flex items-start gap-2 text-sm">
+                          <input
+                            type="radio"
+                            name="peiComponent"
+                            className="mt-1 h-4 w-4 border-gray-300 rounded-full"
+                            checked={checked}
+                            onChange={() => {
+                              const payload: any = { ...(value as any), Coverage: id, CoverageText: label };
+                              onChange(payload);
+                            }}
+                          />
+                          <span className="leading-tight break-words whitespace-normal">{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+    {/* Recognition (radio) - added per request */}
+      <div className="mb-6">
+        <label className="block mb-2 font-medium">¿La Experiencia significativa ha tenido algún reconocimiento? <span className="text-red-500">*</span></label>
+        <div className="px-0 py-4 bg-transparent border-0">
+          <div className="grid grid-cols-1 gap-3 p-0">
+            {[
+              'Sí, al interior de la Institución Educativa',
+              'Sí, por parte de una entidad privada o pública externa',
+              'Aún no cuenta con reconocimiento',
+            ].map((label) => {
+              const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+              const checked = (value as any).recognition === id || (value as any).recognitionText === label;
+              return (
+                <label key={id} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="recognition"
+                    className="mt-1 h-4 w-4 border-gray-300 rounded-full"
+                    checked={checked}
+                    onChange={() => {
+                      const payload: any = { ...(value as any), recognition: id, recognitionText: label };
+                      onChange(payload);
+                    }}
+                  />
+                  <span className="leading-tight break-words whitespace-normal">{label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Experience assets / supports (checkboxes) - added per request */}
+      <div className="mb-6">
+        <label className="block mb-2 font-medium">La Experiencia Significativa cuenta con: <span className="text-red-500">*</span></label>
+        <div className="px-0 py-4 bg-transparent border-0">
+          <div className="grid grid-cols-1 gap-3 p-0">
+            {[
+              'Producciones (videos, cuentas de redes sociales)',
+              'Publicaciones (libros, paginas web, software, cartillas)',
+              'Constancia de participación en eventos de divulgación',
+              'Ninguna de las anteriores',
+            ].map((label) => {
+              const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+              const existing = Array.isArray((value as any).socialization)
+                ? (value as any).socialization.map((v: any) => String(v))
+                : Array.isArray((value as any).socializationLabels)
+                ? (value as any).socializationLabels.map((v: any) => String(v))
+                : [];
+              const checked = existing.includes(id);
+              return (
+                <label key={id} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-green-600 rounded mt-1"
+                    checked={checked}
+                    onChange={(e) => {
+                      const current = new Set(existing);
+                      if (e.target.checked) current.add(id);
+                      else current.delete(id);
+                      const arr = Array.from(current);
+                      const payload: any = { ...(value as any), socialization: arr, socializationLabels: arr };
+                      console.debug("ThematicForm - socialization changed:", arr);
                       onChange(payload);
                     }}
                   />

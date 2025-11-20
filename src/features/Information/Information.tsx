@@ -12,6 +12,40 @@ const Information: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 5;
+  const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
+
+  const getUserIdFromToken = (): number | null => {
+    const token = localStorage.getItem('token');
+    try {
+      if (!token) return null;
+      const parts = token.split('.');
+      if (parts.length < 2) return null;
+      const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = decodeURIComponent(atob(payload).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      const parsed = JSON.parse(decoded) as any;
+      const candidates = ['sub','id','userId','user_id','nameid','http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+      for (const k of candidates) {
+        const v = parsed[k];
+        if (v !== undefined && v !== null) {
+          const num = Number(v);
+          if (!Number.isNaN(num) && Number.isFinite(num) && num > 0) return Math.trunc(num);
+        }
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  // default to 'mine' view for professors
+  React.useEffect(() => {
+    try {
+      // isProfessor is declared later in this file
+      if ((isProfessor && typeof isProfessor === 'function') && isProfessor()) setViewMode('mine');
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
