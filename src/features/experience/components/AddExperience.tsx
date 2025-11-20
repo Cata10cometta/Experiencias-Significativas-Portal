@@ -65,9 +65,9 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
   const [tematicaForm, setTematicaForm] = useState<any>({
     thematicLineIds: [],
     pedagogicalStrategies: "",
-    coordinationTransversalProjects: "",
+    CrossCuttingProject: [],
     coverage: "",
-    population: "",
+    Population: [],
     experiencesCovidPandemic: ""
   });
   const [nivelesForm, setNivelesForm] = useState<any>({
@@ -318,10 +318,18 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     // Build developments array from tematicaForm
     const developmentsSwagger = [
       {
-        crossCuttingProject:
-          tematicaForm.coordinationTransversalProjects || tematicaForm.crossCuttingProject || tematicaForm.coordinationTransversalProject || tematicaForm.coordinationTransversal || tematicaForm.coordination || "",
+   crossCuttingProject: Array.isArray(tematicaForm.CrossCuttingProject)
+  ? tematicaForm.CrossCuttingProject.join(', ')
+  : tematicaForm.CrossCuttingProject || "",
         // population: prefer tematicaForm.population (string or array) but if it's an array, join to a comma list for the backend text field
-        population: Array.isArray(tematicaForm.population) ? tematicaForm.population.join(', ') : (tematicaForm.population || (Array.isArray(grupoPoblacional) ? grupoPoblacional.join(', ') : '')),
+population: Array.isArray(tematicaForm.Population)
+  ? tematicaForm.Population.join(', ')
+  : (tematicaForm.Population || ""),
+
+populationGrade: Array.isArray(tematicaForm.PopulationGrade)
+  ? tematicaForm.PopulationGrade.join(', ')
+  : (tematicaForm.PopulationGrade || ""),
+
         pedagogicalStrategies: tematicaForm.pedagogicalStrategies || tematicaForm.pedagogicalStrategy || "",
         coverage: tematicaForm.coverage || tematicaForm.coverageLevel || "",
         covidPandemic: tematicaForm.experiencesCovidPandemic || tematicaForm.covidPandemic || "",
