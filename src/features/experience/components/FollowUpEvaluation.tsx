@@ -8,12 +8,7 @@ interface FollowUpEvaluationProps {
   onChange: (val: Objective) => void;
 }
 
-const MAX_CHARACTERS = {
-  followEvaluation: 150,
-  resulsExperience: 200,
-  sustainabilityExperience: 150,
-  tranfer: 150,
-};
+
 
 const FollowUpEvaluation: React.FC<FollowUpEvaluationProps> = ({ value, onChange }) => {
   const getCharacterCountStyle = (text: string, max: number) => {
