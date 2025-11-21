@@ -13,6 +13,7 @@ const Information: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 5;
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
 
   const getUserIdFromToken = (): number | null => {
     const token = localStorage.getItem('token');
@@ -89,6 +90,8 @@ const Information: React.FC = () => {
     }, 8000);
     return () => clearInterval(id);
   }, []);
+
+  
 
   
 
@@ -320,6 +323,52 @@ const Information: React.FC = () => {
   const [viewData, setViewData] = useState<any | null>(null);
   const [showViewModal, setShowViewModal] = useState<boolean>(false);
 
+  // Prevent background/body scroll when modals are open to avoid double scrollbars.
+  // Use fixed positioning on body and store scroll position so the page doesn't jump
+  // and the browser scrollbar is removed reliably across browsers.
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyPosition = document.body.style.position;
+    const prevBodyTop = document.body.style.top;
+    let scrollY = 0;
+
+    const lock = () => {
+      scrollY = window.scrollY || window.pageYOffset || 0;
+      // set fixed positioning to prevent background scroll and remove scrollbar
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.overflow = 'hidden';
+      // also hide html overflow as a fallback for some layouts
+      document.documentElement.style.overflow = 'hidden';
+    };
+
+    const unlock = () => {
+      // restore previous inline styles
+      document.body.style.position = prevBodyPosition || '';
+      document.body.style.top = prevBodyTop || '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = prevBodyOverflow || '';
+      document.documentElement.style.overflow = prevHtmlOverflow || '';
+      // restore scroll position
+      try { window.scrollTo(0, scrollY); } catch {}
+    };
+
+    if (showViewModal || showAddModal) {
+      lock();
+    } else {
+      // ensure we restore styles if no modal is open
+      unlock();
+    }
+
+    return () => {
+      unlock();
+    };
+  }, [showViewModal, showAddModal]);
+
   const fetchAndShowDetail = async (id?: number) => {
     if (!id) return;
     const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -377,19 +426,19 @@ const Information: React.FC = () => {
         </div>
         {/* Mostrar AddExperience (formulario) en modo lectura para reutilizar diseño */}
         {showViewModal && viewData && (
-                  <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-8">
-                    <div className="bg-white rounded-lg w-[96%] max-w-6xl p-0 max-h-[90vh] flex flex-col">
-                  {/* Debug panel removed at user's request */}
-                  <div className="p-4 flex-1 overflow-auto">
-                    <AddExperience
-                      initialData={viewData}
-                      /* abrir en modo editable para permitir navegación entre secciones */
-                      readOnly={false}
-                      disableValidation={true}
-                      onVolver={() => { setShowViewModal(false); setViewData(null); }}
-                    />
-                  </div>
-                </div>
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-8">
+            <div className="w-[96%] max-w-6xl p-0 max-h-[90vh] flex flex-col">
+              {/* Debug panel removed at user's request */}
+              <div className="p-4 flex-1 overflow-auto">
+                <AddExperience {...({
+                  initialData: viewData,
+                  /* abrir en modo editable para permitir navegación entre secciones */
+                  readOnly: false,
+                  disableValidation: true,
+                  onVolver: () => { setShowViewModal(false); setViewData(null); }
+                } as any)} />
+              </div>
+            </div>
           </div>
         )}
 
