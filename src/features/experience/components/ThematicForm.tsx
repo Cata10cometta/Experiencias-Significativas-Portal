@@ -86,108 +86,123 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
             <div className="col-span-3 text-sm text-gray-500">No hay líneas temáticas cargadas.</div>
           )}
 
-              {lineasTematicas.map((linea) => {
-                // Determine checked state by supporting multiple shapes the parent may provide
-                const v: any = value || {};
-                const checked = (
-                  // thematicLocation might be the name (string) or numeric id in some cases
-                  v.thematicLocation === linea.name || v.thematicLocation === linea.id ||
-                  // older fields
-                  v.thematicLineId === linea.id || (Array.isArray(v.thematicLineIds) && v.thematicLineIds[0] === linea.id)
-                );
+          {lineasTematicas.map((linea) => {
+            // Determine checked state by supporting multiple shapes the parent may provide
+            const v: any = value || {};
+            const checked = (
+              // thematicLocation might be the name (string) or numeric id in some cases
+              v.thematicLocation === linea.name || v.thematicLocation === linea.id ||
+              // older fields
+              v.thematicLineId === linea.id || (Array.isArray(v.thematicLineIds) && v.thematicLineIds[0] === linea.id)
+            );
 
-                return (
-                  <label key={linea.id} className="flex items-start gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="thematicLine"
-                      className="mt-1 h-4 w-4 border-gray-300 rounded-full"
-                      checked={checked}
-                      onChange={() => {
-                        // set `thematicLocation` as the thematic name (string) which the backend expects,
-                        // and keep `thematicLineIds` as numeric compatibility fallback
-                        onChange({ ...v, thematicLocation: linea.name, thematicLineIds: [linea.id] });
-                      }}
-                    />
-                    <span className="leading-tight break-words whitespace-normal">{linea.name}</span>
-                  </label>
-                );
-              })}
-        </div>
-      </div>
-
-      {/* Educational model box (styled to match screenshot) */}
-      <div className="mb-6">
-        <label className="block mb-2 font-medium">Indique el modelo educativo en el que se enmarca el desarrollo de la Experiencia Significativa</label>
-        <div className="px-0 py-4 bg-transparent border-0">
-          <div className="grid grid-cols-3 gap-3 p-0">
-          {[
-            { id: 'tradicional', label: 'Tradicional' },
-            { id: 'escuelaNueva', label: 'Escuela Nueva' },
-            { id: 'aceleracion', label: 'Aceleración del Aprendizaje' },
-            { id: 'caminarSecundaria', label: 'Caminar en Secundaria' },
-            { id: 'postprimaria', label: 'Postprimaria' },
-            { id: 'circuloAprendizaje', label: 'Circulo del Aprendizaje' },
-            { id: 'programaJovenes', label: 'Programa para Jóvenes en Extraedad y adultos' },
-            { id: 'etnoeducativa', label: 'Etnoeducativa' },
-            { id: 'mediaRural', label: 'Media Rural' },
-          ].map((opt) => {
-            const checked = (value as any).Population?.includes(opt.id) || false;
             return (
-              <label key={opt.id} className="flex items-start gap-2 text-sm">
+              <label key={linea.id} className="flex items-start gap-2 text-sm">
                 <input
-                  type="checkbox"
-                  className="h-5 w-5 accent-green-600 rounded"
+                  type="radio"
+                  name="thematicLine"
+                  className="mt-1 h-4 w-4 border-gray-300 rounded-full"
                   checked={checked}
-                  onChange={(e) => {
-                    const current = new Set((value as any).Population || []);
-                    if (e.target.checked) current.add(opt.id);
-                    else current.delete(opt.id);
-                    onChange({ ...(value as any), Population: Array.from(current) });
+                  onChange={() => {
+                    // set `thematicLocation` as the thematic name (string) which the backend expects,
+                    // and keep `thematicLineIds` as numeric compatibility fallback
+                    onChange({ ...v, thematicLocation: linea.name, thematicLineIds: [linea.id] });
                   }}
                 />
-                <span className="leading-tight break-words whitespace-normal">{opt.label}</span>
+                <span className="leading-tight break-words whitespace-normal">{linea.name}</span>
               </label>
             );
           })}
-          </div>
         </div>
       </div>
 
+     {/* Educational model box (styled to match screenshot) */}
+<div className="mb-6">
+  <label className="block mb-2 font-medium">
+    Indique el modelo educativo en el que se enmarca el desarrollo de la Experiencia Significativa
+  </label>
+
+  <div className="px-0 py-4 bg-transparent border-0">
+    <div className="grid grid-cols-3 gap-3 p-0">
+
+      {[
+        { id: 'Tradicional', label: 'Tradicional' },
+        { id: 'Escuela Nueva', label: 'Escuela Nueva' },
+        { id: 'Aceleración del Aprendizaje', label: 'Aceleración del Aprendizaje' },
+        { id: 'Caminar en Secundaria', label: 'Caminar en Secundaria' },
+        { id: 'Postprimaria', label: 'Postprimaria' },
+        { id: 'Círculo del Aprendizaje', label: 'Círculo del Aprendizaje' },
+        { id: 'Programa para Jóvenes en Extraedad y Adultos', label: 'Programa para Jóvenes en Extraedad y Adultos' },
+        { id: 'Etnoeducativa', label: 'Etnoeducativa' },
+        { id: 'Media Rural', label: 'Media Rural' },
+      ].map((opt) => {
+        const checked = (value as any).Population?.includes(opt.id) || false;
+
+        return (
+          <label key={opt.id} className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-green-600 rounded"
+              checked={checked}
+              onChange={(e) => {
+                const current = new Set((value as any).Population || []);
+                if (e.target.checked) current.add(opt.id);
+                else current.delete(opt.id);
+
+                onChange({
+                  ...(value as any),
+                  Population: Array.from(current),
+                });
+              }}
+            />
+
+            {/* Aquí agregamos mayúscula al inicio siempre */}
+            <span className="leading-tight break-words whitespace-normal">
+              {opt.label.charAt(0).toUpperCase() + opt.label.slice(1)}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  </div>
+</div>
+
+
       {/* inputs removed per request (kept only checkboxes) */}
-        {/* SENA techniques checklist (placed below the last section) */}
-        <div className="mb-6">
-          <label className="block mb-2 font-medium">Seleccione la o las Técnicas en articulación con el SENA vinculadas <span className="text-red-500">*</span></label>
-          <div className="px-0 py-4 bg-transparent border-0">
-            <div className="grid grid-cols-3 gap-3 p-0">
-              {[
-                'CONTABILIZACIÓN DE OPERACIONES CONTABLES Y FINANCIERAS',
-                'ASISTENCIA ADMINISTRATIVA',
-                'MANTENIMIENTO DE EQUIPOS DE COMPUTO',
-                'ALISTAMIENTO DE LABORATORISMD E MICROBIOLOGIA Y BIOTECNOLOGIA',
-                'COCINA (ES ACADEMICA)',
-                'OPERACIÓN TURISTICA',
-                'PROGRAMACIÓN DE SOFTWARE',
-                'MANTENIMIENTO E INSTALACION DE SISTEMAS SOLARES FOTOVOLTAICOS',
-                'ASESORIA COMERCIAL',
-                'ASESORIA COMERCIAL Y VENTAS',
-                'SISTEMAS TELEINFORMATICOS',
-                'SERVICIO DE AGENCIAS DE VIAJES',
-                'MANTENIMIENTO Y ENSAMBLAJE DE EQUIPOS ELECTRONICOS',
-                'IMPLEMENTACION Y MANTENIMIENTO DE EQUIPOS ELECTRONICOS INDUSTRIALES',
-                'ENSAMBLAJE Y MANTENIMIENTO DE EQUIPOS DE COMPUTO',
-                'INTEGRACION DE CONTENIDOS DIGITALES',
-                'CONFECCIONES',
-                'PANIFICACION',
-                'AUTOMATIZACION DE SISTEMAS INDUSTRIALES',
-                'SISTEMAS AGROPECUARIOS ECOLOGICOS',
-                'AGROINDUSTRIA',
-                'ELABORACION DE PRODUCTOS ALIMENTICIOS',
-                'NINGUNA DE LAS ANTERIORES',
-                ].map((label) => {
-                const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      {/* SENA techniques checklist (placed below the last section) */}
+      <div className="mb-6">
+        <label className="block mb-2 font-medium">Seleccione la o las Técnicas en articulación con el SENA vinculadas <span className="text-red-500">*</span></label>
+        <div className="px-0 py-4 bg-transparent border-0">
+          <div className="grid grid-cols-3 gap-3 p-0">
+            {[
+              'Contabilización De Operaciones Contables Y Financieras',
+              'Asistencia Administrativa',
+              'Mantenimiento De Equipos De Computo',
+              'Alistamiento De Laboratorismd E Microbiologia Y Biotecnologia',
+              'Cocina (Es Academica)',
+              'Operación Turistica',
+              'Programación De Software',
+              'Mantenimiento E Instalacion De Sistemas Solares Fotovoltaicos',
+              'Asesoria Comercial',
+              'Asesoria Comercial Y Ventas',
+              'Sistemas Teleinformaticos',
+              'Servicio De Agencias De Viajes',
+              'Mantenimiento Y Ensamblaje De Equipos Electronicos',
+              'Implementacion Y Mantenimiento De Equipos Electronicos Industriales',
+              'Ensamblaje Y Mantenimiento De Equipos De Computo',
+              'Integracion De Contenidos Digitales',
+              'Confecciones',
+              'Panificacion',
+              'Automatizacion De Sistemas Industriales',
+              'Sistemas Agropecuarios Ecologicos',
+              'Agroindustria',
+              'Elaboracion De Productos Alimenticios',
+              'Ninguna De Las Anteriores',
+            ]
+              .map((label) => {
+                const id = label; // <-- Guarda el texto tal cual
                 const cross = (value as any).CrossCuttingProject || [];
-                const checked = Array.isArray(cross) ? cross.includes(id) : false;
+                const checked = Array.isArray(cross) ? cross.includes(label) : false;
                 return (
                   <label key={id} className="flex items-start gap-2 text-sm">
                     <input
@@ -205,10 +220,10 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                   </label>
                 );
               })}
-            </div>
           </div>
+        </div>
 
-              {/* Grades checklist (placed below SENA, as requested) */}
+        {/* Grades checklist (placed below SENA, as requested) */}
         <div className="mb-6">
           <label className="block mb-2 font-medium">Indique el o los grados en el que se desarrolla la experiencia significativa <span className="text-red-500">*</span></label>
           <div className="px-0 py-4 bg-transparent border-0">
@@ -227,14 +242,14 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                 'Décimo',
                 'Undecimo',
                 'Todas las anteriores',
-                ].map((label) => {
+              ].map((label) => {
                 const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
                 // normalize existing values to strings for reliable comparison
                 const gradeArr = Array.isArray((value as any).gradeId)
                   ? (value as any).gradeId.map((v: any) => String(v))
                   : Array.isArray((value as any).grades)
-                  ? (value as any).grades.map((v: any) => String(v))
-                  : [];
+                    ? (value as any).grades.map((v: any) => String(v))
+                    : [];
                 const checked = gradeArr.includes(id);
                 return (
                   <label key={id} className="flex items-start gap-2 text-sm">
@@ -284,8 +299,8 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
               const existing = Array.isArray((value as any).populationGradeIds)
                 ? (value as any).populationGradeIds.map((v: any) => String(v))
                 : Array.isArray((value as any).populationGrades)
-                ? (value as any).populationGrades.map((v: any) => String(v))
-                : [];
+                  ? (value as any).populationGrades.map((v: any) => String(v))
+                  : [];
               const checked = existing.includes(id);
               return (
                 <label key={id} className="flex items-start gap-2 text-sm">
@@ -465,7 +480,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
         </div>
       </div>
     </div>
-   
+
   );
 };
 

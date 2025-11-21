@@ -65,9 +65,9 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
   const [tematicaForm, setTematicaForm] = useState<any>({
     thematicLineIds: [],
     pedagogicalStrategies: "",
-    coordinationTransversalProjects: "",
+    CrossCuttingProject: [],
     coverage: "",
-    population: "",
+    Population: [],
     experiencesCovidPandemic: ""
   });
   const [nivelesForm, setNivelesForm] = useState<any>({
@@ -367,19 +367,21 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     // Build developments array from tematicaForm
     const developmentsSwagger = [
       {
-        crossCuttingProject:
-          tematicaForm.CrossCuttingProject || tematicaForm.crossCuttingProject || tematicaForm.coordinationTransversalProjects || tematicaForm.coordinationTransversalProject || tematicaForm.coordinationTransversal || tematicaForm.coordination || "",
-        // population: prefer explicit populationGradeIds/populationGrades coming from ThematicForm; if it's an array, join to a comma list for the backend text field
-        population: Array.isArray(tematicaForm.populationGradeIds)
-          ? tematicaForm.populationGradeIds.join(', ')
-          : Array.isArray(tematicaForm.populationGrades)
-          ? tematicaForm.populationGrades.join(', ')
-          : Array.isArray(tematicaForm.population)
-          ? tematicaForm.population.join(', ')
-          : (Array.isArray(grupoPoblacional) ? grupoPoblacional.join(', ') : (tematicaForm.population || '')),
-        pedagogicalStrategies: tematicaForm.pedagogicalStrategies || tematicaForm.pedagogicalStrategy || tematicaForm.PedagogicalStrategies || "",
-        coverage: tematicaForm.coverage || tematicaForm.coverageLevel || tematicaForm.Coverage || "",
-        covidPandemic: tematicaForm.experiencesCovidPandemic || tematicaForm.covidPandemic || tematicaForm.CovidPandemic || "",
+   crossCuttingProject: Array.isArray(tematicaForm.CrossCuttingProject)
+  ? tematicaForm.CrossCuttingProject.join(', ')
+  : tematicaForm.CrossCuttingProject || "",
+        // population: prefer tematicaForm.population (string or array) but if it's an array, join to a comma list for the backend text field
+population: Array.isArray(tematicaForm.Population)
+  ? tematicaForm.Population.join(', ')
+  : (tematicaForm.Population || ""),
+
+populationGrade: Array.isArray(tematicaForm.PopulationGrade)
+  ? tematicaForm.PopulationGrade.join(', ')
+  : (tematicaForm.PopulationGrade || ""),
+
+        pedagogicalStrategies: tematicaForm.pedagogicalStrategies || tematicaForm.pedagogicalStrategy || "",
+        coverage: tematicaForm.coverage || tematicaForm.coverageLevel || "",
+        covidPandemic: tematicaForm.experiencesCovidPandemic || tematicaForm.covidPandemic || "",
       },
     ];
 
