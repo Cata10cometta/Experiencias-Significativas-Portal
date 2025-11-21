@@ -264,7 +264,8 @@ const Information: React.FC = () => {
       return;
     }
     const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-    const endpoint = `${API_BASE}/api/Experience/${id}/request-edit`;
+    // send userId as query param to match backend swagger example
+    const endpointBase = `${API_BASE}/api/Experience/${id}/request-edit`;
     const token = localStorage.getItem('token');
     // try to extract numeric userId from token or fallback to localStorage
     const tryExtractUserId = (t?: string | null) => {
@@ -289,13 +290,12 @@ const Information: React.FC = () => {
       return;
     }
     try {
+      const endpoint = `${endpointBase}?userId=${encodeURIComponent(String(userIdToSend))}`;
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(userIdToSend),
       });
 
       // Try to parse JSON body first, fallback to text
@@ -490,10 +490,19 @@ const Information: React.FC = () => {
                             <button
                               className="text-gray-500 hover:text-gray-700"
                               title="Ver / Editar"
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
-                                fetchAndShowDetail(exp.id as number);
+                                // Role-aware behavior: professors request edit, others open detail view
+                                try {
+                                  if (isProfessor && typeof isProfessor === 'function' && isProfessor()) {
+                                    await requestEdit(exp.id as number);
+                                  } else {
+                                    await fetchAndShowDetail(exp.id as number);
+                                  }
+                                } catch (err) {
+                                  console.error('Error handling pencil click', err);
+                                }
                               }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 inline" viewBox="0 0 20 20" fill="currentColor">
