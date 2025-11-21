@@ -298,9 +298,6 @@ const CriteriaList: React.FC = () => {
               <tr>
                 <th className="py-3 px-4 font-semibold text-gray-700">Código</th>
                 <th className="py-3 px-4 font-semibold text-gray-700">Nombre</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Contribución</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Tipo</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Valor de Evaluación</th>
                 <th className="py-3 px-4 font-semibold text-gray-700">Estado</th>
                 <th className="py-3 px-4 font-semibold text-gray-700">Acciones</th>
               </tr>
@@ -315,9 +312,7 @@ const CriteriaList: React.FC = () => {
                   <tr key={criterion.id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-2 px-4 border-b">{criterion.code}</td>
                     <td className="py-2 px-4 border-b">{criterion.name}</td>
-                    <td className="py-2 px-4 border-b">{criterion.descriptionContribution}</td>
-                    <td className="py-2 px-4 border-b">{criterion.descruotionType}</td>
-                    <td className="py-2 px-4 border-b">{criterion.evaluationValue}</td>
+                   
                     <td className="py-2 px-4 border-b">
                       {criterion.state ? (
                         <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm">Activo</span>
