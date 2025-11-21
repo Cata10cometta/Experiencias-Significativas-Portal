@@ -54,12 +54,7 @@ const EditGradeForm: React.FC<EditGradeFormProps> = ({ grade, onClose, onUpdated
         <input value={code} onChange={(e) => setCode(e.target.value)} className="w-full mb-4 p-2 border rounded" />
         <label className="block mb-2 font-semibold">Nombre</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className="w-full mb-4 p-2 border rounded" />
-        <label className="block mb-2 font-semibold">Descripción</label>
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full mb-4 p-2 border rounded"
-        />
+       
         {error && <div className="text-red-500 mb-2">{error}</div>}
         <div className="flex gap-4 justify-end">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">
@@ -123,13 +118,7 @@ const AddGradeForm: React.FC<AddGradeFormProps> = ({ onClose, onAdded }) => {
         <input value={code} onChange={(e) => setCode(e.target.value)} className="w-full mb-4 p-2 border rounded" required />
         <label className="block mb-2 font-semibold">Nombre</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className="w-full mb-4 p-2 border rounded" required />
-        <label className="block mb-2 font-semibold">Descripción</label>
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full mb-4 p-2 border rounded"
-          required
-        />
+       
         {error && <div className="text-red-500 mb-2">{error}</div>}
         <div className="flex gap-4 justify-end">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">
@@ -195,12 +184,12 @@ const GradeList: React.FC = () => {
         const gradesNormalized = items.map((g: any) => {
           const code = g.code ?? g.codigo ?? g.key ?? g.value ?? g.codigoGrade ?? "";
           const name = g.name ?? g.nombre ?? g.title ?? g.label ?? g.nombreGrade ?? "";
-          const description = g.description ?? g.desc ?? g.descripcion ?? g.descripcionGrade ?? "";
+        
           return {
             ...g,
             code,
             name,
-            description,
+           
             state: typeof g.state === 'boolean' ? g.state : onlyActive,
           } as Grade;
         });
@@ -307,7 +296,6 @@ const GradeList: React.FC = () => {
               <tr>
                 <th className="py-3 px-4 font-semibold text-gray-700">Código</th>
                 <th className="py-3 px-4 font-semibold text-gray-700">Nombre</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Descripción</th>
                 <th className="py-3 px-4 font-semibold text-gray-700">Estado</th>
                 <th className="py-3 px-4 font-semibold text-gray-700">Acciones</th>
               </tr>
@@ -322,7 +310,6 @@ const GradeList: React.FC = () => {
                   <tr key={grade.id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-2 px-4 border-b">{grade.code}</td>
                     <td className="py-2 px-4 border-b">{grade.name}</td>
-                    <td className="py-2 px-4 border-b">{grade.description}</td>
                     <td className="py-2 px-4 border-b">
                       {grade.state ? (
                         <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm">Activo</span>
