@@ -99,7 +99,53 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 
   
 
-	const renderStatusBadge = (stateId?: number) => {
+	const renderStatusBadge = (stateOrExp?: number | any) => {
+		// Accept multiple shapes returned by different endpoints:
+		// - numeric state id (1 means active)
+		// - boolean `state` true/false
+		// - object with keys like stateExperienceId, stateId, State, state
+		// - string values like 'Activo' / 'Inactivo'
+		let stateId: number | null = null;
+
+		if (typeof stateOrExp === 'number') {
+			stateId = stateOrExp;
+		} else if (typeof stateOrExp === 'boolean') {
+			stateId = stateOrExp ? 1 : 0;
+		} else if (typeof stateOrExp === 'string') {
+			const s = stateOrExp.trim().toLowerCase();
+			if (s === 'activo' || s === 'active') stateId = 1;
+			else if (s === 'inactivo' || s === 'inactive') stateId = 0;
+			else {
+				const n = Number(stateOrExp);
+				if (!Number.isNaN(n)) stateId = n;
+			}
+		} else if (stateOrExp && typeof stateOrExp === 'object') {
+			// prefer boolean 'state' if present
+			if (typeof stateOrExp.state === 'boolean') return (
+				<span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${stateOrExp.state ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+					{stateOrExp.state ? 'Activo' : 'Inactivo'}
+				</span>
+			);
+
+			const candidates = [
+				'stateExperienceId', 'StateExperienceId', 'stateId', 'StateId',
+				'state', 'State', 'StateExperience', 'stateExperience', 'status', 'Status'
+			];
+			for (const k of candidates) {
+				const v = stateOrExp[k];
+				if (v === undefined || v === null || v === '') continue;
+				if (typeof v === 'boolean') { stateId = v ? 1 : 0; break; }
+				if (typeof v === 'number') { stateId = v; break; }
+				if (typeof v === 'string') {
+					const s = v.trim().toLowerCase();
+					if (s === 'activo' || s === 'active') { stateId = 1; break; }
+					if (s === 'inactivo' || s === 'inactive') { stateId = 0; break; }
+					const n = Number(v);
+					if (!Number.isNaN(n)) { stateId = n; break; }
+				}
+			}
+		}
+
 		const isActive = stateId === 1;
 		return (
 			<span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
@@ -571,7 +617,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 													</div>
 
 													<div className="text-center">
-														{renderStatusBadge((exp as any).stateExperienceId)}
+														{renderStatusBadge(exp)}
 													</div>
 												</div>
 											</div>

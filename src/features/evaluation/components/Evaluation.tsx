@@ -34,6 +34,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         accompanimentRole: "",
         comments: "",
         evaluationResult: "",
+        urlEvaPdf: "",
         experienceId: experienceId ?? 0,
         experienceName: "",
         stateId: 0,
@@ -275,6 +276,8 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
 
                     if (existing) {
                         console.debug("Evaluación encontrada para experienceId=", experienceId, existing);
+                        // Extraer posible URL ya guardada en la evaluación
+                        const candidateUrl = existing?.UrlEvaPdf || existing?.urlEvaPdf || existing?.url || existing?.pdfUrl || null;
                         // Rellenar el form con la evaluación existente y activar modo edición
                         setForm(prev => ({
                             ...prev,
@@ -282,7 +285,9 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                             // asegurar que experienceId y userId queden correctos
                             experienceId: existing.experienceId ?? existing.ExperienceId ?? prev.experienceId,
                             userId: existing.userId ?? existing.UserId ?? prev.userId,
+                            ...(candidateUrl ? { urlEvaPdf: candidateUrl } : {}),
                         }));
+                        if (candidateUrl) setEvaluationUrl(candidateUrl);
                         setIsEditing(true);
                     } else {
                         console.debug("No se encontró evaluación para experienceId=", experienceId);
@@ -525,11 +530,12 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             const full = `${envBase.replace(/\/$/, '')}/api/Evaluation/generate-pdf`;
             console.debug('Intentando POST absoluto a generate-pdf (single endpoint):', full, { evaluationId });
             const resp = await axios.post(full, { evaluationId }, { headers: token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' } });
-            if (resp && resp.status >= 200 && resp.status < 300 && resp.data) {
+                if (resp && resp.status >= 200 && resp.status < 300 && resp.data) {
                 const data = resp.data;
                 const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
                 if (foundUrl) {
                     setEvaluationUrl(foundUrl);
+                    setForm(prev => ({ ...(prev as any), urlEvaPdf: foundUrl }));
                     console.debug('URL recibida (absolute single POST):', foundUrl);
                     try {
                         const expIdNotify = form.experienceId || experienceId || 0;
@@ -546,11 +552,12 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         try {
             console.debug('Intentando POST con configApi a generate-pdf (relativo)');
             const resp2 = await configApi.post(`Evaluation/generate-pdf`, { evaluationId });
-            if (resp2 && resp2.status >= 200 && resp2.status < 300 && resp2.data) {
+                if (resp2 && resp2.status >= 200 && resp2.status < 300 && resp2.data) {
                 const data = resp2.data;
                 const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
                 if (foundUrl) {
                     setEvaluationUrl(foundUrl);
+                    setForm(prev => ({ ...(prev as any), urlEvaPdf: foundUrl }));
                     console.debug('URL recibida (configApi POST):', foundUrl);
                         try {
                             const expIdNotify = form.experienceId || experienceId || 0;
@@ -568,11 +575,12 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             try {
                 console.debug('Intentando POST relativo a /api/Evaluation/generate-pdf via axios');
                 const resp3 = await axios.post(`/api/Evaluation/generate-pdf`, { evaluationId }, { headers: token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' } });
-                if (resp3 && resp3.status >= 200 && resp3.status < 300 && resp3.data) {
+                    if (resp3 && resp3.status >= 200 && resp3.status < 300 && resp3.data) {
                     const data = resp3.data;
                     const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
                     if (foundUrl) {
                         setEvaluationUrl(foundUrl);
+                        setForm(prev => ({ ...(prev as any), urlEvaPdf: foundUrl }));
                         console.debug('URL recibida (relative POST):', foundUrl);
                         try {
                             const expIdNotify = form.experienceId || experienceId || 0;
@@ -600,11 +608,12 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             for (const url of urlCandidates) {
                 try {
                     const r = await axios.get(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
-                    if (r && r.status === 200 && r.data) {
+                        if (r && r.status === 200 && r.data) {
                         const d = r.data;
                         const found = typeof d === 'string' && d.startsWith('http') ? d : d?.url || d?.pdfUrl || d?.resultUrl || d?.data?.url;
                         if (found) {
                             setEvaluationUrl(found);
+                            setForm(prev => ({ ...(prev as any), urlEvaPdf: found }));
                             console.debug('URL encontrada en candidato GET:', url, found);
                             try {
                                 const expIdNotify = form.experienceId || experienceId || 0;
@@ -632,6 +641,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                             const found = d?.UrlEvaPdf || d?.url || d?.pdfUrl || d?.Url || d?.urlPdf || d?.data?.url;
                             if (found) {
                                 setEvaluationUrl(found);
+                                setForm(prev => ({ ...(prev as any), urlEvaPdf: found }));
                                 console.debug('URL encontrada por polling en', pollUrl, 'attempt', attempt, found);
                                 try {
                                     const expIdNotify = form.experienceId || experienceId || 0;

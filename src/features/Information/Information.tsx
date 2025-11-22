@@ -229,23 +229,48 @@ const Information: React.FC = () => {
 
   
 
-  // renderStatusBadge: accept either a numeric state id or an experience object
-  // and resolve common backend field names so UI reflects the true state.
+  // renderStatusBadge: accept numeric id, boolean `state`, string values or an
+  // experience object with different field names and normalize to Active/Inactive.
   const renderStatusBadge = (stateOrExp?: number | any) => {
     let stateId: number | null = null;
+
     if (typeof stateOrExp === 'number') {
       stateId = stateOrExp;
+    } else if (typeof stateOrExp === 'boolean') {
+      stateId = stateOrExp ? 1 : 0;
+    } else if (typeof stateOrExp === 'string') {
+      const s = stateOrExp.trim().toLowerCase();
+      if (s === 'activo' || s === 'active') stateId = 1;
+      else if (s === 'inactivo' || s === 'inactive') stateId = 0;
+      else {
+        const n = Number(stateOrExp);
+        if (!Number.isNaN(n)) stateId = n;
+      }
     } else if (stateOrExp && typeof stateOrExp === 'object') {
-      // try several common field names returned by different endpoints
+      // prefer boolean 'state' if present
+      if (typeof stateOrExp.state === 'boolean') {
+        return (
+          <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${stateOrExp.state ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+            {stateOrExp.state ? 'Activo' : 'Inactivo'}
+          </span>
+        );
+      }
+
       const candidates = [
         'stateExperienceId', 'StateExperienceId', 'stateId', 'StateId',
-        'state', 'State', 'StateExperience', 'stateExperience'
+        'state', 'State', 'StateExperience', 'stateExperience', 'status', 'Status'
       ];
       for (const k of candidates) {
         const v = stateOrExp[k];
-        if (v !== undefined && v !== null && v !== '') {
-          const num = Number(v);
-          if (!Number.isNaN(num)) { stateId = num; break; }
+        if (v === undefined || v === null || v === '') continue;
+        if (typeof v === 'boolean') { stateId = v ? 1 : 0; break; }
+        if (typeof v === 'number') { stateId = v; break; }
+        if (typeof v === 'string') {
+          const s = v.trim().toLowerCase();
+          if (s === 'activo' || s === 'active') { stateId = 1; break; }
+          if (s === 'inactivo' || s === 'inactive') { stateId = 0; break; }
+          const n = Number(v);
+          if (!Number.isNaN(n)) { stateId = n; break; }
         }
       }
     }
@@ -383,9 +408,8 @@ const Information: React.FC = () => {
             const candidate = Array.isArray(d) ? d[0] : d;
             if (!candidate) continue;
             const possible = [
-              candidate?.UrlEvaPdf,
+
               candidate?.urlEvaPdf,
-              candidate?.UrlPdf,
               candidate?.urlPdf,
               candidate?.UrlEvaPdf?.url,
               candidate?.url,
