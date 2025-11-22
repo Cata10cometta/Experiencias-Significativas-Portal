@@ -2,6 +2,7 @@
 import React, { useState, useRef, useMemo } from "react";
 
 import ExperienceModal from "../../features/experience/components/ExperienceModal";
+import NotificationsModal from './NotificationsModal';
 
 const Widgets: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -13,94 +14,8 @@ const Widgets: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [notifModalOpen, setNotifModalOpen] = useState<boolean>(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [loadingNotifs, setLoadingNotifs] = useState<boolean>(false);
-  const [notifError, setNotifError] = useState<string | null>(null);
-  const [approvingIds, setApprovingIds] = useState<number[]>([]);
 
-  const fetchNotifications = async () => {
-    setLoadingNotifs(true);
-    setNotifError(null);
-    const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-    // endpoint que lista las solicitudes de edición / notificaciones de experiencias
-    const endpoint = `${API_BASE}/api/Experience/all/Notification`;
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch(endpoint, { method: 'GET', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => `HTTP ${res.status}`);
-        setNotifError(`Error al obtener notificaciones: ${txt}`);
-        console.error('fetchNotifications error', endpoint, res.status, txt);
-        setNotifications([]);
-        return;
-      }
-      const data = await res.json().catch(() => null);
-      // The backend may return either an array or an object with `data`.
-      const list = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-      // Normalize minimal fields used in UI (experience name, user, state)
-      const normalized = list.map((it: any) => ({
-        id: it.id ?? it.notificationId ?? it.requestId ?? null,
-        experienceName: it.experienceName ?? it.nameExperiences ?? it.title ?? it.experience?.name ?? `Solicitud edición #${it.id ?? ''}`,
-        userName: it.userName ?? it.user?.name ?? it.requestUser ?? it.requestedBy ?? it.username ?? it.solicitante ?? (it.request?.userName) ?? '',
-        state: it.status ?? it.state ?? it.requestState ?? it.estado ?? it.stateName ?? it.state?.name ?? 'Pendiente',
-        createdAt: it.createdAt ?? it.createdDate ?? it.date ?? it.requestedAt ?? null,
-        raw: it,
-      }));
-      setNotifications(normalized);
-    } catch (err) {
-      console.error('fetchNotifications exception', err);
-      setNotifError('Error al obtener notificaciones');
-      setNotifications([]);
-    } finally {
-      setLoadingNotifs(false);
-    }
-  };
-
-  const approveEdit = async (experienceId: number) => {
-    if (!experienceId) return;
-    const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-    const endpoint = `${API_BASE}/api/Experience/${experienceId}/approve-edit`;
-    const token = localStorage.getItem('token');
-    try {
-      setApprovingIds(prev => [...prev, experienceId]);
-      const res = await fetch(endpoint, { method: 'POST', headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-      let body: any = null;
-      try { body = await res.clone().json(); } catch { body = await res.clone().text().catch(() => null); }
-      const backendMsg = (body && (body.message || body.msg || body.error || (typeof body === 'string' ? body : null))) || null;
-      if (res.ok) {
-        // show backend success message
-        try { (window as any).Swal?.fire?.({ title: 'Aprobado', text: backendMsg ?? 'Edición aprobada.', icon: 'success', confirmButtonText: 'Aceptar' }); } catch { alert(backendMsg ?? 'Edición aprobada.'); }
-        // Optimistically remove the related notification from local state so it disappears immediately
-        setNotifications(prev => prev.filter(n => {
-          const nExpId = n.raw?.experienceId ?? n.raw?.experience?.id ?? n.raw?.request?.experienceId ?? null;
-          // also compare normalized id in case backend uses notification id
-          const normalizedId = n.id ?? null;
-          return nExpId !== experienceId && normalizedId !== experienceId;
-        }));
-        // Persist a marker so professors know this experience was approved and should open detail next time
-        try {
-          const key = 'approvedExperienceIds';
-          const raw = localStorage.getItem(key);
-          const arr = Array.isArray(raw ? JSON.parse(raw) : null) ? JSON.parse(raw as string) : [];
-          if (!arr.includes(experienceId)) {
-            arr.push(experienceId);
-            localStorage.setItem(key, JSON.stringify(arr));
-          }
-        } catch (e) {
-          console.debug('Could not persist approvedExperienceIds', e);
-        }
-        // Refresh notifications from server to ensure consistent state
-        await fetchNotifications();
-      } else {
-        try { (window as any).Swal?.fire?.({ title: 'Error', text: backendMsg ?? `Error al aprobar (HTTP ${res.status})`, icon: 'error', confirmButtonText: 'Aceptar' }); } catch { alert(backendMsg ?? `Error al aprobar (HTTP ${res.status})`); }
-      }
-    } catch (err) {
-      console.error('approveEdit exception', err);
-      try { (window as any).Swal?.fire?.({ title: 'Error', text: 'Error al aprobar edición', icon: 'error', confirmButtonText: 'Aceptar' }); } catch { alert('Error al aprobar edición'); }
-    } finally {
-      setApprovingIds(prev => prev.filter(id => id !== experienceId));
-    }
-  };
+  
 
   React.useEffect(() => {
     // Fetch all experiences on mount, and refetch when selectedEje changes to update view.
@@ -254,7 +169,7 @@ const Widgets: React.FC = () => {
                   </svg>
                 </button>
                 <button
-                  onClick={() => { setNotifModalOpen(true); fetchNotifications(); }}
+                  onClick={() => { setNotifModalOpen(true); }}
                   className="w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center border border-white/40"
                   aria-label="Notificaciones"
                 >
@@ -324,53 +239,7 @@ const Widgets: React.FC = () => {
         />
       )}
 
-      {/* Notifications modal */}
-      {notifModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/50 pt-20">
-          <div className="bg-white rounded-lg! w-[90%] max-w-2xl p-6 max-h-[80vh] overflow-auto scrollbar-hide shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Notificaciones <br />Permiso para editar</h3>
-              <button className="px-3 py-1 bg-gray-100 rounded" onClick={() => setNotifModalOpen(false)}>Cerrar</button>
-            </div>
-            {loadingNotifs ? (
-              <div className="py-8 text-center">Cargando notificaciones...</div>
-            ) : notifError ? (
-              <div className="text-red-500">{notifError}</div>
-            ) : notifications.length === 0 ? (
-              <div className="text-gray-600">No hay notificaciones.</div>
-            ) : (
-              <ul className="space-y-4">
-                {notifications.map((n, i) => {
-                  const expId = n.raw?.experienceId ?? n.raw?.experience?.id ?? n.raw?.request?.experienceId ?? null;
-                  const isApproving = expId ? approvingIds.includes(expId) : false;
-                  return (
-                    <li key={n.id ?? i}>
-                      <div className="bg-indigo-700 rounded-xl p-5 flex items-start justify-between gap-4">
-                        <div className="flex-1 pr-4">
-                          <div className="text-white font-semibold text-lg leading-tight truncate">{n.experienceName ?? 'Nombre de experiencia'}</div>
-                          <div className="text-white/90 mt-3 truncate">{n.userName ?? 'Nombre usuario'}</div>
-                          <div className="text-white/80 mt-3 truncate">{n.state ?? 'Estado'}</div>
-                        </div>
-                        <div className="flex items-end">
-                          {expId ? (
-                            <button
-                              onClick={() => approveEdit(Number(expId))}
-                              disabled={isApproving}
-                              className={`ml-2 px-3 py-1 rounded-full text-sm text-white ${isApproving ? 'bg-gray-400' : 'bg-orange-400 hover:bg-orange-500'}`}
-                            >
-                              {isApproving ? 'Aprobando...' : 'Permitir'}
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </div>
-      )}
+      <NotificationsModal open={notifModalOpen} onClose={() => setNotifModalOpen(false)} />
     </div>
   );
 };

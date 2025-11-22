@@ -308,7 +308,10 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 		}
 	};
 
-	const requestEdit = async (id?: number) => {
+	const requestEdit = async (idOrExp?: number | any) => {
+		// accept either an id or the full experience object
+		const localExp = (idOrExp && typeof idOrExp === 'object') ? idOrExp : null;
+		const id = (typeof idOrExp === 'number') ? idOrExp : (localExp?.id ?? null);
 		if (!id) return;
 		if (!isProfessor()) {
 			await Swal.fire({ title: 'No autorizado', text: 'Solo los usuarios con rol de profesor pueden solicitar edición.', icon: 'warning', confirmButtonText: 'Aceptar' });
@@ -359,7 +362,36 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 				await Swal.fire({ title: 'Solicitud enviada', text: backendMsg ?? 'La solicitud de edición fue enviada correctamente.', icon: 'success', confirmButtonText: 'Aceptar' });
 			} else {
 				const text = backendMsg ?? `Error al solicitar edición (HTTP ${res.status})`;
-				await Swal.fire({ title: 'Error', text, icon: 'error', confirmButtonText: 'Aceptar' });
+				// If the backend indicates that a request already exists, offer to open the experience
+				// so the user can edit/view it. Match message case-insensitively.
+				if (typeof text === 'string' && /ya existe una solicitud/i.test(text)) {
+					const result = await Swal.fire({
+						title: 'Solicitud existente',
+						text,
+						icon: 'info',
+						showCancelButton: true,
+						confirmButtonText: 'Abrir experiencia',
+						cancelButtonText: 'Cancelar'
+					});
+					if (result.isConfirmed) {
+						// If we have the experience object already (from the list), avoid refetching
+						// which may trigger the global session-expiry handler on 401 and redirect to login.
+						try {
+							if (localExp) {
+								const { normalizeToInitial } = await import('../../features/experience/utils/normalizeExperience');
+								const initialData = normalizeToInitial(localExp);
+								setViewData(initialData);
+								setShowViewModal(true);
+							} else {
+								await fetchAndShowDetail(id);
+							}
+						} catch (err) {
+							console.error('Error al abrir detalle tras solicitud existente', err);
+						}
+					}
+				} else {
+					await Swal.fire({ title: 'Error', text, icon: 'error', confirmButtonText: 'Aceptar' });
+				}
 			}
 		} catch (err: any) {
 			console.error('requestEdit error', err);
@@ -600,11 +632,12 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 																e.preventDefault();
 																// Role-aware behavior: professors request edit, others open detail view
 																try {
-																	if (isProfessor && typeof isProfessor === 'function' && isProfessor()) {
-																		await requestEdit(exp.id as number);
-																	} else {
-																		await fetchAndShowDetail(exp.id as number);
-																	}
+																									if (isProfessor && typeof isProfessor === 'function' && isProfessor()) {
+																										// pass the full experience object so we can open modal without refetching
+																										await requestEdit(exp as any);
+																									} else {
+																										await fetchAndShowDetail(exp.id as number);
+																									}
 																} catch (err) {
 																	console.error('Error handling pencil click', err);
 																}

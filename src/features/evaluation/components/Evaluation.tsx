@@ -276,8 +276,8 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
 
                     if (existing) {
                         console.debug("Evaluación encontrada para experienceId=", experienceId, existing);
-                        // Extraer posible URL ya guardada en la evaluación
-                        const candidateUrl = existing?.UrlEvaPdf || existing?.urlEvaPdf || existing?.url || existing?.pdfUrl || null;
+                        // Extraer posible URL ya guardada en la evaluación (normalizamos a UrlEvaPdf/urlEvaPdf)
+                        const candidateUrl = existing?.UrlEvaPdf || existing?.urlEvaPdf || null;
                         // Rellenar el form con la evaluación existente y activar modo edición
                         setForm(prev => ({
                             ...prev,
@@ -532,7 +532,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             const resp = await axios.post(full, { evaluationId }, { headers: token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' } });
                 if (resp && resp.status >= 200 && resp.status < 300 && resp.data) {
                 const data = resp.data;
-                const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
+                const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : (data?.UrlEvaPdf || data?.urlEvaPdf || data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url);
                 if (foundUrl) {
                     setEvaluationUrl(foundUrl);
                     setForm(prev => ({ ...(prev as any), urlEvaPdf: foundUrl }));
@@ -554,7 +554,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             const resp2 = await configApi.post(`Evaluation/generate-pdf`, { evaluationId });
                 if (resp2 && resp2.status >= 200 && resp2.status < 300 && resp2.data) {
                 const data = resp2.data;
-                const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
+                const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : (data?.UrlEvaPdf || data?.urlEvaPdf || data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url);
                 if (foundUrl) {
                     setEvaluationUrl(foundUrl);
                     setForm(prev => ({ ...(prev as any), urlEvaPdf: foundUrl }));
@@ -577,7 +577,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                 const resp3 = await axios.post(`/api/Evaluation/generate-pdf`, { evaluationId }, { headers: token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' } });
                     if (resp3 && resp3.status >= 200 && resp3.status < 300 && resp3.data) {
                     const data = resp3.data;
-                    const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
+                    const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : (data?.UrlEvaPdf || data?.urlEvaPdf || data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url);
                     if (foundUrl) {
                         setEvaluationUrl(foundUrl);
                         setForm(prev => ({ ...(prev as any), urlEvaPdf: foundUrl }));
@@ -610,7 +610,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                     const r = await axios.get(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
                         if (r && r.status === 200 && r.data) {
                         const d = r.data;
-                        const found = typeof d === 'string' && d.startsWith('http') ? d : d?.url || d?.pdfUrl || d?.resultUrl || d?.data?.url;
+                        const found = typeof d === 'string' && d.startsWith('http') ? d : (d?.UrlEvaPdf || d?.urlEvaPdf || d?.url || d?.pdfUrl || d?.resultUrl || d?.data?.url);
                         if (found) {
                             setEvaluationUrl(found);
                             setForm(prev => ({ ...(prev as any), urlEvaPdf: found }));
@@ -638,7 +638,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                         const r = await axios.get(pollUrl, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
                         if (r && r.status === 200 && r.data) {
                             const d = r.data;
-                            const found = d?.UrlEvaPdf || d?.url || d?.pdfUrl || d?.Url || d?.urlPdf || d?.data?.url;
+                            const found = d?.UrlEvaPdf || d?.urlEvaPdf || d?.url || d?.pdfUrl || d?.Url || d?.urlPdf || d?.data?.url;
                             if (found) {
                                 setEvaluationUrl(found);
                                 setForm(prev => ({ ...(prev as any), urlEvaPdf: found }));

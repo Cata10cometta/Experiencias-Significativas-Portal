@@ -382,23 +382,34 @@ const Information: React.FC = () => {
   // cache of evaluation PDF urls found for experiences (keyed by experience id)
   const [evaluationPdfMap, setEvaluationPdfMap] = useState<Record<number, string>>({});
 
+  // In-memory negative cache for endpoint paths that recently failed (to avoid retry storms)
+  // Key: path string tried (relative or absolute); Value: timestamp when it failed
+  const failedPathTtl = 1000 * 60 * 5; // 5 minutes
+  const failedPathsRef = React.useRef<Record<string, number>>({});
+
   // Try to locate an evaluation-record PDF URL for a given experience id
   const fetchEvaluationPdfUrl = async (expId?: number): Promise<string | null> => {
     if (!expId) return null;
     const token = localStorage.getItem('token');
     const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
     const envBase = API_BASE || 'https://localhost:7263';
+    // Prefer explicit resource endpoints; avoid query-string variants that some backends reject (405)
     const tryPaths = [
       `/api/Evaluation/getByExperience/${expId}`,
       `/api/Evaluation/by-experience/${expId}`,
       `/api/Evaluation/GetByExperience/${expId}`,
-      `/api/Evaluation?experienceId=${expId}`,
-      `/api/Evaluation?ExperienceId=${expId}`,
       `/api/Evaluation/${expId}`,
     ];
 
     try {
       for (const p of tryPaths) {
+        // Skip trying this path if it recently failed
+        const lastFailed = failedPathsRef.current[p];
+        if (lastFailed && (Date.now() - lastFailed) < failedPathTtl) {
+          console.debug('Skipping recently failed path', p);
+          continue;
+        }
+
         // try relative first (vite proxy)
         try {
           const r = await axios.get(p, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
@@ -407,54 +418,53 @@ const Information: React.FC = () => {
             const d = r.data;
             const candidate = Array.isArray(d) ? d[0] : d;
             if (!candidate) continue;
-            const possible = [
-
-              candidate?.urlEvaPdf,
-              candidate?.urlPdf,
-              candidate?.UrlEvaPdf?.url,
-              candidate?.url,
-              candidate?.pdfUrl,
-              candidate?.resultUrl,
-            ];
-            for (const v of possible) {
-              if (typeof v === 'string' && v.trim()) {
-                console.debug('fetchEvaluationPdfUrl: found via relative', p, v);
-                return v.trim();
-              }
+            // Only consider canonical UrlEvaPdf (or urlEvaPdf) to reduce ambiguity
+            const foundRelative = (candidate?.UrlEvaPdf && (typeof candidate.UrlEvaPdf === 'string' ? candidate.UrlEvaPdf : candidate.UrlEvaPdf?.url)) || candidate?.urlEvaPdf || null;
+            if (foundRelative && typeof foundRelative === 'string' && foundRelative.trim()) {
+              console.debug('fetchEvaluationPdfUrl: found via relative', p, foundRelative);
+              return String(foundRelative).trim();
             }
+            // If response was 200 but no URL found, mark path as failed to avoid reusing it
+            failedPathsRef.current[p] = Date.now();
           }
         } catch (e) {
-          // if relative fails (405 or CORS), try absolute next
+          // mark this relative path as failed so we don't retry immediately
+          failedPathsRef.current[p] = Date.now();
+          // if relative fails (404/405/CORS), try absolute next (unless absolute also in failure cache)
           try {
             const full = `${envBase.replace(/\/$/, '')}${p.startsWith('/') ? p : '/' + p}`;
+            const lastFailedFull = failedPathsRef.current[full];
+            if (lastFailedFull && (Date.now() - lastFailedFull) < failedPathTtl) {
+              console.debug('Skipping recently failed absolute path', full);
+              continue;
+            }
             const r2 = await axios.get(full, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
             console.debug('fetchEvaluationPdfUrl: tried absolute', full, 'status', r2?.status);
             if (r2 && (r2.status === 200 || r2.status === 201) && r2.data) {
               const d2 = r2.data;
               const candidate2 = Array.isArray(d2) ? d2[0] : d2;
-              if (!candidate2) continue;
-              const possible2 = [
-                candidate2?.UrlEvaPdf,
-                candidate2?.urlEvaPdf,
-                candidate2?.UrlPdf,
-                candidate2?.urlPdf,
-                candidate2?.UrlEvaPdf?.url,
-                candidate2?.url,
-                candidate2?.pdfUrl,
-                candidate2?.resultUrl,
-              ];
-              for (const v of possible2) {
-                if (typeof v === 'string' && v.trim()) {
-                  console.debug('fetchEvaluationPdfUrl: found via absolute', full, v);
-                  return v.trim();
-                }
+              if (!candidate2) {
+                failedPathsRef.current[full] = Date.now();
+                continue;
               }
+              const foundAbsolute = (candidate2?.UrlEvaPdf && (typeof candidate2.UrlEvaPdf === 'string' ? candidate2.UrlEvaPdf : candidate2.UrlEvaPdf?.url)) || candidate2?.urlEvaPdf || null;
+              if (foundAbsolute && typeof foundAbsolute === 'string' && foundAbsolute.trim()) {
+                console.debug('fetchEvaluationPdfUrl: found via absolute', full, foundAbsolute);
+                return String(foundAbsolute).trim();
+              }
+              // no useful content found — mark as failed
+              failedPathsRef.current[full] = Date.now();
             }
           } catch (e2) {
-            // ignore and continue
+            // record absolute failure and continue
+            const full = `${envBase.replace(/\/$/, '')}${p.startsWith('/') ? p : '/' + p}`;
+            failedPathsRef.current[full] = Date.now();
             console.debug('fetchEvaluationPdfUrl: both relative and absolute failed for', p, e2);
           }
         }
+
+        // small pause between per-path attempts to avoid bursts
+        await new Promise(res => setTimeout(res, 120));
       }
     } catch (err) {
       console.debug('fetchEvaluationPdfUrl error', err);
@@ -593,11 +603,15 @@ const Information: React.FC = () => {
     }
   };
 
-  // When the list changes, try to discover evaluation PDF urls for experiences that don't have a PDF yet
+  // When the list first becomes available, run discovery ONCE for a small subset
+  const discoveryDoneRef = React.useRef(false);
   useEffect(() => {
+    if (discoveryDoneRef.current) return;
     if (!list || list.length === 0) return;
-    // discover for the first page items only to avoid spamming the backend
-    const toCheck = list.slice(0, 20);
+    discoveryDoneRef.current = true; // ensure we run only once per page load
+
+    // discover for a small number of items only to avoid spamming the backend
+    const toCheck = list.slice(0, 6);
     let cancelled = false;
     (async () => {
       for (const exp of toCheck) {
@@ -631,7 +645,8 @@ const Information: React.FC = () => {
           if (detail) {
             if (typeof detail === 'object') {
               expId = detail.experienceId ?? detail.experienceid ?? detail.id ?? null;
-              url = detail.url ?? detail.pdfUrl ?? detail.UrlEvaPdf ?? detail.UrlPdf ?? null;
+              // Prefer UrlEvaPdf / urlEvaPdf as canonical
+              url = detail.UrlEvaPdf || detail.urlEvaPdf || detail.url || null;
             } else if (typeof detail === 'number') {
               expId = detail;
             }
