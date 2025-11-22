@@ -227,40 +227,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         return 0;
     };
 
-    // Guardar la URL del PDF en la entidad Experience (documents[0].urlPdf) usando los endpoints públicos
-    const savePdfUrlToExperience = async (pdfUrl: string) => {
-        try {
-            const expId = form.experienceId || 0;
-            if (!expId) return;
-            const token = localStorage.getItem('token');
-
-            // obtener detalle actual de la experiencia
-            const detailResp = await axios.get(`/api/Experience/${expId}/detail`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
-            if (!detailResp || detailResp.status !== 200) return;
-            const data = detailResp.data || {};
-
-            // Normalizar estructura UpdateExperience
-            const updated = {
-                ...data,
-                documents: Array.isArray(data.documents) ? data.documents.slice() : [],
-            } as any;
-
-            if (!updated.documents || updated.documents.length === 0) {
-                updated.documents = [{ urlPdf: pdfUrl, urlLink: '' }];
-            } else {
-                // colocar en documents[0].urlPdf
-                updated.documents[0] = { ...(updated.documents[0] || {}), urlPdf: pdfUrl };
-            }
-
-            // enviar patch
-            await axios.patch('/api/Experience/patch', updated, { headers: token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' } });
-            console.debug('savePdfUrlToExperience: URL guardada en experiencia', expId, pdfUrl);
-            // notificar al padre para actualizar la lista localmente si proporcionó callback
-            try { if (typeof onExperienceUpdated === 'function') onExperienceUpdated(expId, pdfUrl); } catch(e) { /**/ }
-        } catch (e) {
-            console.debug('savePdfUrlToExperience error', e);
-        }
-    };
+    // Note: saving the PDF URL into the Experience entity has been removed per request.
     // Si se proporciona experienceId, intentar obtener una evaluación existente
     useEffect(() => {
         const fetchExistingEvaluation = async () => {
@@ -550,53 +517,46 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         setIsUrlLoading(true);
         setEvaluationUrl(null);
 
-    // 1) Construir base para llamada absoluta a /api/Evaluation/{id}/generate-pdf
-    // Si no hay VITE_API_BASE_URL, usamos el backend por defecto donde indicaste que funciona.
+    // Prefer the single generate endpoint: POST to /api/Evaluation/generate-pdf with JSON body { evaluationId }
     const envBase = (import.meta.env.VITE_API_BASE_URL as string) || "https://localhost:7263";
-        const token = localStorage.getItem("token");
-
+    const token = localStorage.getItem("token");
+    try {
         try {
-            if (envBase) {
-                try {
-                    const full = `${envBase.replace(/\/$/, '')}/api/Evaluation/${evaluationId}/generate-pdf`;
-                    console.debug('Intentando POST absoluto a generate-pdf:', full);
-                    const resp = await axios.post(full, null, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
-                            if (resp && resp.status >= 200 && resp.status < 300 && resp.data) {
-                                const data = resp.data;
-                                const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
-                                if (foundUrl) {
-                                    setEvaluationUrl(foundUrl);
-                                    console.debug('URL recibida (absolute POST):', foundUrl);
-                                    // notify parent immediately so UI updates even if PATCH is slow
-                                    try {
-                                        const expIdNotify = form.experienceId || experienceId || 0;
-                                        if (expIdNotify && typeof onExperienceUpdated === 'function') onExperienceUpdated(expIdNotify, foundUrl);
-                                    } catch (e) { /**/ }
-                                    // intentar guardar la URL en la experiencia relacionada para que el icono muestre el PDF
-                                    try { await savePdfUrlToExperience(foundUrl); } catch(e){ console.debug('No se pudo guardar url en la experiencia', e); }
-                                    return foundUrl;
-                                }
-                            }
-                } catch (e) {
-                    console.debug('POST absoluto a generate-pdf falló, probando con configApi/relativo', e);
+            const full = `${envBase.replace(/\/$/, '')}/api/Evaluation/generate-pdf`;
+            console.debug('Intentando POST absoluto a generate-pdf (single endpoint):', full, { evaluationId });
+            const resp = await axios.post(full, { evaluationId }, { headers: token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' } });
+            if (resp && resp.status >= 200 && resp.status < 300 && resp.data) {
+                const data = resp.data;
+                const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
+                if (foundUrl) {
+                    setEvaluationUrl(foundUrl);
+                    console.debug('URL recibida (absolute single POST):', foundUrl);
+                    try {
+                        const expIdNotify = form.experienceId || experienceId || 0;
+                        if (expIdNotify && typeof onExperienceUpdated === 'function') onExperienceUpdated(expIdNotify, foundUrl);
+                    } catch (e) { /**/ }
+                    return foundUrl;
                 }
             }
+        } catch (e) {
+            console.debug('POST absoluto a generate-pdf (single endpoint) falló, probando con configApi/relativo', e);
+        }
 
-            // 2) Intentar con la instancia configurada del API (usa baseURL + token interceptor)
-            try {
-                console.debug('Intentando POST con configApi a generate-pdf (relativo)');
-                const resp2 = await configApi.post(`Evaluation/${evaluationId}/generate-pdf`);
-                    if (resp2 && resp2.status >= 200 && resp2.status < 300 && resp2.data) {
-                    const data = resp2.data;
-                    const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
-                    if (foundUrl) {
-                        setEvaluationUrl(foundUrl);
-                        console.debug('URL recibida (configApi POST):', foundUrl);
+        // 2) Intentar con la instancia configurada del API (usa baseURL + token interceptor)
+        try {
+            console.debug('Intentando POST con configApi a generate-pdf (relativo)');
+            const resp2 = await configApi.post(`Evaluation/generate-pdf`, { evaluationId });
+            if (resp2 && resp2.status >= 200 && resp2.status < 300 && resp2.data) {
+                const data = resp2.data;
+                const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
+                if (foundUrl) {
+                    setEvaluationUrl(foundUrl);
+                    console.debug('URL recibida (configApi POST):', foundUrl);
                         try {
                             const expIdNotify = form.experienceId || experienceId || 0;
                             if (expIdNotify && typeof onExperienceUpdated === 'function') onExperienceUpdated(expIdNotify, foundUrl);
                         } catch (e) { /**/ }
-                        try { await savePdfUrlToExperience(foundUrl); } catch(e){ console.debug('No se pudo guardar url en la experiencia', e); }
+                        // per-request: do not save URL into Experience here
                         return foundUrl;
                     }
                 }
@@ -606,8 +566,8 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
 
             // 3) Intentar GET relativo directo (Vite proxy) a la misma ruta
             try {
-                console.debug('Intentando POST relativo a /api/Evaluation/{id}/generate-pdf via axios');
-                const resp3 = await axios.post(`/api/Evaluation/${evaluationId}/generate-pdf`, null, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+                console.debug('Intentando POST relativo a /api/Evaluation/generate-pdf via axios');
+                const resp3 = await axios.post(`/api/Evaluation/generate-pdf`, { evaluationId }, { headers: token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' } });
                 if (resp3 && resp3.status >= 200 && resp3.status < 300 && resp3.data) {
                     const data = resp3.data;
                     const foundUrl = typeof data === 'string' && data.startsWith('http') ? data : data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url;
@@ -618,7 +578,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                             const expIdNotify = form.experienceId || experienceId || 0;
                             if (expIdNotify && typeof onExperienceUpdated === 'function') onExperienceUpdated(expIdNotify, foundUrl);
                         } catch (e) { /**/ }
-                        try { await savePdfUrlToExperience(foundUrl); } catch(e){ console.debug('No se pudo guardar url en la experiencia', e); }
+                        // per-request: do not save URL into Experience here
                         return foundUrl;
                     }
                 }
@@ -650,7 +610,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                                 const expIdNotify = form.experienceId || experienceId || 0;
                                 if (expIdNotify && typeof onExperienceUpdated === 'function') onExperienceUpdated(expIdNotify, found);
                             } catch (e) { /**/ }
-                            try { await savePdfUrlToExperience(found); } catch(e){ console.debug('No se pudo guardar url en la experiencia', e); }
+                            // per-request: do not save URL into Experience here
                             return found;
                         }
                     }
@@ -677,7 +637,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                                     const expIdNotify = form.experienceId || experienceId || 0;
                                     if (expIdNotify && typeof onExperienceUpdated === 'function') onExperienceUpdated(expIdNotify, found);
                                 } catch (e) { /**/ }
-                                try { await savePdfUrlToExperience(found); } catch(e){ console.debug('No se pudo guardar url en la experiencia', e); }
+                                // per-request: do not save URL into Experience here
                                 return found;
                             }
                         }
@@ -693,6 +653,71 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         }
         return null;
     };
+
+        // Abrir URL de PDF respetando token (intenta descargar con Authorization y abrir blob)
+        const openPdfWithAuth = async (raw?: string | null) => {
+            if (!raw) return;
+            const token = localStorage.getItem('token');
+            try {
+                // data URI -> abrir directamente
+                if (String(raw).startsWith('data:')) {
+                    const w = window.open(String(raw), '_blank');
+                    if (!w) {
+                        const a = document.createElement('a');
+                        a.href = String(raw);
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    }
+                    return;
+                }
+
+                // intentar fetch con Authorization si hay token
+                if (token) {
+                    try {
+                        const envBase = (import.meta.env.VITE_API_BASE_URL as string) || '';
+                        const full = (/^https?:\/\//i.test(String(raw)) ? String(raw) : (envBase ? `${envBase.replace(/\/$/, '')}${String(raw).startsWith('/') ? String(raw) : '/' + String(raw)}` : String(raw)));
+                        const resp = await fetch(full, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+                        if (resp && resp.ok) {
+                            const blob = await resp.blob();
+                            const url = URL.createObjectURL(blob);
+                            const w = window.open(url, '_blank');
+                            if (!w) {
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.target = '_blank';
+                                a.rel = 'noopener noreferrer';
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                            }
+                            // liberar URL después
+                            setTimeout(() => URL.revokeObjectURL(url), 15000);
+                            return;
+                        }
+                    } catch (e) {
+                        // ignore and fallback to open raw
+                        console.debug('openPdfWithAuth fetch failed, falling back to open raw', e);
+                    }
+                }
+
+                // fallback: abrir directamente
+                const opened = window.open(String(raw), '_blank');
+                if (!opened) {
+                    const a = document.createElement('a');
+                    a.href = String(raw);
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }
+            } catch (err) {
+                console.error('openPdfWithAuth error', err);
+            }
+        };
 
     const handleCloseModal = () => {
         setShowModal(false); // Cierra el modal
@@ -729,7 +754,15 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
     };
 
     return (
-        <div className="w-full max-w-3xl bg-white rounded-lg shadow-md p-8 mx-auto">
+        <div className="relative w-full max-w-3xl bg-white rounded-lg shadow-md p-8 mx-auto max-h-[85vh] overflow-y-auto">
+            <button
+                type="button"
+                aria-label="Cerrar evaluación"
+                className="absolute top-3 right-3 text-4xl leading-none text-gray-600 hover:text-gray-900"
+                onClick={() => { if (onClose) onClose(); else handleCloseModal(); }}
+            >
+                ×
+            </button>
             {activeStep === 0 && (
                 <>
                     <h1 className="text-4xl font-bold !text-[#00aaff]  text-center mt-8">
@@ -783,53 +816,55 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             </div>
             {error && <div className="text-red-500 text-center mt-4">{error}</div>}
 
-            {/* Modal para mostrar el resultado de la evaluación */}
-            <Modal open={showModal} onClose={() => setShowModal(false)}>
-                <Box
-                    sx={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: 400,
-                        bgcolor: "background.paper",
-                        boxShadow: 24,
-                        p: 4,
-                        borderRadius: 2,
-                    }}
-                >
-                    <h2 className="text-2xl font-bold text-center mb-4">Resultado de la Evaluación</h2>
-                    <p className="text-center text-green-500 font-semibold">{evaluationResult}</p>
-                    {isUrlLoading ? (
-                        <p className="text-center text-gray-600 mt-2">Obteniendo documento...</p>
-                    ) : (
-                        evaluationUrl ? (
-                            <div className="text-center mt-4">
-                                <p className="text-sm text-gray-700">El PDF se ha generado. Aparecerá en la tarjeta de la experiencia en esta pantalla.</p>
-                                <div className="flex justify-center mt-3">
-                                    <Button variant="contained" color="primary" onClick={handleCloseModal}>
-                                        Cerrar
-                                    </Button>
-                                </div>
-                            </div>
+            {/* Overlay inline para mostrar el resultado de la evaluación (alto z-index para sobreponer al modal padre) */}
+            {showModal && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black opacity-40" onClick={() => { setShowModal(false); if (onClose) onClose(); }} />
+                    <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+                        <button
+                            type="button"
+                            aria-label="Cerrar resultado"
+                            className="absolute top-2 right-3 text-2xl leading-none text-gray-600 hover:text-gray-900"
+                            onClick={() => { setShowModal(false); if (onClose) onClose(); }}
+                        >
+                            ×
+                        </button>
+                        <h2 className="text-2xl font-bold text-center mb-4">Resultado de la Evaluación</h2>
+                        <p className="text-center text-green-500 font-semibold">{evaluationResult ?? 'Evaluación registrada correctamente'}</p>
+                        {isUrlLoading ? (
+                            <p className="text-center text-gray-600 mt-2">Obteniendo documento...</p>
                         ) : (
-                            <div className="flex flex-col items-center gap-3 mt-4">
-                                <div className="flex gap-3">
-                                    <Button variant="contained" color="primary" onClick={handleGenerateClick} disabled={isUrlLoading}>
-                                        {isUrlLoading ? 'Generando...' : 'Generar PDF'}
-                                    </Button>
-                                    <Button variant="contained" color="primary" onClick={handleCloseModal}>
-                                        Cerrar
-                                    </Button>
+                            evaluationUrl ? (
+                                <div className="text-center mt-4">
+                                        <p className="text-sm text-gray-700">El PDF se ha generado. Aparecerá en la tarjeta de la experiencia en esta pantalla.</p>
+                                        <div className="flex justify-center mt-3 gap-3">
+                                            <Button variant="contained" color="primary" onClick={() => openPdfWithAuth(evaluationUrl)}>
+                                                Ver PDF
+                                            </Button>
+                                            <Button variant="contained" color="primary" onClick={handleCloseModal}>
+                                                Cerrar
+                                            </Button>
+                                        </div>
+                                    </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-3 mt-4">
+                                    <div className="flex gap-3">
+                                        <Button variant="contained" color="primary" onClick={handleGenerateClick} disabled={isUrlLoading}>
+                                            {isUrlLoading ? 'Generando...' : 'Generar PDF'}
+                                        </Button>
+                                        <Button variant="contained" color="primary" onClick={handleCloseModal}>
+                                            Cerrar
+                                        </Button>
+                                    </div>
+                                    {lastGenerateMessage && (
+                                        <p className="text-sm text-center text-gray-600 mt-2">{lastGenerateMessage}</p>
+                                    )}
                                 </div>
-                                {lastGenerateMessage && (
-                                    <p className="text-sm text-center text-gray-600 mt-2">{lastGenerateMessage}</p>
-                                )}
-                            </div>
-                        )
-                    )}
-                </Box>
-            </Modal>
+                            )
+                        )}
+                    </div>
+                </div>
+            )}
             {/* PDF preview moved to parent `Experiences` component; no local PDF modal here */}
         </div>
     );
