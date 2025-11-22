@@ -525,18 +525,8 @@ const Information: React.FC = () => {
       // try to discover on the evaluation endpoints
       const found = await fetchEvaluationPdfUrl(expId);
       if (found) {
-        // cache it
+        // cache it (do NOT mutate experience.documents here — keep evaluation PDFs separate)
         setEvaluationPdfMap(prev => ({ ...prev, [expId]: found }));
-        // also update local list documents so UI reflects it
-        setList(prev => prev.map(it => {
-          const idMatch = Number((it as any)?.id || (it as any)?.Id || (it as any)?.experienceId || (it as any)?.ExperienceId) === Number(expId);
-          if (!idMatch) return it;
-          const docs = Array.isArray((it as any).documents) ? (it as any).documents.slice() : [];
-          if (docs.length === 0) docs[0] = { urlPdf: found } as any;
-          else docs[0] = { ...(docs[0] || {}), urlPdf: found } as any;
-          return { ...(it as any), documents: docs } as Experience;
-        }));
-
         await openPdfWithAuth(found);
         return;
       }
@@ -547,6 +537,35 @@ const Information: React.FC = () => {
       await Swal.fire({ title: 'Error', text: err?.message || 'Error buscando el PDF', icon: 'error', confirmButtonText: 'Aceptar' });
     } finally {
       try { Swal.close(); } catch {}
+    }
+  };
+
+  // Open preferred PDF for an experience: prefer evaluation PDF (cache -> discovery), then fall back to experience PDF
+  const openPreferredPdfForExperience = async (exp: Experience | any) => {
+    if (!exp) return;
+    const expId = Number((exp as any)?.id || (exp as any)?.Id || (exp as any)?.experienceId || (exp as any)?.ExperienceId);
+    try {
+      // 1) prefer cached evaluation PDF
+      if (expId && evaluationPdfMap[expId]) {
+        await openPdfWithAuth(evaluationPdfMap[expId]);
+        return;
+      }
+
+      // 2) try to discover via evaluation endpoints (do NOT mutate experience.documents)
+      if (expId) {
+        const found = await fetchEvaluationPdfUrl(expId);
+        if (found) {
+          setEvaluationPdfMap(prev => ({ ...prev, [expId]: found }));
+          await openPdfWithAuth(found);
+          return;
+        }
+      }
+
+      // If we reached here, no evaluation PDF found
+      await Swal.fire({ title: 'No se encontró PDF de evaluación', text: 'No se encontró una URL de PDF asociada a la evaluación de esta experiencia.', icon: 'warning', confirmButtonText: 'Aceptar' });
+    } catch (err: any) {
+      console.error('openPreferredPdfForExperience error', err);
+      await Swal.fire({ title: 'Error', text: err?.message || 'Error abriendo el PDF', icon: 'error', confirmButtonText: 'Aceptar' });
     }
   };
 
@@ -565,16 +584,8 @@ const Information: React.FC = () => {
           if (hasExpPdf) continue;
           const found = await fetchEvaluationPdfUrl(expId);
           if (found && !cancelled) {
+            // cache it (do NOT modify experience.documents here)
             setEvaluationPdfMap(prev => ({ ...prev, [expId]: found }));
-            // also update local list so UI shows the PDF button immediately
-            setList(prev => prev.map(it => {
-              const idMatch = Number((it as any)?.id || (it as any)?.Id || (it as any)?.experienceId || (it as any)?.ExperienceId) === expId;
-              if (!idMatch) return it;
-              const docs = Array.isArray((it as any).documents) ? (it as any).documents.slice() : [];
-              if (docs.length === 0) docs[0] = { urlPdf: found } as any;
-              else docs[0] = { ...(docs[0] || {}), urlPdf: found } as any;
-              return { ...(it as any), documents: docs } as Experience;
-            }));
           }
         } catch (e) {
           // ignore per-row errors
@@ -612,21 +623,8 @@ const Information: React.FC = () => {
 
           if (url) {
             // cache it
+            // cache it (do NOT modify experience.documents here)
             setEvaluationPdfMap(prev => ({ ...prev, [expId as number]: url as string }));
-
-            // update the in-memory list so the UI shows "Ver PDF" immediately
-            setList(prev => prev.map(it => {
-              if (matchesExperienceId(it, expId)) {
-                const docs = Array.isArray((it as any).documents) ? [...(it as any).documents] : [];
-                if (docs.length > 0) {
-                  docs[0] = { ...docs[0], urlPdf: url };
-                } else {
-                  docs.unshift({ urlPdf: url } as any);
-                }
-                return { ...it, documents: docs, UrlPdf: url, urlPdf: url } as any;
-              }
-              return it;
-            }));
           }
         } catch (err) {
           console.debug('experiencePdfUpdated handler error', err);
@@ -894,15 +892,8 @@ const Information: React.FC = () => {
                     experiences={list}
                     onClose={() => setShowEvaluationModal(false)}
                     onExperienceUpdated={(id: number, url: string) => {
-                      setList(prev => prev.map(it => {
-                        if (matchesExperienceId(it as any, id)) {
-                          const docs = Array.isArray((it as any).documents) ? (it as any).documents.slice() : [];
-                          if (docs.length === 0) docs[0] = { urlPdf: url } as any;
-                          else docs[0] = { ...(docs[0] || {}), urlPdf: url } as any;
-                          return { ...(it as any), documents: docs } as Experience;
-                        }
-                        return it;
-                      }));
+                      // store evaluation PDF in cache only; do not mutate experience.documents here
+                      setEvaluationPdfMap(prev => ({ ...prev, [id]: url }));
                     }}
                   />
                 </div>
@@ -1013,15 +1004,17 @@ const Information: React.FC = () => {
                           <div className="flex items-center justify-center">
                             {(() => {
                               const expIdForRow = Number((exp as any)?.id || (exp as any)?.Id || (exp as any)?.experienceId || (exp as any)?.ExperienceId || idx);
-                              const raw = getPdfUrlFromExp(exp as any) || (expIdForRow ? evaluationPdfMap[expIdForRow] : null);
-                              if (raw) {
+                              const cachedEval = expIdForRow ? evaluationPdfMap[expIdForRow] : null;
+                              // Only consider evaluation PDFs here — do not use experience-level documents
+                              const hasEval = Boolean(cachedEval);
+                              if (hasEval) {
                                 return (
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       e.preventDefault();
-                                      openPdfWithAuth(raw).catch(err => console.error('openPdfWithAuth error', err));
+                                      openPreferredPdfForExperience(exp).catch(err => console.error('openPreferredPdfForExperience error', err));
                                     }}
                                     aria-label="Ver PDF"
                                     title="Ver PDF"
