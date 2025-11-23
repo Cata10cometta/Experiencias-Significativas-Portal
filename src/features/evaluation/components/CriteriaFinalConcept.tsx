@@ -8,9 +8,10 @@ interface CriteriaFinalConceptProps {
   isSaving?: boolean;
 }
 
-const CriteriaFinalConcept: React.FC<CriteriaFinalConceptProps> = () => {
+
+const CriteriaFinalConcept: React.FC<CriteriaFinalConceptProps> = ({ value }) => {
   return (
-    <div className=" flex flex-col p-0">
+    <div className="flex flex-col p-0">
       <div className="max-w-5xl w-full mx-auto">
         <div className="bg-white rounded-lg p-6 mt-8 mb-8">
           <h2 className="text-2xl font-semibold text-sky-600 mb-4">
@@ -36,6 +37,12 @@ const CriteriaFinalConcept: React.FC<CriteriaFinalConceptProps> = () => {
               Inspiradora: Mayor o igual a 80 puntos
             </span>
           </div>
+          {/* Mostrar resultado dinámico */}
+          {value?.evaluationResult && (
+            <p className="text-xl font-bold text-center mt-4">
+              Resultado: <span className="text-sky-700">{value.evaluationResult}</span>
+            </p>
+          )}
         </div>
       </div>
       <div className="w-full flex justify-center pb-8">
