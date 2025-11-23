@@ -1,0 +1,85 @@
+curl -X 'GET' \
+  'https://localhost:7263/api/Evaluation/getAll' \
+  -H 'accept: text/plain' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEiLCJ1bmlxdWVfbmFtZSI6Im1hcmlhYWxlamFuMTA4MEBnbWFpbC5jb20iLCJyb2xlIjoiU1VQRVJBRE1JTiIsIm5iZiI6MTc2MzgzMDYyNSwiZXhwIjoxNzYzODM3ODI1LCJpYXQiOjE3NjM4MzA2MjV9.72rR6EDKK70UGyCJJSjQNrNAV5kIaE1bvAlyXMeO_TA'
+Request URL
+https://localhost:7263/api/Evaluation/getAll
+Server response
+Code	Details
+200	
+Response body
+Download
+{
+  "status": true,
+  "message": "Ok",
+  "data": [
+    {
+      "typeEvaluation": "Inicial",
+      "comments": "string",
+      "accompanimentRole": "string",
+      "urlEvaPdf": "",
+      "userId": 1,
+      "user": null,
+      "experienceId": 1,
+      "experience": null,
+      "evaluationCriteriaDetail": [],
+      "id": 1
+    },
+    {
+      "typeEvaluation": "Final",
+      "comments": "string",
+      "accompanimentRole": "string",
+      "urlEvaPdf": "https://clzjdaburaytuimossnf.supabase.co/storage/v1/object/sign/Experiencia-SignificativaPdf/Reporte-2.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9lMzc5MWUxOC00YmYyLTQ2OWEtYTBlMC04YWVjYzM4MGI5NTIiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJFeHBlcmllbmNpYS1TaWduaWZpY2F0aXZhUGRmL1JlcG9ydGUtMi5wZGYiLCJpYXQiOjE3NjM3Nzk3NzEsImV4cCI6MTc5NTMxNTc3MX0.R95tL_IPp64V-ND3cBbAQMLVlJtDy4w3Ikj5gxbw5ps",
+      "userId": 1,
+      "user": null,
+      "experienceId": 2,
+      "experience": null,
+      "evaluationCriteriaDetail": [],
+      "id": 2
+    }
+  ]
+}
+
+
+
+curl -X 'GET' \
+  'https://localhost:7263/api/Experience/List' \
+  -H 'accept: */*' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEiLCJ1bmlxdWVfbmFtZSI6Im1hcmlhYWxlamFuMTA4MEBnbWFpbC5jb20iLCJyb2xlIjoiU1VQRVJBRE1JTiIsIm5iZiI6MTc2MzgzMDYyNSwiZXhwIjoxNzYzODM3ODI1LCJpYXQiOjE3NjM4MzA2MjV9.72rR6EDKK70UGyCJJSjQNrNAV5kIaE1bvAlyXMeO_TA'
+Request URL
+https://localhost:7263/api/Experience/List
+Server response
+Code	Details
+200	
+Response body
+Download
+[
+  {
+    "nameExperiences": "Proyecto de Innovación Educativa",
+    "code": "EXP-2025-001",
+    "thematicLocation": "Zona Urbana - Sector Norte",
+    "developmenttime": "2025-11-18T08:30:00",
+    "recognition": "Reconocida por su impacto comunitario",
+    "socialization": "Presentada en la feria institucional de experiencias",
+    "urlPdf": "https://clzjdaburaytuimossnf.supabase.co/storage/v1/object/sign/Experiencia-SignificativaPdf/Experiencia-1.pdf?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9lMzc5MWUxOC00YmYyLTQ2OWEtYTBlMC04YWVjYzM4MGI5NTIiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJFeHBlcmllbmNpYS1TaWduaWZpY2F0aXZhUGRmL0V4cGVyaWVuY2lhLTEucGRmIiwiaWF0IjoxNzYzNzc5MzE4LCJleHAiOjE3OTUzMTUzMTh9.sVnLNxPeHTdlyWUallvkHALZeB1MikdvmpSEjDyVt1g",
+    "stateExperienceId": 3,
+    "stateExperience": null,
+    "userId": 1,
+    "user": null,
+    "institucionId": 1,
+    "institution": null,
+    "documents": [],
+    "experienceLineThematics": [],
+    "experienceGrades": [],
+    "objectives": [],
+    "experiencePopulations": [],
+    "evaluations": [],
+    "historyExperiences": [],
+    "developments": [],
+    "leaders": [],
+    "id": 1,
+    "state": true,
+    "createdAt": "2025-11-22T01:59:15.6245476",
+    "deletedAt": null
+  },
+]

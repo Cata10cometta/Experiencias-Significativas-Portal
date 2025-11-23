@@ -19,9 +19,6 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 	const pageSize = 5;
 	const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
 	const [showAddModal, setShowAddModal] = useState<boolean>(false);
-	// State for the evaluation modal and currently selected evaluation experience id
-	const [showEvalModal, setShowEvalModal] = useState<boolean>(false);
-	const [evalExpId, setEvalExpId] = useState<number | null>(null);
 
 	// Cache of discovered evaluation PDF URLs by experience id
 	const [evaluationPdfMap, setEvaluationPdfMap] = useState<Record<number, string>>({});
@@ -221,29 +218,278 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 		setShowModal(true);
 	};
 
-  const handleClose = () => {
-    setShowModal(false);
-    setSelectedExperienceId(null);
-  };
+	// Helpers to inspect token for roles/userId. Reused by render and requestEdit.
+	const parseJwt = (t: string | null) => {
+		if (!t) return null;
+		try {
+			const parts = t.split('.');
+			if (parts.length < 2) return null;
+			const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+			const decoded = decodeURIComponent(atob(payload).split('').map(function(c) {
+				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+			}).join(''));
+			return JSON.parse(decoded);
+		} catch {
+			return null;
+		}
+	};
 
-  const handleCloseEvaluation = () => {
-    setShowEvaluation(false);
-    setShowEvaluationFromIcon(false);
-  };
+	const getUserRoles = (): string[] => {
+		const token = localStorage.getItem('token');
+		const parsed = parseJwt(token ?? null) as any;
+		if (!parsed) return [];
+		// common claim names
+		const candidates = [
+			'role', 'roles', 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
+			'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role'
+		];
+		for (const k of candidates) {
+			const v = parsed[k];
+			if (!v) continue;
+			if (Array.isArray(v)) return v.map(String).map(s => s.toLowerCase());
+			if (typeof v === 'string') return v.split(',').map(s => s.trim().toLowerCase());
+		}
+		// also try 'roles' nested or other shapes
+		if (parsed['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']) {
+			const v = parsed['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+			if (Array.isArray(v)) return v.map(String).map(s => s.toLowerCase());
+			if (typeof v === 'string') return v.split(',').map(s => s.trim().toLowerCase());
+		}
+		return [];
+	};
 
-  useEffect(() => {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
-    const endpoint = `${API_BASE}/api/Experience/List`;
-    const token = localStorage.getItem("token");
+	const isProfessor = (): boolean => {
+		const roles = getUserRoles();
+		if (!roles || roles.length === 0) return false;
+		return roles.some(r => ['profesor', 'profesora', 'teacher', 'docente'].includes(r));
+	};
 
-    const fetchExperiencias = async () => {
-      const res = await fetch(endpoint, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
+	// Robust helper to locate a PDF URL in several possible shapes the API might return
+	const getPdfUrlFromExp = (exp?: Experience | any): string | null => {
+		if (!exp) return null;
+
+		try {
+			// 1) documents array (common pattern used elsewhere)
+			if (exp.documents && Array.isArray(exp.documents) && exp.documents.length > 0) {
+				const doc = exp.documents[0];
+				if (!doc) return null;
+				// handle variations inside document object
+				if (typeof doc.urlPdf === 'string' && doc.urlPdf.trim()) return doc.urlPdf;
+				if (typeof doc.UrlPdf === 'string' && doc.UrlPdf.trim()) return doc.UrlPdf;
+				if (typeof doc.url === 'string' && doc.url.trim()) return doc.url;
+				// nested shape like { urlPdf: { url: '...' } }
+				if (doc.urlPdf && typeof doc.urlPdf === 'object' && typeof doc.urlPdf.url === 'string') return doc.urlPdf.url;
+			}
+
+			// 2) top-level variations returned by some endpoints
+			if (typeof exp.urlPdf === 'string' && exp.urlPdf.trim()) return exp.urlPdf;
+			if (typeof exp.UrlPdf === 'string' && exp.UrlPdf.trim()) return exp.UrlPdf;
+			// evaluation-level PDF (some endpoints store the generated PDF under an evaluation resource)
+			if (exp.evaluation && typeof exp.evaluation === 'object') {
+				if (typeof exp.evaluation.urlEvaPdf === 'string' && exp.evaluation.urlEvaPdf.trim()) return exp.evaluation.urlEvaPdf;
+				if (typeof exp.evaluation.UrlEvaPdf === 'string' && exp.evaluation.UrlEvaPdf.trim()) return exp.evaluation.UrlEvaPdf;
+			}
+			if (exp.Evaluation && typeof exp.Evaluation === 'object') {
+				if (typeof exp.Evaluation.urlEvaPdf === 'string' && exp.Evaluation.urlEvaPdf.trim()) return exp.Evaluation.urlEvaPdf;
+				if (typeof exp.Evaluation.UrlEvaPdf === 'string' && exp.Evaluation.UrlEvaPdf.trim()) return exp.Evaluation.UrlEvaPdf;
+			}
+			// sometimes API returns the evaluation/pdf URL at the top-level under UrlEvaPdf
+			if (typeof exp.urlEvaPdf === 'string' && exp.urlEvaPdf.trim()) return exp.urlEvaPdf;
+			if (typeof exp.UrlEvaPdf === 'string' && exp.UrlEvaPdf.trim()) return exp.UrlEvaPdf;
+			if (typeof exp.url === 'string' && exp.url.trim()) return exp.url;
+			if (typeof exp.pdfUrl === 'string' && exp.pdfUrl.trim()) return exp.pdfUrl;
+
+			// 3) sometimes the API returns an object with UrlPdf property
+			if (exp.UrlPdf && typeof exp.UrlPdf === 'object' && typeof exp.UrlPdf.url === 'string') return exp.UrlPdf.url;
+
+			// nothing found
+			console.debug('getPdfUrlFromExp: no PDF url found for experience', exp?.id ?? exp);
+			return null;
+		} catch (err) {
+			console.warn('getPdfUrlFromExp error', err, exp?.id ?? exp);
+			return null;
+		}
+	};
+
+	// Try to obtain evaluation PDF URL by querying evaluation endpoints for a given experience id.
+	const fetchEvaluationPdfForExperience = async (expId?: number): Promise<string | null> => {
+		if (!expId) return null;
+		// negative cache check
+		const failedTs = failedEvalRef.current.get(expId);
+		if (failedTs && (Date.now() - failedTs) < EVAL_NEGATIVE_TTL) {
+			console.debug('fetchEvaluationPdfForExperience: skipping recently-failed expId', expId);
+			return null;
+		}
+		const token = localStorage.getItem('token');
+		const base = import.meta.env.VITE_API_BASE_URL ?? '';
+		const tryPaths = [
+			`${base}/api/Evaluation/getByExperience/${expId}`,
+			`${base}/api/Evaluation/by-experience/${expId}`,
+			`${base}/api/Evaluation/${expId}`,
+			`${base}/api/Evaluation?experienceId=${expId}`,
+			`/api/Evaluation/getByExperience/${expId}`,
+			`/api/Evaluation/by-experience/${expId}`,
+			`/api/Evaluation/${expId}`,
+			`/api/Evaluation?experienceId=${expId}`,
+		];
+		for (const url of tryPaths) {
+			try {
+				const res = await fetch(url, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+				if (!res.ok) continue;
+				let data: any = null;
+				try { data = await res.json(); } catch { data = null; }
+				if (!data) continue;
+				// normalize shapes: if wrapper object, pick first array or data field
+				if (Array.isArray(data)) {
+					// find matching by experience id
+					const found = data.find((d: any) => d?.experienceId === expId || d?.ExperienceId === expId || d?.experience?.id === expId);
+					if (found) data = found;
+				} else if (data?.data && (Array.isArray(data.data) || typeof data.data === 'object')) {
+					if (Array.isArray(data.data)) {
+						const found = data.data.find((d: any) => d?.experienceId === expId || d?.ExperienceId === expId || d?.experience?.id === expId);
+						if (found) data = found;
+					} else {
+						data = data.data;
+					}
+				}
+				// try to extract URL from common fields
+				const candidate = data?.UrlEvaPdf || data?.urlEvaPdf || data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url || null;
+				if (candidate && typeof candidate === 'string' && candidate.trim()) {
+					console.debug('fetchEvaluationPdfForExperience: found url for exp', expId, candidate);
+					return candidate;
+				}
+			} catch (err) {
+				// ignore and continue
+				console.debug('fetchEvaluationPdfForExperience: attempt failed for', url, err);
+			}
+			// small natural delay to avoid burst
+			await new Promise(res => setTimeout(res, 220));
+		}
+
+		// Fallback: fetch all evaluations and cross by experienceId
+		try {
+			const allUrl = `${base}/api/Evaluation/getAll`;
+			const res = await fetch(allUrl, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+			if (res.ok) {
+				let data: any = null;
+				try { data = await res.json(); } catch { data = null; }
+				if (data && Array.isArray(data.data)) {
+					const found = data.data.find((d: any) => d?.experienceId === expId && d?.urlEvaPdf && typeof d.urlEvaPdf === 'string' && d.urlEvaPdf.trim());
+					if (found) {
+						console.debug('fetchEvaluationPdfForExperience: found urlEvaPdf in getAll for exp', expId, found.urlEvaPdf);
+						return found.urlEvaPdf;
+					}
+				}
+			}
+		} catch (err) {
+			console.debug('fetchEvaluationPdfForExperience: getAll fallback failed', err);
+		}
+		// mark negative
+		failedEvalRef.current.set(expId, Date.now());
+		return null;
+	};
+
+	// Open PDF link with token-aware fetch first (for private files), then fallback
+	const openPdfWithAuth = async (raw?: string | null) => {
+		if (!raw) return;
+		const token = localStorage.getItem('token');
+		try {
+			if ((/^https?:\/\//i.test(raw) || raw.startsWith('/')) && token) {
+				try {
+					const resp = await fetch(raw, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+					if (resp.ok) {
+						const blob = await resp.blob();
+						const blobUrl = URL.createObjectURL(blob);
+						const opened = window.open(blobUrl, '_blank');
+						if (!opened) {
+							const a = document.createElement('a');
+							a.href = blobUrl;
+							a.target = '_blank';
+							a.rel = 'noopener noreferrer';
+							a.style.display = 'none';
+							document.body.appendChild(a);
+							a.click();
+							a.remove();
+						} else {
+							try { opened.focus(); } catch {}
+						}
+						setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+						return;
+					}
+				} catch (err) {
+					console.warn('Fetch con token falló, intentando abrir URL directamente', err);
+				}
+			}
+
+			// fallback: try open raw URL directly
+			const opened = window.open(String(raw), '_blank');
+			if (!opened) {
+				const a = document.createElement('a');
+				a.href = String(raw);
+				a.target = '_blank';
+				a.rel = 'noopener noreferrer';
+				a.style.display = 'none';
+				document.body.appendChild(a);
+				a.click();
+				a.remove();
+				Swal.fire({
+					title: 'Abrir PDF',
+					html: `Si no se abrió una nueva pestaña, <a href="${String(raw)}" target="_blank" rel="noopener noreferrer">haz clic aquí para abrir el PDF</a>.<br/><br/>Si usas un bloqueador de ventanas emergentes, permite popups para este sitio.`,
+					icon: 'info',
+					confirmButtonText: 'Entendido'
+				});
+			} else {
+				try { opened.focus(); } catch {}
+			}
+		} catch (err) {
+			console.error('Error al abrir PDF', err);
+			try { window.location.href = String(raw); } catch {}
+		}
+	};
+
+	const requestEdit = async (idOrExp?: number | any) => {
+		// accept either an id or the full experience object
+		const localExp = (idOrExp && typeof idOrExp === 'object') ? idOrExp : null;
+		const id = (typeof idOrExp === 'number') ? idOrExp : (localExp?.id ?? null);
+		if (!id) return;
+		if (!isProfessor()) {
+			await Swal.fire({ title: 'No autorizado', text: 'Solo los usuarios con rol de profesor pueden solicitar edición.', icon: 'warning', confirmButtonText: 'Aceptar' });
+			return;
+		}
+		const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+		// send userId as query param to match backend swagger example
+		const endpointBase = `${API_BASE}/api/Experience/${id}/request-edit`;
+		const token = localStorage.getItem('token');
+		// try to extract numeric userId from token or fallback to localStorage
+		const tryExtractUserId = (t?: string | null) => {
+			if (!t) return null;
+			const parsed = parseJwt(t);
+			if (!parsed || typeof parsed !== 'object') return null;
+			const candidates = ['sub','id','userId','user_id','nameid','http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+			for (const k of candidates) {
+				const v = (parsed as any)[k];
+				if (v !== undefined && v !== null) {
+					const num = Number(v);
+					if (!Number.isNaN(num) && Number.isFinite(num) && num > 0) return Math.trunc(num);
+				}
+			}
+			return null;
+		};
+		const extractedFromToken = tryExtractUserId(token ?? null);
+		const storedUserId = Number(localStorage.getItem('userId')) || null;
+		const userIdToSend = extractedFromToken ?? (storedUserId && Number.isFinite(storedUserId) && storedUserId > 0 ? storedUserId : null);
+		if (!userIdToSend) {
+			await Swal.fire({ title: 'Error', text: 'No se pudo determinar el userId. Por favor inicie sesión.', icon: 'error', confirmButtonText: 'Aceptar' });
+			return;
+		}
+		try {
+			const endpoint = `${endpointBase}?userId=${encodeURIComponent(String(userIdToSend))}`;
+			const res = await fetch(endpoint, {
+				method: 'POST',
+				headers: {
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+				},
+			});
 
       if (!res.ok) throw new Error("Error al obtener experiencias");
 
