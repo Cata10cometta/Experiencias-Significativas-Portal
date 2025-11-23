@@ -27,6 +27,30 @@ interface EvaluationProps {
 }
 
 function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdated }: EvaluationProps) {
+    // Nuevo: buscar urlEvaPdf desde /api/Evaluation/getAll
+    useEffect(() => {
+        if (!experienceId) return;
+        const fetchPdfFromGetAll = async () => {
+            try {
+                const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+                const url = `${API_BASE}/api/Evaluation/getAll`;
+                const token = localStorage.getItem('token');
+                const res = await fetch(url, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && Array.isArray(data.data)) {
+                    const found = data.data.find((ev: any) => Number(ev.experienceId) === Number(experienceId) && ev.urlEvaPdf && typeof ev.urlEvaPdf === 'string' && ev.urlEvaPdf.trim());
+                    if (found) {
+                        setEvaluationUrl(found.urlEvaPdf);
+                        setForm(prev => ({ ...prev, urlEvaPdf: found.urlEvaPdf }));
+                    }
+                }
+            } catch (err) {
+                // ignora error
+            }
+        };
+        fetchPdfFromGetAll();
+    }, [experienceId]);
     const [activeStep, setActiveStep] = useState(0);
     const [form, setForm] = useState<Evaluation>({
         evaluationId: 0,

@@ -19,6 +19,12 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 	const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
 	const [showAddModal, setShowAddModal] = useState<boolean>(false);
 
+	// Cache of discovered evaluation PDF URLs by experience id
+	const [evaluationPdfMap, setEvaluationPdfMap] = useState<Record<number, string>>({});
+	// Negative cache to avoid retrying failing evaluation lookups too frequently
+	const failedEvalRef = React.useRef<Map<number, number>>(new Map());
+	const EVAL_NEGATIVE_TTL = 1000 * 60 * 5; // 5 minutes
+
 	const getUserIdFromToken = (): number | null => {
 		const token = localStorage.getItem('token');
 		try {
@@ -79,6 +85,48 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 
 		fetchData();
 	}, []);
+
+	// For the current visible page, try to discover evaluation PDF URLs when missing.
+	useEffect(() => {
+		let cancelled = false;
+		const discoverForVisible = async () => {
+			const q = searchTerm.trim().toLowerCase();
+			const filtered = q ? list.filter(exp => {
+				const name = String((exp as any).nameExperiences ?? (exp as any).name ?? '').toLowerCase();
+				const area = String((exp as any).areaApplied ?? (exp as any).thematicLocation ?? '').toLowerCase();
+				return name.includes(q) || area.includes(q);
+			}) : list;
+			const start = (currentPage - 1) * pageSize;
+			const paginated = filtered.slice(start, start + pageSize);
+			for (let i = 0; i < paginated.length; i++) {
+				if (cancelled) return;
+				const exp = paginated[i];
+				const id = exp?.id;
+				if (!id) continue;
+				// skip if already known or present in experience
+				const known = evaluationPdfMap[id] || getPdfUrlFromExp(exp as any);
+				if (known) {
+					if (known && !evaluationPdfMap[id]) {
+						setEvaluationPdfMap(prev => ({ ...prev, [id]: known }));
+					}
+					continue;
+				}
+				// if negative cached, skip
+				const failedTs = failedEvalRef.current.get(id);
+				if (failedTs && (Date.now() - failedTs) < EVAL_NEGATIVE_TTL) continue;
+				// fetch and store
+				const url = await fetchEvaluationPdfForExperience(id);
+				if (cancelled) return;
+				if (url) {
+					setEvaluationPdfMap(prev => ({ ...prev, [id]: url }));
+					// small delay between discoveries
+					await new Promise(res => setTimeout(res, 120));
+				}
+			}
+		};
+		discoverForVisible();
+		return () => { cancelled = true; };
+	}, [list, currentPage, searchTerm]);
 
 	// lightweight polling so newly created experiences appear shortly after creation
 	useEffect(() => {
@@ -235,6 +283,18 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			// 2) top-level variations returned by some endpoints
 			if (typeof exp.urlPdf === 'string' && exp.urlPdf.trim()) return exp.urlPdf;
 			if (typeof exp.UrlPdf === 'string' && exp.UrlPdf.trim()) return exp.UrlPdf;
+			// evaluation-level PDF (some endpoints store the generated PDF under an evaluation resource)
+			if (exp.evaluation && typeof exp.evaluation === 'object') {
+				if (typeof exp.evaluation.urlEvaPdf === 'string' && exp.evaluation.urlEvaPdf.trim()) return exp.evaluation.urlEvaPdf;
+				if (typeof exp.evaluation.UrlEvaPdf === 'string' && exp.evaluation.UrlEvaPdf.trim()) return exp.evaluation.UrlEvaPdf;
+			}
+			if (exp.Evaluation && typeof exp.Evaluation === 'object') {
+				if (typeof exp.Evaluation.urlEvaPdf === 'string' && exp.Evaluation.urlEvaPdf.trim()) return exp.Evaluation.urlEvaPdf;
+				if (typeof exp.Evaluation.UrlEvaPdf === 'string' && exp.Evaluation.UrlEvaPdf.trim()) return exp.Evaluation.UrlEvaPdf;
+			}
+			// sometimes API returns the evaluation/pdf URL at the top-level under UrlEvaPdf
+			if (typeof exp.urlEvaPdf === 'string' && exp.urlEvaPdf.trim()) return exp.urlEvaPdf;
+			if (typeof exp.UrlEvaPdf === 'string' && exp.UrlEvaPdf.trim()) return exp.UrlEvaPdf;
 			if (typeof exp.url === 'string' && exp.url.trim()) return exp.url;
 			if (typeof exp.pdfUrl === 'string' && exp.pdfUrl.trim()) return exp.pdfUrl;
 
@@ -248,6 +308,84 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			console.warn('getPdfUrlFromExp error', err, exp?.id ?? exp);
 			return null;
 		}
+	};
+
+	// Try to obtain evaluation PDF URL by querying evaluation endpoints for a given experience id.
+	const fetchEvaluationPdfForExperience = async (expId?: number): Promise<string | null> => {
+		if (!expId) return null;
+		// negative cache check
+		const failedTs = failedEvalRef.current.get(expId);
+		if (failedTs && (Date.now() - failedTs) < EVAL_NEGATIVE_TTL) {
+			console.debug('fetchEvaluationPdfForExperience: skipping recently-failed expId', expId);
+			return null;
+		}
+		const token = localStorage.getItem('token');
+		const base = import.meta.env.VITE_API_BASE_URL ?? '';
+		const tryPaths = [
+			`${base}/api/Evaluation/getByExperience/${expId}`,
+			`${base}/api/Evaluation/by-experience/${expId}`,
+			`${base}/api/Evaluation/${expId}`,
+			`${base}/api/Evaluation?experienceId=${expId}`,
+			`/api/Evaluation/getByExperience/${expId}`,
+			`/api/Evaluation/by-experience/${expId}`,
+			`/api/Evaluation/${expId}`,
+			`/api/Evaluation?experienceId=${expId}`,
+		];
+		for (const url of tryPaths) {
+			try {
+				const res = await fetch(url, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+				if (!res.ok) continue;
+				let data: any = null;
+				try { data = await res.json(); } catch { data = null; }
+				if (!data) continue;
+				// normalize shapes: if wrapper object, pick first array or data field
+				if (Array.isArray(data)) {
+					// find matching by experience id
+					const found = data.find((d: any) => d?.experienceId === expId || d?.ExperienceId === expId || d?.experience?.id === expId);
+					if (found) data = found;
+				} else if (data?.data && (Array.isArray(data.data) || typeof data.data === 'object')) {
+					if (Array.isArray(data.data)) {
+						const found = data.data.find((d: any) => d?.experienceId === expId || d?.ExperienceId === expId || d?.experience?.id === expId);
+						if (found) data = found;
+					} else {
+						data = data.data;
+					}
+				}
+				// try to extract URL from common fields
+				const candidate = data?.UrlEvaPdf || data?.urlEvaPdf || data?.url || data?.pdfUrl || data?.resultUrl || data?.data?.url || null;
+				if (candidate && typeof candidate === 'string' && candidate.trim()) {
+					console.debug('fetchEvaluationPdfForExperience: found url for exp', expId, candidate);
+					return candidate;
+				}
+			} catch (err) {
+				// ignore and continue
+				console.debug('fetchEvaluationPdfForExperience: attempt failed for', url, err);
+			}
+			// small natural delay to avoid burst
+			await new Promise(res => setTimeout(res, 220));
+		}
+
+		// Fallback: fetch all evaluations and cross by experienceId
+		try {
+			const allUrl = `${base}/api/Evaluation/getAll`;
+			const res = await fetch(allUrl, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+			if (res.ok) {
+				let data: any = null;
+				try { data = await res.json(); } catch { data = null; }
+				if (data && Array.isArray(data.data)) {
+					const found = data.data.find((d: any) => d?.experienceId === expId && d?.urlEvaPdf && typeof d.urlEvaPdf === 'string' && d.urlEvaPdf.trim());
+					if (found) {
+						console.debug('fetchEvaluationPdfForExperience: found urlEvaPdf in getAll for exp', expId, found.urlEvaPdf);
+						return found.urlEvaPdf;
+					}
+				}
+			}
+		} catch (err) {
+			console.debug('fetchEvaluationPdfForExperience: getAll fallback failed', err);
+		}
+		// mark negative
+		failedEvalRef.current.set(expId, Date.now());
+		return null;
 	};
 
 	// Open PDF link with token-aware fetch first (for private files), then fallback
@@ -599,7 +737,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 
 													<div className="flex items-center justify-center">
 														{(() => {
-															const raw = getPdfUrlFromExp(exp as any);
+															const raw = evaluationPdfMap[exp.id] ?? getPdfUrlFromExp(exp as any);
 															if (raw) {
 																return (
 																	<button
