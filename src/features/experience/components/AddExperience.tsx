@@ -64,9 +64,9 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
   });
   const [tematicaForm, setTematicaForm] = useState<any>({
     thematicLineIds: [],
-    pedagogicalStrategies: "",
+    PedagogicalStrategies: "",
     CrossCuttingProject: [],
-    coverage: "",
+    Coverage: "",
     Population: [],
     experiencesCovidPandemic: ""
   });
@@ -379,9 +379,13 @@ populationGrade: Array.isArray(tematicaForm.PopulationGrade)
   ? tematicaForm.PopulationGrade.join(', ')
   : (tematicaForm.PopulationGrade || ""),
 
-        pedagogicalStrategies: tematicaForm.pedagogicalStrategies || tematicaForm.pedagogicalStrategy || "",
-        coverage: tematicaForm.coverage || tematicaForm.coverageLevel || "",
-        covidPandemic: tematicaForm.experiencesCovidPandemic || tematicaForm.covidPandemic || "",
+        pedagogicalStrategies: Array.isArray(tematicaForm.PedagogicalStrategies)
+  ? tematicaForm.PedagogicalStrategies.join(', ')
+  : tematicaForm.PedagogicalStrategies || "",
+        
+  coverage: Array.isArray(tematicaForm.Coverage)
+  ? tematicaForm.Coverage.join(', ')
+  : tematicaForm.Coverage || "",
       },
     ];
 
@@ -459,12 +463,18 @@ populationGrade: Array.isArray(tematicaForm.PopulationGrade)
         ? tematicaForm.socialization.join(', ')
         : Array.isArray(tematicaForm?.socializationLabels)
         ? tematicaForm.socializationLabels.join(', ')
-        : (typeof tematicaForm?.socialization === 'string' ? tematicaForm.socialization : (typeof tematicaForm?.socializationLabels === 'string' ? tematicaForm.socializationLabels : (tiempo.socialization || ""))),
+        : (typeof tematicaForm?.socialization === 'string' ? tematicaForm.socialization : (typeof tematicaForm?.socializationLabels === 'string' ? tematicaForm?.socializationLabels : (tiempo.socialization || ""))),
       socializationLabels: Array.isArray(tematicaForm?.socialization)
         ? tematicaForm.socialization
         : Array.isArray(tematicaForm?.socializationLabels)
         ? tematicaForm.socializationLabels
         : undefined,
+      // CAMPOS CORREGIDOS: apoyo recibido y PEI
+      pedagogicalStrategies: tematicaForm.PedagogicalStrategies || [],
+      coverage: tematicaForm.Coverage || "",
+      coverageText: tematicaForm.CoverageText || "",
+      // Sustainability (seguimiento y evaluación de la experiencia, SupportInformationForm)
+      sustainability: informacionApoyo.sustainability || "",
       // Include stateExperienceId when any subform provided a valid numeric id
       ...(finalStateId ? { stateExperienceId: finalStateId } : {}),
       institution: {
@@ -715,50 +725,7 @@ populationGrade: Array.isArray(tematicaForm.PopulationGrade)
       }
 
       // If we have an id, call the generate-pdf endpoint and download/open the PDF
-      if (createdId && Number.isFinite(createdId) && createdId > 0) {
-        const pdfEndpoint = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/Experience/${createdId}/generate-pdf`;
-        try {
-          const pdfRes = await fetch(pdfEndpoint, {
-            method: 'GET',
-            headers: {
-              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-            },
-          });
-          if (pdfRes.ok) {
-            const blob = await pdfRes.blob();
-            const url = URL.createObjectURL(blob);
-            // Show a link to the generated PDF and let the user open it manually.
-            // Avoid forcing an automatic download.
-            try {
-              await Swal.fire({
-                title: 'PDF generado',
-                html: `La experiencia fue registrada. Abra el PDF desde <a href="${url}" target="_blank" rel="noopener noreferrer">aquí</a>.`,
-                icon: 'success',
-                showCancelButton: true,
-                confirmButtonText: 'Abrir en nueva pestaña',
-                cancelButtonText: 'Cerrar',
-              }).then((result) => {
-                if (result.isConfirmed) window.open(url, '_blank');
-              });
-            } catch (e) {
-              // Fallback: open in new tab if Swal fails
-              window.open(url, '_blank');
-            }
-            // revoke after a while to allow user to open the link
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-          } else {
-            console.warn('Fallo al generar PDF:', await pdfRes.text().catch(() => '')); 
-            try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. Falló la generación del PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
-            if (onVolver) onVolver();
-            return;
-          }
-        } catch (pdfErr) {
-          console.error('Error al descargar PDF:', pdfErr);
-          try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. No se pudo obtener el PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
-          if (onVolver) onVolver();
-          return;
-        }
-      }
+      // Eliminado modal de PDF generado. Solo mostrar mensaje de éxito simple.
 
       try {
         await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada correctamente', icon: 'success', confirmButtonText: 'Aceptar' });

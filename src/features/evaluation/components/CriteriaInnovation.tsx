@@ -89,18 +89,18 @@ const CriteriaInnovation: React.FC<CriteriaInnovationProps> = ({ value, onChange
         {/* Primer bloque */}
         <div className="flex flex-row gap-8">
           {[0, 1, 2, 3, 4, 5].map((val) => (
-            <label key={val} className="inline-flex items-center cursor-pointer">
-              <input
-                type="radio"
-                name="innovacion"
-                className="custom-radio"
-                value={val}
-                checked={criteria.score === val}
-                onChange={() => updateScore(val)}
-              />
-              <span className="ml-2">{val}</span>
-            </label>
-          ))}
+              <label key={val} className="inline-flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name={`innovacion-bloque1-${val}`} // Unique name for each radio button
+                  className="custom-radio"
+                  value={val}
+                  checked={criteria.score === val}
+                  onChange={() => updateScore(val)}
+                />
+                <span className="ml-2">{val}</span>
+              </label>
+            ))}
         </div>
 
         {/* Primer bloque extendido */}
@@ -115,21 +115,21 @@ const CriteriaInnovation: React.FC<CriteriaInnovationProps> = ({ value, onChange
           </p>
           <div className="flex flex-row gap-8">
             {[6, 7, 8, 9, 10].map((val) => (
-              <label
-                key={val}
-                className="inline-flex items-center cursor-pointer"
-              >
-                <input
-                  type="radio"
-                  name="innovacion1"
-                  className="custom-radio"
-                  value={val}
-                  checked={criteria.score === val}
-                  onChange={() => updateScore(val)}
-                />
-                <span className="ml-2">{val}</span>
-              </label>
-            ))}
+                <label
+                  key={val}
+                  className="inline-flex items-center cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name={`innovacion-bloque2-${val}`} // Unique name for each radio button
+                    className="custom-radio"
+                    value={val}
+                    checked={criteria.score === val}
+                    onChange={() => updateScore(val)}
+                  />
+                  <span className="ml-2">{val}</span>
+                </label>
+              ))}
           </div>
         </div>
 
@@ -145,21 +145,21 @@ const CriteriaInnovation: React.FC<CriteriaInnovationProps> = ({ value, onChange
           </p>
           <div className="flex flex-row gap-8">
             {[11, 12, 13, 14, 15].map((val) => (
-              <label
-                key={val}
-                className="inline-flex items-center cursor-pointer"
-              >
-                <input
-                  type="radio"
-                  name="innovacion2"
-                  className="custom-radio"
-                  value={val}
-                  checked={criteria.score === val}
-                  onChange={() => updateScore(val)}
-                />
-                <span className="ml-2">{val}</span>
-              </label>
-            ))}
+                <label
+                  key={val}
+                  className="inline-flex items-center cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name={`innovacion-bloque3-${val}`} // Unique name for each radio button
+                    className="custom-radio"
+                    value={val}
+                    checked={criteria.score === val}
+                    onChange={() => updateScore(val)}
+                  />
+                  <span className="ml-2">{val}</span>
+                </label>
+              ))}
           </div>
         </div>
 

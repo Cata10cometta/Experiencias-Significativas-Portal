@@ -84,7 +84,7 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
             <label key={num} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="pertinencia"
+                name="pertinencia-bloque1"
                 className="custom-radio"
                 value={num}
                 checked={criteria.score === num}
@@ -105,7 +105,7 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
             <label key={num} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="pertinencia"
+                name="pertinencia-bloque2"
                 className="custom-radio"
                 value={num}
                 checked={criteria.score === num}
@@ -126,7 +126,7 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
             <label key={num} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="pertinenciaGrupo3"
+                name="pertinencia-bloque3"
                 className="custom-radio"
                 value={num}
                 checked={criteria.score === num}

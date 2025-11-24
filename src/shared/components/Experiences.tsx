@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Evaluation from '../../features/evaluation/components/Evaluation';
 import Swal from 'sweetalert2';
 import type { Experience } from '../../features/experience/types/experienceTypes';
 import AddExperience from '../../features/experience/components/AddExperience';
@@ -18,6 +19,9 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 	const pageSize = 5;
 	const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
 	const [showAddModal, setShowAddModal] = useState<boolean>(false);
+	// State for the evaluation modal and currently selected evaluation experience id
+	const [showEvalModal, setShowEvalModal] = useState<boolean>(false);
+	const [evalExpId, setEvalExpId] = useState<number | null>(null);
 
 	// Cache of discovered evaluation PDF URLs by experience id
 	const [evaluationPdfMap, setEvaluationPdfMap] = useState<Record<number, string>>({});
@@ -690,13 +694,14 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 
 				<div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
 					<div className="text-left text-sm text-gray-600 bg-gray-50 rounded-t-md px-4 py-3 font-semibold">
-						<div className="grid grid-cols-6 gap-4 items-center">
-							<div>Nombre de la experiencia</div>
-							<div>Area aplicada</div>
-							<div className="text-center">Tiempo</div>
-							<div className="text-center">PDF</div>
-							<div className="text-center">Edicion</div>
-							<div className="text-center">Estado</div>
+						<div className="grid grid-cols-7 gap-4 items-center">
+							<div className="text-center font-semibold">Nombre de la experiencia</div>
+							<div className="text-center font-semibold">Área aplicada</div>
+							<div className="text-center font-semibold">Tiempo</div>
+							<div className="text-center font-semibold">PDF</div>
+							<div className="text-center font-semibold">Aplicar Evaluación</div>
+							<div className="text-center font-semibold">Edición</div>
+							<div className="text-center font-semibold">Estado</div>
 						</div>
 					</div>
 
@@ -722,19 +727,20 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 									<div className="divide-y">
 										{paginated.map((exp, idx) => (
 											<div className="px-6 py-4" key={exp.id ?? idx}>
-												<div className="grid grid-cols-6 gap-4 items-center">
-													<div className="flex items-center gap-3">
-														<button onClick={() => openModal(exp.id)} className="text-left text-sm font-medium text-gray-800 hover:underline">
+												<div className="grid grid-cols-7 gap-4 items-center">
+													{/* Nombre de la experiencia */}
+													<div className="flex items-center gap-3 text-center">
+														<button onClick={() => openModal(exp.id)} className="text-sm font-medium text-gray-800 hover:underline">
 															{(exp as any).nameExperiences ?? (exp as any).name ?? 'Sin título'}
 														</button>
 													</div>
-
-													<div className="text-sm text-gray-600">{(exp as any).areaApplied ?? (exp as any).thematicLocation ?? (exp as any).code ?? '-'}</div>
-
+													{/* Área aplicada */}
+													<div className="text-center text-sm text-gray-600">{(exp as any).areaApplied ?? (exp as any).thematicLocation ?? (exp as any).code ?? '-'}</div>
+													{/* Tiempo */}
 													<div className="text-center text-sm text-gray-600">
 														{formatDevelopmentTime((exp as any).developmenttime)}
 													</div>
-
+													{/* PDF */}
 													<div className="flex items-center justify-center">
 														{(() => {
 															const raw = evaluationPdfMap[exp.id] ?? getPdfUrlFromExp(exp as any);
@@ -749,18 +755,48 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 																		}}
 																		aria-label="Ver PDF"
 																		title="Ver PDF"
-																		className="px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700"
+																		className="px-4 py-2 bg-red-600 text-white rounded-md! font-medium hover:bg-red-700"
 																	>
 																		Ver PDF
 																	</button>
 																);
 															}
 															return (
-																<div className="px-3 py-2 rounded-md bg-gray-100 text-gray-400 text-sm" title="Sin PDF">Sin PDF</div>
+																<div className="px-3 py-2 rounded-md! bg-gray-100 text-gray-400 text-sm" title="Sin PDF">Sin PDF</div>
 															);
 														})()}
 													</div>
-
+													{/* Aplicar Evaluación */}
+													<div className="text-center">
+														<button
+															className="px-4 py-2 bg-blue-600 text-white rounded-md! font-medium hover:bg-blue-700"
+															title="Evaluación"
+															onClick={() => {
+																setEvalExpId(exp.id);
+																setShowEvalModal(true);
+															}}
+														>
+															Evaluación
+														</button>
+													</div>
+																{/* Modal de Evaluación (fuera del map) */}
+																{showEvalModal && evalExpId && (
+																	<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+																		<div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-auto relative">
+																			<button
+																				className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+																				onClick={() => { setShowEvalModal(false); setEvalExpId(null); }}
+																				aria-label="Cerrar"
+																			>
+																				×
+																			</button>
+																			<div className="p-6">
+																				<Evaluation experienceId={evalExpId} onClose={() => { setShowEvalModal(false); setEvalExpId(null); }} />
+																			</div>
+																		</div>
+																	</div>
+																)}
+													{/* Edición */}
 													<div className="text-center">
 														<button
 															className="text-gray-500 hover:text-gray-700"
@@ -770,12 +806,12 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 																e.preventDefault();
 																// Role-aware behavior: professors request edit, others open detail view
 																try {
-																									if (isProfessor && typeof isProfessor === 'function' && isProfessor()) {
-																										// pass the full experience object so we can open modal without refetching
-																										await requestEdit(exp as any);
-																									} else {
-																										await fetchAndShowDetail(exp.id as number);
-																									}
+																	if (isProfessor && typeof isProfessor === 'function' && isProfessor()) {
+																		// pass the full experience object so we can open modal without refetching
+																		await requestEdit(exp as any);
+																	} else {
+																		await fetchAndShowDetail(exp.id as number);
+																	}
 																} catch (err) {
 																	console.error('Error handling pencil click', err);
 																}
@@ -786,7 +822,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 															</svg>
 														</button>
 													</div>
-
+													{/* Estado */}
 													<div className="text-center">
 														{renderStatusBadge(exp)}
 													</div>

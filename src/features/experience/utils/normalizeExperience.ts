@@ -62,20 +62,63 @@ export const normalizeToInitial = (src: any) => {
   // identification form
   const identificacionForm = {
     nameExperience: src.nameExperiences || src.nameExperience || src.name || "",
-    thematicFocus: src.thematicFocus || src.thematicLine || src.thematic || src.thematicLocation || "",
     development: { days: '', months: '', years: '' },
-    thematicLocation: src.thematicLocation || src.thematicLocation || "",
     estado: src.stateExperienceId ?? src.state ?? "",
   };
 
-  // thematic form
+  // Helper to normalize array fields to array of strings
+  const normalizeArrayOfStrings = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) {
+      return val.map((item) => {
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object' && item !== null) {
+          return item.name || item.label || item.description || item.value || item.id || '';
+        }
+        return String(item);
+      }).filter(Boolean);
+    }
+    // If it's a single string or value
+    if (typeof val === 'string') return [val];
+    return [];
+  };
+
+  // Helper to convertir label a id de checkbox
+  const toCheckboxId = (label: string) =>
+    label
+      .toLowerCase()
+      .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+
+  const normalizeCheckboxIds = (val: any) => {
+    const arr = normalizeArrayOfStrings(val);
+    return arr.map(toCheckboxId);
+  };
+
   const tematicaForm = {
-    thematicLineIds: src.thematicLineIds || src.thematicLines || src.thematicLine || [],
-    pedagogicalStrategies: src.pedagogicalStrategies || "",
-    coordinationTransversalProjects: src.coordinationTransversalProjects || "",
-    coverage: src.coverage || "",
-    population: src.population || src.populationGradeIds || [],
-    experiencesCovidPandemic: src.experiencesCovidPandemic || "",
+    thematicLineIds: normalizeCheckboxIds(src.thematicLineIds || src.thematicLines || src.thematicLine),
+    PedagogicalStrategies: normalizeCheckboxIds(src.PedagogicalStrategies || src.pedagogicalStrategies),
+    pedagogicalStrategies: normalizeCheckboxIds(src.pedagogicalStrategies || src.PedagogicalStrategies),
+    CrossCuttingProject: normalizeCheckboxIds(src.CrossCuttingProject || src.crossCuttingProject || src.crosscuttingProject),
+    coordinationTransversalProjects: src.coordinationTransversalProjects || src.CoordinationTransversalProjects || "",
+    coverage: src.coverage || src.Coverage || "",
+    Coverage: src.Coverage || src.coverage || "",
+    CoverageText: src.CoverageText || src.coverageText || "",
+    Population: normalizeCheckboxIds(src.Population || src.population || src.populationGradeIds),
+    PopulationGrade: normalizeCheckboxIds(src.PopulationGrade || src.populationGrade),
+    population: normalizeCheckboxIds(src.population || src.Population || src.populationGradeIds),
+    populationGradeIds: normalizeCheckboxIds(src.populationGradeIds || src.PopulationGradeIds),
+    populationGrades: normalizeCheckboxIds(src.populationGrades || src.PopulationGrades),
+    experiencesCovidPandemic: src.experiencesCovidPandemic || src.experiences_covid_pandemic || src.covidPandemic || "",
+    recognition: src.recognition || src.Recognition || "",
+    recognitionText: src.recognitionText || src.RecognitionText || "",
+    socialization: normalizeCheckboxIds(src.socialization || src.Socialization),
+    socializationLabels: normalizeCheckboxIds(src.socializationLabels || src.SocializationLabels),
+    grades: normalizeCheckboxIds(src.grades || src.Grades),
+    gradeId: normalizeCheckboxIds(src.gradeId || src.GradeId),
+    thematicLocation: src.thematicLocation || src.thematic_location || "",
+    thematicFocus: src.thematicFocus || src.thematicLine || src.thematic || src.thematicLocation || "",
   };
 
   // niveles / grades: try to map backend grades to the form shape
@@ -138,16 +181,50 @@ export const normalizeToInitial = (src: any) => {
     rawMonitoring?.monitoringEvaluation || rawMonitoring?.monitoring || rawMonitoring?.seguimiento || rawMonitoring?.evaluacion || rawMonitoring?.evaluacionMonitoreo || src.monitoringEvaluation || src.seguimientoEvaluacion || src.seguimiento || rawSupport?.monitoringEvaluation || rawSupport?.monitoring || rawSupport?.seguimiento || null
   );
 
+  // Normalizar summary para radios: monitoringEvaluation, metaphoricalPhrase, testimony, followEvaluation
+  let normalizedSummary = [];
+  if (Array.isArray(summaryArr) && summaryArr.length > 0) {
+    const first = summaryArr[0];
+    if (typeof first === 'object' && first !== null) {
+      normalizedSummary = [{
+        ...first,
+        monitoringEvaluation: normalizeYesNo(first.monitoringEvaluation),
+        metaphoricalPhrase: normalizeYesNo(first.metaphoricalPhrase),
+        testimony: normalizeYesNo(first.testimony),
+        followEvaluation: normalizeYesNo(first.followEvaluation),
+        sustainability: normalizeYesNo(first.sustainability),
+      }];
+    } else if (typeof first === 'string' || typeof first === 'number' || typeof first === 'boolean') {
+      normalizedSummary = [{ monitoringEvaluation: normalizeYesNo(first) }];
+    } else {
+      normalizedSummary = [{}];
+    }
+  } else {
+    normalizedSummary = [{}];
+  }
+
   const seguimientoEvaluacion = {
     monitoringEvaluation: normalizeYesNo(rawMonitoringCandidates ?? (summaryArr[0]?.monitoringEvaluation ?? '')),
     result: rawMonitoring?.result || rawMonitoring?.resulsExperience || src.result || '',
-    sustainability: rawMonitoring?.sustainability || rawMonitoring?.sustainabilityExperience || src.sustainability || rawSupport?.sustainability || '',
+    sustainability: normalizeYesNo(
+      (normalizedSummary[0] && normalizedSummary[0].sustainability) ??
+      rawMonitoring?.sustainability ?? rawMonitoring?.sustainabilityExperience ?? src.sustainability ?? rawSupport?.sustainability ?? ''
+    ),
     tranfer: rawMonitoring?.tranfer || rawMonitoring?.transfer || src.tranfer || rawSupport?.transfer || '',
-    // Ensure `summary` is an array with an object that may contain monitoringEvaluation (UI expects summary[0].monitoringEvaluation)
-    summary: summaryArr,
-    metaphoricalPhrase: normalizeYesNo(rawSupport?.metaphoricalPhrase ?? rawMonitoring?.metaphoricalPhrase ?? src.metaphoricalPhrase ?? ''),
-    testimony: normalizeYesNo(rawSupport?.testimony ?? rawMonitoring?.testimony ?? src.testimony ?? ''),
-    followEvaluation: normalizeYesNo(rawSupport?.followEvaluation ?? rawMonitoring?.followEvaluation ?? src.followEvaluation ?? ''),
+    // summary normalizado para radios
+    summary: normalizedSummary,
+    metaphoricalPhrase: normalizeYesNo(
+      (normalizedSummary[0] && normalizedSummary[0].metaphoricalPhrase) ??
+      rawSupport?.metaphoricalPhrase ?? rawMonitoring?.metaphoricalPhrase ?? src.metaphoricalPhrase ?? ''
+    ),
+    testimony: normalizeYesNo(
+      (normalizedSummary[0] && normalizedSummary[0].testimony) ??
+      rawSupport?.testimony ?? rawMonitoring?.testimony ?? src.testimony ?? ''
+    ),
+    followEvaluation: normalizeYesNo(
+      (normalizedSummary[0] && normalizedSummary[0].followEvaluation) ??
+      rawSupport?.followEvaluation ?? rawMonitoring?.followEvaluation ?? src.followEvaluation ?? ''
+    ),
   };
 
   // informacionApoyo also used by SupportInformationForm and should include monitoringEvaluation/sustainability when available

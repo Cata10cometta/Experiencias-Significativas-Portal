@@ -177,44 +177,29 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
         />
       </div>
 
-      {/* Estado (select preferente que entrega stateExperienceId numérico) */}
+      {/* Estado (radio buttons tipo óvalo) */}
       <div className="mb-4">
         <p className="mb-2 text-sm">Seleccione el Estado de desarrollo en el que se encuentra la Experiencia Significativa (realizar la autoevaluación)</p>
         {loadingStates ? (
           <div className="text-sm text-gray-500">Cargando estados...</div>
-        ) : statesOptions.length > 0 ? (
-          <select
-            className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
-            value={typeof value.stateExperienceId === 'number' ? String(value.stateExperienceId) : ''}
-            onChange={(e) => {
-              const id = Number(e.target.value);
-              if (!Number.isNaN(id) && id > 0) {
-                onChange({ ...value, stateExperienceId: id });
-              } else {
-                onChange({ ...value, stateExperienceId: undefined });
-              }
-            }}
-          >
-            <option value="">Seleccione un estado</option>
-            {statesOptions.map((s) => (
-              <option key={s.id} value={String(s.id)}>
-                {s.name}
-              </option>
-            ))}
-          </select>
         ) : (
           <div className="flex items-center gap-6">
-            {['Naciente','Creciente','Inspiradora'].map((opt) => (
-              <label key={opt} className="flex items-center gap-2">
+            {(statesOptions.length > 0 ? statesOptions : [
+              { id: 1, name: 'Naciente' },
+              { id: 2, name: 'Creciente' },
+              { id: 3, name: 'Inspiradora' }
+            ]).map((opt) => (
+              <label key={opt.id} className="flex items-center gap-2 px-3 py-2 rounded-full border border-gray-300 cursor-pointer hover:bg-yellow-50 transition-all" style={{ boxShadow: (String(value.stateExperienceId) === String(opt.id)) ? '0 0 0 2px #facc15' : undefined }}>
                 <input
                   type="radio"
-                  name="estado"
-                  value={opt}
-                  checked={String((value as any).estado ?? value.stateExperienceId ?? '') === opt}
-                  onChange={() => onChange({ ...value, estado: opt })}
+                  name="stateExperienceId"
+                  value={opt.id}
+                  checked={String(value.stateExperienceId) === String(opt.id)}
+                  onChange={() => onChange({ ...value, stateExperienceId: opt.id })}
                   className="form-radio h-4 w-4 text-yellow-400 border-yellow-300"
+                  style={{ accentColor: '#facc15' }}
                 />
-                <span className="text-sm">{opt}</span>
+                <span className="text-sm">{opt.name}</span>
               </label>
             ))}
           </div>

@@ -17,6 +17,7 @@ export interface Evaluation {
 	comments: string;
 	evaluationResult: string;
 	experienceId: number;
+	experience: string;
 	experienceName: string;
 	stateId: number;
 	institutionName: string;
