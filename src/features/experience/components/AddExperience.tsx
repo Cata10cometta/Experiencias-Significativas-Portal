@@ -725,6 +725,37 @@ populationGrade: Array.isArray(tematicaForm.PopulationGrade)
       }
 
       // If we have an id, call the generate-pdf endpoint and download/open the PDF
+       // If we have an id, call the generate-pdf endpoint and download/open the PDF
+      if (createdId && Number.isFinite(createdId) && createdId > 0) {
+        const pdfEndpoint = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/Experience/${createdId}/generate-pdf`;
+        try {
+          const pdfRes = await fetch(pdfEndpoint, {
+            method: 'GET',
+            headers: {
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            },
+          });
+          if (pdfRes.ok) {
+            const blob = await pdfRes.blob();
+            const url = URL.createObjectURL(blob);
+            // Show a link to the generated PDF and let the user open it manually.
+            // Avoid forcing an automatic download.
+            // No mostrar modal ni abrir PDF tras la generación
+            // revoke after a while to allow user to open the link
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+          } else {
+            console.warn('Fallo al generar PDF:', await pdfRes.text().catch(() => '')); 
+            try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. Falló la generación del PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
+            if (onVolver) onVolver();
+            return;
+          }
+        } catch (pdfErr) {
+          console.error('Error al descargar PDF:', pdfErr);
+          try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. No se pudo obtener el PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
+          if (onVolver) onVolver();
+          return;
+        }
+      }
       // Eliminado modal de PDF generado. Solo mostrar mensaje de éxito simple.
 
       try {
