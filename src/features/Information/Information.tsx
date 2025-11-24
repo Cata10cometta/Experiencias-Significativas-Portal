@@ -209,73 +209,71 @@ const Information = () => {
 						/>
 					</div>
 				</div>
-				{/* Tabla */}
-				<div className="overflow-x-auto rounded-2xl border border-gray-200 bg-[#f6f8fb]">
-					<table className="min-w-full">
-						<thead>
-							<tr className="bg-[#dbeafe] text-gray-700 text-sm">
-								<th className="py-3 px-4 text-left rounded-tl-2xl">Nombre de experiencia</th>
-								<th className="py-3 px-4 text-left">Rol de acompañamiento</th>
-								<th className="py-3 px-4 text-left">Tipo de Evaluación</th>
-								<th className="py-3 px-4 text-center">PDF</th>
-								<th className="py-3 px-4 text-center">Inhabilitar/Habilitar</th>
-							</tr>
-						</thead>
-						<tbody>
-							{loading ? (
-								<tr><td colSpan={4} className="py-6 text-center text-gray-400">Cargando evaluaciones...</td></tr>
-							) : error ? (
-								<tr><td colSpan={4} className="py-6 text-center text-red-500">{error}</td></tr>
-							) : paginated.length === 0 ? (
-								<tr><td colSpan={4} className="py-6 text-center text-gray-400">No hay evaluaciones</td></tr>
-							) : (
-								paginated.map((ev, idx) => (
-									<tr key={ev.id ?? ev.evaluationId ?? idx} className="bg-white border-b last:border-b-0">
-										<td className="py-2 px-4">{
-											experiences.find(e => e.id === ev.experienceId)?.name
-											|| ev.experienceName
-											|| (ev.experience && typeof ev.experience === 'object' && 'name' in ev.experience ? (ev.experience as { name?: string }).name : undefined)
-											|| '-'
-										}</td>
-										<td className="py-2 px-4">{ev.accompanimentRole ?? '-'}</td>
-										<td className="py-2 px-4">{ev.typeEvaluation ?? '-'}</td>
-										<td className="py-2 px-4 text-center">
-											{ev.urlEvaPdf ? (
-												<a
-													href={ev.urlEvaPdf}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="inline-block bg-red-600 text-white px-6 py-2 rounded font-semibold shadow hover:bg-red-700 transition-all"
-													style={{ minWidth: 100 }}
-												>
-													Ver PDF
-												</a>
-											) : (
-												<span className="inline-block text-gray-400 font-semibold" style={{ minWidth: 100 }}>Sin PDF</span>
-											)}
-										</td>
-										<td className="py-2 px-4 text-center">
-											{/* Mostrar el estado de la evaluación usando stateId o posibles keys del backend */}
-											{(() => {
-												// eslint-disable-next-line no-console
-												console.log('Evaluación:', ev, 'stateId:', ev.stateId, 'State:', (ev as any).State, 'state:', (ev as any).state);
-												const rawState = ev.stateId ?? (ev as any).State ?? (ev as any).state;
-												const stateStr = String(rawState).toLowerCase();
-												if (stateStr === 'true' || stateStr === '1') {
-													return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Activo</span>;
-												}
-												if (stateStr === 'false' || stateStr === '0') {
-													return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Inactivo</span>;
-												}
-												return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">{stateStr || '-'}</span>;
-											})()}
-										</td>
-									</tr>
-								))
-							)}
-						</tbody>
-					</table>
-				</div>
+				{/* Grid de tarjetas de experiencias */}
+				{loading ? (
+					<div className="py-10 text-center text-gray-400">Cargando evaluaciones...</div>
+				) : error ? (
+					<div className="py-10 text-center text-red-500">{error}</div>
+				) : paginated.length === 0 ? (
+					<div className="py-10 text-center text-gray-400">No hay evaluaciones</div>
+				) : (
+					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 py-4">
+						{paginated.map((ev, idx) => {
+							const expName =
+								experiences.find(e => e.id === ev.experienceId)?.name
+								|| ev.experienceName
+								|| (ev.experience && typeof ev.experience === 'object' && 'name' in ev.experience ? (ev.experience as { name?: string }).name : undefined)
+								|| '-';
+
+							return (
+								<div key={ev.id ?? ev.evaluationId ?? idx} className="bg-white rounded-2xl shadow-lg flex flex-col items-center p-6 border border-gray-200 hover:shadow-xl transition-all">
+									{/* Imagen de la experiencia (placeholder) */}
+									<div className="w-32 h-32 rounded-xl bg-gradient-to-tr from-sky-100 to-sky-200 flex items-center justify-center mb-4 overflow-hidden">
+										{/* Aquí puedes poner una imagen real si tienes la URL, por ahora placeholder SVG */}
+										<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+											<rect width="64" height="64" rx="16" fill="#e0e7ef"/>
+											<path d="M32 18C25.3726 18 20 23.3726 20 30C20 36.6274 25.3726 42 32 42C38.6274 42 44 36.6274 44 30C44 23.3726 38.6274 18 32 18ZM32 40C26.4772 40 22 35.5228 22 30C22 24.4772 26.4772 20 32 20C37.5228 20 42 24.4772 42 30C42 35.5228 37.5228 40 32 40Z" fill="#a5b4fc"/>
+										</svg>
+									</div>
+									{/* Nombre de la experiencia debajo de la imagen */}
+									<div className="text-lg font-semibold text-gray-800 text-center mb-2 truncate w-full" title={expName}>{expName}</div>
+
+									{/* Info adicional, botones, etc. */}
+									<div className="flex flex-col items-center gap-2 w-full">
+										<div className="text-sm text-gray-500">{ev.accompanimentRole ?? '-'}</div>
+										<div className="text-xs text-gray-400 mb-2">{ev.typeEvaluation ?? '-'}</div>
+										{ev.urlEvaPdf ? (
+											<a
+												href={ev.urlEvaPdf}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="inline-block bg-red-600 text-white px-4 py-1 rounded font-semibold shadow hover:bg-red-700 transition-all text-sm"
+												style={{ minWidth: 80 }}
+											>
+												Ver PDF
+											</a>
+										) : (
+											<span className="inline-block text-gray-400 font-semibold text-sm" style={{ minWidth: 80 }}>Sin PDF</span>
+										)}
+										{/* Estado */}
+										{(() => {
+											const rawState = ev.stateId ?? (ev as any).State ?? (ev as any).state;
+											const stateStr = String(rawState).toLowerCase();
+											if (stateStr === 'true' || stateStr === '1') {
+												return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Activo</span>;
+											}
+											if (stateStr === 'false' || stateStr === '0') {
+												return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Inactivo</span>;
+											}
+											return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">{stateStr || '-'}</span>;
+										})()}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				)
+				}
 				{/* Paginación */}
 				<div className="flex items-center justify-between mt-4 text-sm text-gray-500">
 					<div>Mostrando {paginated.length} evaluaciones</div>

@@ -7,6 +7,7 @@ import NotificationsModal from './NotificationsModal';
 const Widgets: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(null);
+  const [selectedExperience, setSelectedExperience] = useState<any | null>(null);
   const [selectedEje, setSelectedEje] = useState<number | null>(null);
   const [experiencias, setExperiencias] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -18,11 +19,11 @@ const Widgets: React.FC = () => {
   
 
   React.useEffect(() => {
-    // Fetch all experiences on mount, and refetch when selectedEje changes to update view.
+    // Fetch all experiences from /api/Experience/getAll
     setLoading(true);
     setError(null);
     const token = localStorage.getItem("token");
-    fetch("/api/ExperienceLineThematic/getAll", {
+    fetch("https://localhost:7263/api/Experience/getAll", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -32,20 +33,7 @@ const Widgets: React.FC = () => {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data.data)) {
-          // The endpoint may return multiple rows per experience (one per thematic line).
-          // Deduplicate by `experienceId` (or `id`) so each experience appears once.
-          const all = data.data as any[];
-          const uniqueMap = new Map<number | string, any>();
-          all.forEach(item => {
-            const key = item.experienceId ?? item.id ?? item.NameExperiences ?? JSON.stringify(item);
-            if (!uniqueMap.has(key)) uniqueMap.set(key, item);
-          });
-          const unique = Array.from(uniqueMap.values());
-          if (selectedEje) {
-            setExperiencias(unique.filter((item: any) => item.lineThematicId === selectedEje));
-          } else {
-            setExperiencias(unique);
-          }
+          setExperiencias(data.data);
         } else {
           setExperiencias([]);
         }
@@ -55,7 +43,7 @@ const Widgets: React.FC = () => {
         setError("Error al cargar experiencias");
         setLoading(false);
       });
-  }, [selectedEje]);
+  }, []);
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const ejes = [
     { id: 1, label: "Educación Ambiental", img: "/images/EducacionAmbiental.png", imgClass: "w-15" },
@@ -113,17 +101,29 @@ const Widgets: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* Featured orange card */}
-      {experiencias.length > 0 && (
-        <div className="mt-8 flex items-center justify-center">
-          <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-8 flex items-center gap-8">
-            <img src="/images/Experiencias.png" alt="icono" className="w-28 h-28" />
-            <div className="flex-1">
-              <h2 className="text-2xl font-extrabold text-[#1f2937]">{experiencias[0].title || experiencias[0].name || 'Nombre de la experiencia'}</h2>
-              <p className="mt-2 text-lg text-[#1f2937]">{experiencias[0].ThematicLocation || experiencias[0].thematicLocation || experiencias[0].area || ''}</p>
-            </div>
+
+      {/* Featured orange card SIEMPRE visible abajo, mostrando la experiencia seleccionada o mensaje por defecto */}
+      <div className="mt-12 flex items-center justify-center">
+        <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-8 flex items-center gap-8">
+          <img src="/carts.svg" alt="icono experiencia" className="w-28 h-28" />
+          <div className="flex-1">
+            <h2 className="text-2xl font-extrabold text-[#1f2937]">
+              {selectedExperience
+                ? (selectedExperience.nameExperiences || selectedExperience.title || selectedExperience.name)
+                : 'Selecciona una experiencia'}
+            </h2>
+            <p className="mt-2 text-lg text-[#1f2937]">
+              {selectedExperience
+                ? (selectedExperience.thematicLocation || selectedExperience.ThematicLocation || selectedExperience.area || '')
+                : ''}
+            </p>
+          </div>
+          {selectedExperience && (
             <button
-              onClick={() => { setSelectedExperienceId(experiencias[0].experienceId ?? experiencias[0].id); setModalOpen(true); }}
+              onClick={() => {
+                setSelectedExperienceId(selectedExperience.id ?? selectedExperience.experienceId);
+                setModalOpen(true);
+              }}
               className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shadow-md"
               aria-label="Ver experiencia"
             >
@@ -132,16 +132,12 @@ const Widgets: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
             </button>
-          </div>
+          )}
         </div>
-      )}
-
-      <div className="mt-10 font-bold text-[#00aaff] text-[28.359px] w-full flex items-center justify-between">
-        <p>Experiencias</p>
       </div>
 
       {/* Large white container with carousel and action icons */}
-      <div className="mt-6">
+      <div className="mt-16">
         <div className="bg-white rounded-2xl p-6 shadow-lg relative">
           {/* action icons (search + notifications) */}
           <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
@@ -193,32 +189,25 @@ const Widgets: React.FC = () => {
               <div className="relative">
                 <div ref={carouselRef} className="flex gap-4 overflow-x-auto scrollbar-hide py-6 px-2 pr-20">
                   {/** render filtered list when searching, otherwise all experiencias */}
-                  { filteredExperiencias.map((exp: any) => (
-                    <div key={exp.id ?? exp.experienceId} className="min-w-[260px] max-w-[260px] bg-white border rounded-xl p-4 flex flex-col items-start shadow-sm hover:shadow-lg transition duration-200 relative">
-                      {/* small icon above the card */}
-                      <div className="absolute -top-5 left-4 bg-white/80 rounded-full p-2 shadow-sm">
-                        <img src="/images/Experiencias.png" alt="icono" className="w-8 h-8" />
-                      </div>
-
-                      {/* eye button (open modal) top-right */}
-                      <button
-                        onClick={() => { setSelectedExperienceId(exp.experienceId ?? exp.id); setModalOpen(true); }}
-                        className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md border border-gray-100"
-                        aria-label="Ver experiencia"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-sky-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-
-                      <div className="mt-6 w-full text-left">
-                        <h3 className="text-lg font-semibold text-sky-700 truncate">{exp.title || exp.name || ''}</h3>
-                        <p className="text-sm text-gray-600 mt-2 truncate">{exp.ThematicLocation || exp.area || exp.thematicLocation || exp.areaApplied || ''}</p>
-                        <p className="text-sm text-gray-500 mt-1 truncate">{exp.institutionName || exp.institution || exp.schoolName || exp.nombreInstitucion || exp.organizacion || exp.entidad || ''}</p>
-                        <div className="mt-4">
-                          <button className="bg-gray-100 rounded px-3 py-1 text-sm font-semibold text-sky-700" onClick={() => { setSelectedExperienceId(exp.experienceId ?? exp.id); setModalOpen(true); }}>Abrir</button>
+                  { experiencias.map((exp: any) => (
+                    <div
+                      key={exp.id ?? exp.experienceId}
+                      className="bg-white border rounded-2xl flex flex-col items-center justify-center shadow-sm hover:shadow-lg transition duration-200 relative
+                        min-w-[200px] max-w-[200px] h-[240px] p-2
+                        sm:min-w-[240px] sm:max-w-[240px] sm:h-[280px] sm:p-4
+                        md:min-w-[280px] md:max-w-[280px] md:h-[320px] md:p-6
+                        lg:min-w-[320px] lg:max-w-[320px] lg:h-[360px] lg:p-8
+                      "
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setSelectedExperience(exp)}
+                    >
+                      <div className="flex flex-col items-center justify-center flex-grow w-full h-full">
+                        {/* Imagen centrada */}
+                        <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 lg:w-40 lg:h-40 flex items-center justify-center rounded-xl bg-[#fff7e6] overflow-hidden">
+                          <img src="/carts.svg" alt="icono experiencia" className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 object-contain" />
                         </div>
+                        {/* Nombre de la experiencia */}
+                        <span className="text-xl sm:text-2xl md:text-3xl font-extrabold text-gray-800 text-center mt-4 mb-1 break-words w-full" title={exp.nameExperiences || ''}>{exp.nameExperiences || ''}</span>
                       </div>
                     </div>
                   ))}
@@ -230,12 +219,11 @@ const Widgets: React.FC = () => {
         </div>
       </div>
       {/* Modal de experiencia */}
-      {modalOpen && selectedExperienceId && (
+      {modalOpen && selectedExperience && (
         <ExperienceModal
           show={modalOpen}
           onClose={() => setModalOpen(false)}
-          experienceId={selectedExperienceId}
-          mode="view" // Solo visualizar
+          experience={selectedExperience}
         />
       )}
 

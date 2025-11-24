@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import flecha from "../../public/images/flecha.png";
+import flecha from "/images/flecha.svg";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
@@ -171,12 +171,12 @@ const ResetPassword: React.FC = () => {
               <div className="absolute top-6 left-6 z-40">
                 {step === 1 ? (
                   <Link to="/login" aria-label="Volver al login">
-                    <img src={flecha} alt="Volver" className="w-16 h-16 rounded-lg bg-orange-400 p-2 cursor-pointer shadow-md" />
+                    <img src={flecha} alt="Volver" className="w-16 h-16 cursor-pointer shadow-md" />
                   </Link>
                 ) : step === 2 ? (
-                  <img src={flecha} alt="Volver" onClick={goBackToStep1} className="w-16 h-16 rounded-lg bg-orange-400 p-2 cursor-pointer shadow-md" />
+                  <img src={flecha} alt="Volver" onClick={goBackToStep1} className="w-16 h-16 cursor-pointer shadow-md" />
                 ) : (
-                  <img src={flecha} alt="Volver" onClick={goBackToStep2} className="w-16 h-16 rounded-lg bg-orange-400 p-2 cursor-pointer shadow-md" />
+                  <img src={flecha} alt="Volver" onClick={goBackToStep2} className="w-16 h-16 cursor-pointer shadow-md" />
                 )}
               </div>
 
