@@ -550,15 +550,17 @@ const UserList: React.FC = () => {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <button className="text-gray-500 hover:text-sky-600" onClick={() => setEditUser(user)} title="Editar">
+                          <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditUser(user)} title="Editar">
+                            {/* Pencil icon (from roles) */}
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
                           </button>
                           {user.state ? (
-                            <button className="text-gray-500 hover:text-red-600" onClick={() => handleDeactivate(user.id)} title="Desactivar">
+                            <button className="text-red-400 hover:text-red-600" onClick={() => handleDeactivate(user.id)} title="Desactivar">
+                              {/* Trash icon (from roles) */}
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
                             </button>
                           ) : (
-                            <button className="text-gray-500 hover:text-emerald-600" onClick={() => handleActivate(user.id)} title="Activar">
+                            <button className="text-emerald-500 hover:text-emerald-600" onClick={() => handleActivate(user.id)} title="Activar">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
                             </button>
                           )}

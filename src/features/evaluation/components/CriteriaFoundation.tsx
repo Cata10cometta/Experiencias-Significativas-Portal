@@ -90,11 +90,11 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
             <label key={val} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="fundamentacion"
+                name="fundamentacion-bloque1"
                 className="custom-radio"
                 value={val}
                 checked={criteria.score === val}
-                onChange={() => updateScore( val)}
+                onChange={() => updateScore(val)}
               />
               <span className="ml-2">{val}</span>
             </label>
@@ -115,7 +115,7 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
               <label key={val} className="inline-flex items-center cursor-pointer">
                 <input
                   type="radio"
-                  name="fundamentacion1"
+                  name="fundamentacion-bloque2"
                   className="custom-radio"
                   value={val}
                   checked={criteria.score === val}
@@ -143,7 +143,7 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
               <label key={val} className="inline-flex items-center cursor-pointer">
                 <input
                   type="radio"
-                  name="fundamentacion2"
+                  name="fundamentacion-bloque3"
                   className="custom-radio"
                   value={val}
                   checked={criteria.score === val}

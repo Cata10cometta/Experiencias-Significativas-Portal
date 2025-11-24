@@ -40,7 +40,8 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         institutionName: "",
         criteriaEvaluations: [],
         thematicLineNames: [],
-        userId: Number(localStorage.getItem("userId")) || 0
+        userId: Number(localStorage.getItem("userId")) || 0,
+        experience: {} as any // provide empty experience object to satisfy required type
     });
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -267,14 +268,12 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             if (!experienceId) return;
             const token = localStorage.getItem("token");
             try {
-                // Intentar distintas rutas comunes para obtener la evaluación por experiencia.
-                // Si tu backend tiene otra ruta, ajusta aquí.
                 const urlsToTry = [
                     `/api/Evaluation/getByExperience/${experienceId}`,
                     `/api/Evaluation/by-experience/${experienceId}`,
-                    `/api/Evaluation/${experienceId}`, // fallback single
-                    `/api/Evaluation/List`, // try list endpoint and filter client-side
-                    `/api/Evaluation` // try generic list endpoint
+                    `/api/Evaluation/${experienceId}`,
+                    `/api/Evaluation/List`,
+                    `/api/Evaluation`
                 ];
 
                 let resp = null;
@@ -285,7 +284,6 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                         });
                         if (resp && resp.status === 200 && resp.data) break;
                     } catch (e: any) {
-                        // continuar al siguiente intento si 404 u otro error manejable
                         resp = null;
                     }
                 }
@@ -293,8 +291,6 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                 if (resp && resp.data) {
                     console.debug("Respuesta fetchExistingEvaluation:", resp.data);
                     let existing: any = resp.data;
-
-                    // Si la respuesta es un array (lista), buscar la evaluación que coincida con experienceId
                     if (Array.isArray(existing)) {
                         existing = existing.find((e: any) => {
                             return (
@@ -308,11 +304,13 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
 
                     if (existing) {
                         console.debug("Evaluación encontrada para experienceId=", experienceId, existing);
-                        // Rellenar el form con la evaluación existente y activar modo edición
+                        // Asegurar que los criterios se asignen correctamente
                         setForm(prev => ({
                             ...prev,
                             ...existing,
-                            // asegurar que experienceId y userId queden correctos
+                            criteriaEvaluations: Array.isArray(existing.criteriaEvaluations)
+                                ? existing.criteriaEvaluations
+                                : (Array.isArray(existing.CriteriaEvaluations) ? existing.CriteriaEvaluations : []),
                             experienceId: existing.experienceId ?? existing.ExperienceId ?? prev.experienceId,
                             userId: existing.userId ?? existing.UserId ?? prev.userId,
                         }));
@@ -326,12 +324,10 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                     setIsEditing(false);
                 }
             } catch (err) {
-                // No bloquear la UX si falla la comprobación: permitimos crear nueva evaluación
                 console.warn("No se pudo comprobar evaluación existente:", err);
                 setIsEditing(false);
             }
         };
-
         fetchExistingEvaluation();
     }, [experienceId]);
 
@@ -418,7 +414,21 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
     };
 
     const handleChange = (changes: Partial<Evaluation>) => {
-        setForm((prev) => ({ ...prev, ...changes }));
+        setForm((prev) => {
+            // Si el cambio incluye criteriaEvaluations, fusionar con los existentes
+            if (changes.criteriaEvaluations) {
+                // Tomar los criterios existentes que no están en el nuevo array
+                const existing = prev.criteriaEvaluations.filter(
+                    (c) => !changes.criteriaEvaluations?.some((nc) => nc.criteriaId === c.criteriaId)
+                );
+                return {
+                    ...prev,
+                    ...changes,
+                    criteriaEvaluations: [...existing, ...changes.criteriaEvaluations]
+                };
+            }
+            return { ...prev, ...changes };
+        });
     };
 
     const handleSubmit = async () => {
@@ -426,8 +436,36 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         setError(null);
         const token = localStorage.getItem("token");
         const userId = Number(localStorage.getItem("userId")) || 0;
-        const formToSend = { ...form, userId };
-        console.log("Formulario a enviar:", formToSend);
+        // Normalizar criterios antes de enviar
+        const CRITERIA_IDS = [1,2,3,4,5,6,7,8,9];
+        // Tomar los criterios seleccionados por el usuario
+        let criteriaEvaluationsToSend = Array.isArray(form.criteriaEvaluations) ? [...form.criteriaEvaluations] : [];
+        // Agregar criterios faltantes con valores por defecto
+        CRITERIA_IDS.forEach(id => {
+            if (!criteriaEvaluationsToSend.some(c => c.criteriaId === id)) {
+                criteriaEvaluationsToSend.push({
+                    criteriaId: id,
+                    descriptionContribution: '',
+                    score: 0,
+                    evaluationId: 0,
+                    id: 0,
+                    state: true,
+                    createdAt: null,
+                    deletedAt: null
+                });
+            }
+        });
+        // Ordenar por criteriaId ascendente
+        criteriaEvaluationsToSend = criteriaEvaluationsToSend.sort((a, b) => a.criteriaId - b.criteriaId);
+
+        const formToSend = {
+            ...form,
+            userId,
+            criteriaEvaluations: criteriaEvaluationsToSend,
+            criteriaEvaluationList: criteriaEvaluationsToSend // por si el backend espera este nombre
+        };
+        // Log de depuración para ver exactamente lo que se envía
+        console.log("Formulario a enviar:", JSON.stringify(formToSend, null, 2));
         try {
             if (isEditing && form.evaluationId && form.evaluationId > 0) {
                 // Actualizar evaluación existente
@@ -729,7 +767,36 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
     };
 
     return (
-        <div className="w-full max-w-3xl bg-white rounded-lg shadow-md p-8 mx-auto">
+        <div
+            className="w-full max-w-3xl bg-white rounded-lg shadow-md p-8 mx-auto"
+            style={{
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                position: 'relative',
+                minHeight: '300px',
+                boxSizing: 'border-box',
+            }}
+        >
+            {/* Botón X para cerrar el formulario principal */}
+            {onClose && (
+                <button
+                    onClick={onClose}
+                    style={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        background: 'transparent',
+                        border: 'none',
+                        fontSize: 28,
+                        cursor: 'pointer',
+                        color: '#888',
+                        zIndex: 20
+                    }}
+                    aria-label="Cerrar formulario"
+                >
+                    ×
+                </button>
+            )}
             {activeStep === 0 && (
                 <>
                     <h1 className="text-4xl font-bold !text-[#00aaff]  text-center mt-8">
@@ -784,7 +851,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             {error && <div className="text-red-500 text-center mt-4">{error}</div>}
 
             {/* Modal para mostrar el resultado de la evaluación */}
-            <Modal open={showModal} onClose={() => setShowModal(false)}>
+            <Modal open={showModal} onClose={handleCloseModal}>
                 <Box
                     sx={{
                         position: "absolute",
@@ -792,12 +859,34 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                         left: "50%",
                         transform: "translate(-50%, -50%)",
                         width: 400,
+                        height: '80vh',
+                        overflowY: 'auto',
                         bgcolor: "background.paper",
                         boxShadow: 24,
                         p: 4,
                         borderRadius: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
                     }}
                 >
+                    {/* Botón X para cerrar */}
+                    <button
+                        onClick={handleCloseModal}
+                        style={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            background: 'transparent',
+                            border: 'none',
+                            fontSize: 22,
+                            cursor: 'pointer',
+                            color: '#888',
+                            zIndex: 10
+                        }}
+                        aria-label="Cerrar"
+                    >
+                        ×
+                    </button>
                     <h2 className="text-2xl font-bold text-center mb-4">Resultado de la Evaluación</h2>
                     <p className="text-center text-green-500 font-semibold">{evaluationResult}</p>
                     {isUrlLoading ? (
@@ -805,7 +894,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                     ) : (
                         evaluationUrl ? (
                             <div className="text-center mt-4">
-                                <p className="text-sm text-gray-700">El PDF se ha generado. Aparecerá en la tarjeta de la experiencia en esta pantalla.</p>
+                                <p className="text-sm text-gray-700">El PDF se ha generado. Aparecerá en la tarjeta de la evaluación. </p>
                                 <div className="flex justify-center mt-3">
                                     <Button variant="contained" color="primary" onClick={handleCloseModal}>
                                         Cerrar

@@ -1,102 +1,225 @@
-import "bootstrap/dist/css/bootstrap.min.css";
-import  { useEffect, useState } from "react";
-import ExperienceModal from "../../features/experience/components/ExperienceModal";
-import Evaluation from "../../features/evaluation/components/Evaluation";
-import configApi from "../../Api/Config/Config";
-import type { Experience } from "../../features/experience/types/experienceTypes";
-import type { FollowUp } from "../types/FollowUp";
+import React, { useEffect, useState } from 'react';
+import Evaluation from '../../features/evaluation/components/Evaluation';
+import Swal from 'sweetalert2';
+import type { Experience } from '../../features/experience/types/experienceTypes';
+import AddExperience from '../../features/experience/components/AddExperience';
 
-interface ExperiencesProps {
-  onAgregar: () => void;
-}
+type ExperiencesProps = {
+	onAgregar?: () => void;
+};
 
-const Experiences = ({ onAgregar }: ExperiencesProps) => {
-  const [showModal, setShowModal] = useState(false);
-  const [showEvaluation, setShowEvaluation] = useState(false);
-  const [showEvaluationFromIcon, setShowEvaluationFromIcon] = useState(false); // Estado para mostrar el modal de Evaluation desde el icono
-  const [experienceList, setExperienceList] = useState<Experience[]>([]); // Lista de experiencias
-  const [trackingData, setTrackingData] = useState<FollowUp | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
+	const [list, setList] = useState<Experience[]>([]);
+	const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(null);
+	const [showModal, setShowModal] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const [searchTerm, setSearchTerm] = useState<string>('');
+	const [currentPage, setCurrentPage] = useState<number>(1);
+	const pageSize = 5;
+	const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
+	const [showAddModal, setShowAddModal] = useState<boolean>(false);
+	// State for the evaluation modal and currently selected evaluation experience id
+	const [showEvalModal, setShowEvalModal] = useState<boolean>(false);
+	const [evalExpId, setEvalExpId] = useState<number | null>(null);
 
-  const role = localStorage.getItem("role");
+	// Cache of discovered evaluation PDF URLs by experience id
+	const [evaluationPdfMap, setEvaluationPdfMap] = useState<Record<number, string>>({});
+	// Negative cache to avoid retrying failing evaluation lookups too frequently
+	const failedEvalRef = React.useRef<Map<number, number>>(new Map());
+	const EVAL_NEGATIVE_TTL = 1000 * 60 * 5; // 5 minutes
 
-  // obtener nombre y rol para la tarjeta de perfil
-  const userName = (localStorage.getItem('userName') || localStorage.getItem('name') || 'Usuario') as string;
-  const userRole = (localStorage.getItem('role') || 'Usuario') as string;
+	const getUserIdFromToken = (): number | null => {
+		const token = localStorage.getItem('token');
+		try {
+			if (!token) return null;
+			const parts = token.split('.');
+			if (parts.length < 2) return null;
+			const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+			const decoded = decodeURIComponent(atob(payload).split('').map(function(c) {
+				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+			}).join(''));
+			const parsed = JSON.parse(decoded) as any;
+			const candidates = ['sub','id','userId','user_id','nameid','http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+			for (const k of candidates) {
+				const v = parsed[k];
+				if (v !== undefined && v !== null) {
+					const num = Number(v);
+					if (!Number.isNaN(num) && Number.isFinite(num) && num > 0) return Math.trunc(num);
+				}
+			}
+		} catch {
+			return null;
+		}
+		return null;
+	};
 
-  // id del usuario actual (para diagnósticos)
-  const currentUserId = Number(localStorage.getItem('userId')) || 0;
+	// default to 'mine' view for professors
+	React.useEffect(() => {
+		try {
+			// isProfessor is declared later in this file
+			if ((isProfessor && typeof isProfessor === 'function') && isProfessor()) setViewMode('mine');
+		} catch {}
+	}, []);
 
-  const getInitials = (name: string) => (name || 'U')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((n) => n[0].toUpperCase())
-    .join('');
+	useEffect(() => {
+		const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+		const endpoint = `${API_BASE}/api/Experience/List`;
+		const token = localStorage.getItem('token');
 
-  // Delete PDF URL from an experience (clear documents[0].urlPdf) and update local state
-  const handleDeletePdf = async (expId: number) => {
-    const confirmed = window.confirm('¿Quieres eliminar el archivo PDF de esta experiencia? Esta acción no se puede deshacer.');
-    if (!confirmed) return;
-    try {
-      // fetch detail
-      const token = localStorage.getItem('token');
-      const base = import.meta.env.VITE_API_BASE_URL ?? '';
-      const detailUrl = base ? `${base}/api/Experience/${expId}/detail` : `/api/Experience/${expId}/detail`;
-      const resp = await fetch(detailUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (!resp.ok) throw new Error('No se pudo obtener detalle de la experiencia');
-      const data = await resp.json();
+		const fetchData = async () => {
+			try {
+				const res = await fetch(endpoint, {
+					method: 'GET',
+					headers: {
+						'Content-Type': 'application/json',
+						...(token ? { Authorization: `Bearer ${token}` } : {}),
+					},
+				});
+				if (!res.ok) throw new Error('Error al obtener experiencias');
+				const data = await res.json();
+				setList(Array.isArray(data) ? data : []);
+			} catch (err: any) {
+				console.error(err);
+				setError(err?.message || 'Error desconocido');
+			} finally {
+				setLoading(false);
+			}
+		};
 
-      const updated = { ...data, documents: Array.isArray(data.documents) ? data.documents.slice() : [] } as any;
-      if (updated.documents && updated.documents.length > 0) {
-        // remove urlPdf from first document
-        updated.documents[0] = { ...(updated.documents[0] || {}), urlPdf: '' };
-      }
+		fetchData();
+	}, []);
 
-      // PATCH to save
-      const patchUrl = base ? `${base}/api/Experience/patch` : '/api/Experience/patch';
-      const patchResp = await fetch(patchUrl, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(updated),
-      });
-      if (!patchResp.ok) throw new Error('Error al actualizar la experiencia');
+	// For the current visible page, try to discover evaluation PDF URLs when missing.
+	useEffect(() => {
+		let cancelled = false;
+		const discoverForVisible = async () => {
+			const q = searchTerm.trim().toLowerCase();
+			const filtered = q ? list.filter(exp => {
+				const name = String((exp as any).nameExperiences ?? (exp as any).name ?? '').toLowerCase();
+				const area = String((exp as any).areaApplied ?? (exp as any).thematicLocation ?? '').toLowerCase();
+				return name.includes(q) || area.includes(q);
+			}) : list;
+			const start = (currentPage - 1) * pageSize;
+			const paginated = filtered.slice(start, start + pageSize);
+			for (let i = 0; i < paginated.length; i++) {
+				if (cancelled) return;
+				const exp = paginated[i];
+				const id = exp?.id;
+				if (!id) continue;
+				// skip if already known or present in experience
+				const known = evaluationPdfMap[id] || getPdfUrlFromExp(exp as any);
+				if (known) {
+					if (known && !evaluationPdfMap[id]) {
+						setEvaluationPdfMap(prev => ({ ...prev, [id]: known }));
+					}
+					continue;
+				}
+				// if negative cached, skip
+				const failedTs = failedEvalRef.current.get(id);
+				if (failedTs && (Date.now() - failedTs) < EVAL_NEGATIVE_TTL) continue;
+				// fetch and store
+				const url = await fetchEvaluationPdfForExperience(id);
+				if (cancelled) return;
+				if (url) {
+					setEvaluationPdfMap(prev => ({ ...prev, [id]: url }));
+					// small delay between discoveries
+					await new Promise(res => setTimeout(res, 120));
+				}
+			}
+		};
+		discoverForVisible();
+		return () => { cancelled = true; };
+	}, [list, currentPage, searchTerm]);
 
-      // update local list
-      setExperienceList(prev => prev.map(e => e.id === expId ? { ...e, documents: [{ ...(e.documents?.[0] || {}), urlPdf: '' }] } : e));
-    } catch (err) {
-      console.error('Error eliminando PDF:', err);
-      alert('No se pudo eliminar el PDF. Revisa la consola para más detalles.');
-    }
-  };
+	// lightweight polling so newly created experiences appear shortly after creation
+	useEffect(() => {
+		const id = setInterval(() => {
+			// refresh list in background
+			const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+			const endpoint = `${API_BASE}/api/Experience/List`;
+			const token = localStorage.getItem('token');
+			fetch(endpoint, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+				.then(r => r.ok ? r.json() : Promise.reject())
+				.then(d => { if (Array.isArray(d)) setList(d); })
+				.catch(() => {});
+		}, 8000);
+		return () => clearInterval(id);
+	}, []);
 
-  // removed 'nuevas' list (UI moved to floating button)
-  const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(null);
-  const [selectedModalMode, setSelectedModalMode] = useState<'view' | 'edit'>('edit');
-  // Estado para las pestañas (mover arriba para evitar cambios en el orden de hooks)
-  const [selectedTab, setSelectedTab] = useState<'admin' | 'profesor' | 'todas'>('admin');
+  
 
-  const handleVisitarClick = (id: number) => {
-    // Al hacer click en la tarjeta principal abrimos el modal de Evaluación
-    setSelectedExperienceId(id);
-    setShowEvaluationFromIcon(true);
-  };
+  
 
-  const handleIconClick = (id: number) => {
-    // El icono izquierdo ahora abre el modal de la experiencia (ver/editar)
-    setSelectedExperienceId(id);
-    setSelectedModalMode('edit');
-    setShowModal(true);
-  };
+	const renderStatusBadge = (stateOrExp?: number | any) => {
+		// Accept multiple shapes returned by different endpoints:
+		// - numeric state id (1 means active)
+		// - boolean `state` true/false
+		// - object with keys like stateExperienceId, stateId, State, state
+		// - string values like 'Activo' / 'Inactivo'
+		let stateId: number | null = null;
+
+		if (typeof stateOrExp === 'number') {
+			stateId = stateOrExp;
+		} else if (typeof stateOrExp === 'boolean') {
+			stateId = stateOrExp ? 1 : 0;
+		} else if (typeof stateOrExp === 'string') {
+			const s = stateOrExp.trim().toLowerCase();
+			if (s === 'activo' || s === 'active') stateId = 1;
+			else if (s === 'inactivo' || s === 'inactive') stateId = 0;
+			else {
+				const n = Number(stateOrExp);
+				if (!Number.isNaN(n)) stateId = n;
+			}
+		} else if (stateOrExp && typeof stateOrExp === 'object') {
+			// prefer boolean 'state' if present
+			if (typeof stateOrExp.state === 'boolean') return (
+				<span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${stateOrExp.state ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+					{stateOrExp.state ? 'Activo' : 'Inactivo'}
+				</span>
+			);
+
+			const candidates = [
+				'stateExperienceId', 'StateExperienceId', 'stateId', 'StateId',
+				'state', 'State', 'StateExperience', 'stateExperience', 'status', 'Status'
+			];
+			for (const k of candidates) {
+				const v = stateOrExp[k];
+				if (v === undefined || v === null || v === '') continue;
+				if (typeof v === 'boolean') { stateId = v ? 1 : 0; break; }
+				if (typeof v === 'number') { stateId = v; break; }
+				if (typeof v === 'string') {
+					const s = v.trim().toLowerCase();
+					if (s === 'activo' || s === 'active') { stateId = 1; break; }
+					if (s === 'inactivo' || s === 'inactive') { stateId = 0; break; }
+					const n = Number(v);
+					if (!Number.isNaN(n)) { stateId = n; break; }
+				}
+			}
+		}
+
+		const isActive = stateId === 1;
+		return (
+			<span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+				{isActive ? 'Activo' : 'Inactivo'}
+			</span>
+		);
+	};
+
+	const formatDevelopmentTime = (value?: string) => {
+		if (!value) return '-';
+		const d = new Date(value);
+		if (isNaN(d.getTime())) return String(value);
+		return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(d);
+	};
+
+  
+
+	const openModal = (id?: number) => {
+		if (!id) return;
+		setSelectedExperienceId(id);
+		setShowModal(true);
+	};
 
   const handleClose = () => {
     setShowModal(false);
@@ -348,143 +471,181 @@ const Experiences = ({ onAgregar }: ExperiencesProps) => {
                   </div>
                 </div>
 
-                <div className="text-left">
-                  <div className="text-xl font-semibold text-gray-800">{title}</div>
-                  <div className="text-sm text-gray-600 mt-2">{thematic}</div>
-                  <div className="text-xs text-gray-600 mt-2">{userName}</div>
-                </div>
+				<div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+					<div className="text-left text-sm text-gray-600 bg-gray-50 rounded-t-md px-4 py-3 font-semibold">
+						<div className="grid grid-cols-7 gap-4 items-center">
+							<div className="text-center font-semibold">Nombre de la experiencia</div>
+							<div className="text-center font-semibold">Área aplicada</div>
+							<div className="text-center font-semibold">Tiempo</div>
+							<div className="text-center font-semibold">PDF</div>
+							<div className="text-center font-semibold">Aplicar Evaluación</div>
+							<div className="text-center font-semibold">Edición</div>
+							<div className="text-center font-semibold">Estado</div>
+						</div>
+					</div>
 
-                {/* Trash icon */}
-                <div className="absolute right-4 bottom-4">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeletePdf(pdfExp.id ?? 0); }}
-                    aria-label="Eliminar PDF"
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M9 3h6l1 1h5v2H3V4h5l1-1zm1 6v8h2V9H10zm4 0v8h2V9h-2z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-      {/* Mostrar tarjetas solo para el rol de profesor */}
-      {role && role.toLowerCase() === "profesor" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6">
-          {professorCards.map((card, index) => (
-            <div key={index} className="bg-white shadow rounded-lg p-4 flex items-center space-x-4 w-full h-40">
-              {card.icon}
-              <div className="flex flex-col">
-                <p className="text-gray-500 text-sm">{card.title}</p>
-                <p className="text-2xl font-bold text-gray-800">{card.value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+					<div>
+						{loading ? (
+							<div className="p-6 text-gray-500">Cargando...</div>
+						) : error ? (
+							<div className="p-6 text-red-500">{error}</div>
+						) : (
+							(() => {
+								const q = searchTerm.trim().toLowerCase();
+								const filtered = q ? list.filter(exp => {
+									const name = String((exp as any).nameExperiences ?? (exp as any).name ?? '').toLowerCase();
+									const area = String((exp as any).areaApplied ?? (exp as any).thematicLocation ?? '').toLowerCase();
+									return name.includes(q) || area.includes(q);
+								}) : list;
+								const total = filtered.length;
+								const totalPages = Math.max(1, Math.ceil(total / pageSize));
+								const start = (currentPage - 1) * pageSize;
+								const paginated = filtered.slice(start, start + pageSize);
 
-      {/* Sección de Experiencias estilo maqueta: título, tabs y tarjetas coloreadas */}
-      <div className="rounded-lg p-6 bg-white">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Experiencias</h2>
+								return (
+									<div className="divide-y">
+										{paginated.map((exp, idx) => (
+											<div className="px-6 py-4" key={exp.id ?? idx}>
+												<div className="grid grid-cols-7 gap-4 items-center">
+													{/* Nombre de la experiencia */}
+													<div className="flex items-center gap-3 text-center">
+														<button onClick={() => openModal(exp.id)} className="text-sm font-medium text-gray-800 hover:underline">
+															{(exp as any).nameExperiences ?? (exp as any).name ?? 'Sin título'}
+														</button>
+													</div>
+													{/* Área aplicada */}
+													<div className="text-center text-sm text-gray-600">{(exp as any).areaApplied ?? (exp as any).thematicLocation ?? (exp as any).code ?? '-'}</div>
+													{/* Tiempo */}
+													<div className="text-center text-sm text-gray-600">
+														{formatDevelopmentTime((exp as any).developmenttime)}
+													</div>
+													{/* PDF */}
+													<div className="flex items-center justify-center">
+														{(() => {
+															const raw = evaluationPdfMap[exp.id] ?? getPdfUrlFromExp(exp as any);
+															if (raw) {
+																return (
+																	<button
+																		type="button"
+																		onClick={(e) => {
+																			e.stopPropagation();
+																			e.preventDefault();
+																			openPdfWithAuth(raw).catch(err => console.error('openPdfWithAuth error', err));
+																		}}
+																		aria-label="Ver PDF"
+																		title="Ver PDF"
+																		className="px-4 py-2 bg-red-600 text-white rounded-md! font-medium hover:bg-red-700"
+																	>
+																		Ver PDF
+																	</button>
+																);
+															}
+															return (
+																<div className="px-3 py-2 rounded-md! bg-gray-100 text-gray-400 text-sm" title="Sin PDF">Sin PDF</div>
+															);
+														})()}
+													</div>
+													{/* Aplicar Evaluación */}
+													<div className="text-center">
+														<button
+															className="px-4 py-2 bg-blue-600 text-white rounded-md! font-medium hover:bg-blue-700"
+															title="Evaluación"
+															onClick={() => {
+																setEvalExpId(exp.id);
+																setShowEvalModal(true);
+															}}
+														>
+															Evaluación
+														</button>
+													</div>
+																{/* Modal de Evaluación (fuera del map) */}
+																{showEvalModal && evalExpId && (
+																	<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+																		<div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-auto relative">
+																			<button
+																				className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+																				onClick={() => { setShowEvalModal(false); setEvalExpId(null); }}
+																				aria-label="Cerrar"
+																			>
+																				×
+																			</button>
+																			<div className="p-6">
+																				<Evaluation experienceId={evalExpId} onClose={() => { setShowEvalModal(false); setEvalExpId(null); }} />
+																			</div>
+																		</div>
+																	</div>
+																)}
+													{/* Edición */}
+													<div className="text-center">
+														<button
+															className="text-gray-500 hover:text-gray-700"
+															title="Ver / Editar"
+															onClick={async (e) => {
+																e.stopPropagation();
+																e.preventDefault();
+																// Role-aware behavior: professors request edit, others open detail view
+																try {
+																	if (isProfessor && typeof isProfessor === 'function' && isProfessor()) {
+																		// pass the full experience object so we can open modal without refetching
+																		await requestEdit(exp as any);
+																	} else {
+																		await fetchAndShowDetail(exp.id as number);
+																	}
+																} catch (err) {
+																	console.error('Error handling pencil click', err);
+																}
+															}}
+														>
+															<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 inline" viewBox="0 0 20 20" fill="currentColor">
+																<path d="M17.414 2.586a2 2 0 010 2.828L8.828 14l-3.536.707.707-3.536L14.586 2.586a2 2 0 012.828 0z" />
+															</svg>
+														</button>
+													</div>
+													{/* Estado */}
+													<div className="text-center">
+														{renderStatusBadge(exp)}
+													</div>
+												</div>
+											</div>
+										))}
 
-        <div className="mb-4">
-          <div className="flex items-center space-x-2 border-b">
-            <button
-              onClick={() => setSelectedTab('admin')}
-              className={`px-3 py-1 text-sm ${selectedTab === 'admin' ? 'bg-white border-b-2 border-black' : 'text-gray-600'}`}
-            >
-              Administrador
-            </button>
-            <button
-              onClick={() => setSelectedTab('profesor')}
-              className={`px-3 py-1 text-sm ${selectedTab === 'profesor' ? 'bg-white border-b-2 border-black' : 'text-gray-600'}`}
-            >
-              Profesor
-            </button>
-            <button
-              onClick={() => setSelectedTab('todas')}
-              className={`px-3 py-1 text-sm ${selectedTab === 'todas' ? 'bg-white border-b-2 border-black' : 'text-gray-600'}`}
-            >
-              Todas
-            </button>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <div className="flex gap-6 py-4">
-            {renderTiles(
-              selectedTab === 'profesor'
-                ? experienceList.filter((e) => e.userId === currentUserId)
-                : selectedTab === 'admin'
-                ? experienceList.filter((e) => e.userId !== currentUserId)
-                : experienceList
-            )}
-          </div>
-        </div>
-      </div>
-      {/* Modal para mostrar la experiencia seleccionada */}
-      {showModal && (
-        <ExperienceModal
-          show={showModal}
-          onClose={handleClose}
-          experienceId={selectedExperienceId ?? undefined}
-          mode={selectedModalMode} // Modo dinámico: 'edit' cuando se abre desde el lápiz
-        />
-      )}
-
-      {/* Modal de Evaluation desde el icono */}
-      {showEvaluationFromIcon && (
-        <div className="fixed inset-0 flex justify-center items-center z-[1100]">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-2 md:mx-0 p-0 relative flex flex-col overflow-y-auto max-h-[90vh]">
-            <button
-              onClick={handleCloseEvaluation}
-              className="absolute top-4 right-4 text-2xl text-[#00aaff] hover:text-sky-800 focus:outline-none"
-              aria-label="Cerrar"
-            >
-              &times;
-            </button>
-            <Evaluation experienceId={selectedExperienceId ?? null} experiences={experienceList} onClose={handleCloseEvaluation} onExperienceUpdated={(id:number, url:string) => {
-              setExperienceList(prev => prev.map(e => e.id === id ? { ...e, documents: [{ name: e.documents?.[0]?.name ?? '', urlPdf: url, urlLink: e.documents?.[0]?.urlLink ?? '' }] } : e));
-            }} />
-          </div>
-        </div>
-      )}
-
-      {/* Floating add-experience button positioned next to the sidebar */}
-      <button
-        onClick={onAgregar}
-        aria-label="Agregar Nueva Experiencia"
-        className="fixed z-40 flex items-center cursor-pointer right-[calc(320px+0px)] top-[140px]"
-      >
-        <div className="flex items-center w-auto rounded-xl overflow-hidden">
-          <div className="flex items-center justify-center w-14 h-14 bg-[#0b1220] rounded-lg">
-            <span className="text-white text-2xl font-bold">+</span>
-          </div>
-        </div>
-      </button>
-
-      {/* Modal de Evaluación */}
-      {showEvaluation && (
-        <div className="fixed inset-0 flex justify-center items-center z-[1100]">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-2 md:mx-0 p-0 relative flex flex-col overflow-y-auto max-h-[90vh]">
-            <button
-              onClick={handleCloseEvaluation}
-              className="absolute top-4 right-4 text-2xl text-[#00aaff] hover:text-sky-800 focus:outline-none"
-              aria-label="Cerrar"
-            >
-              &times;
-            </button>
-            <Evaluation onClose={handleCloseEvaluation} onExperienceUpdated={(id:number, url:string) => {
-              setExperienceList(prev => prev.map(e => e.id === id ? { ...e, documents: [{ name: e.documents?.[0]?.name ?? '', urlPdf: url, urlLink: e.documents?.[0]?.urlLink ?? '' }] } : e));
-            }} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
+										{/* Pagination footer */}
+										<div className="py-4 px-4 flex items-center justify-between">
+											<div className="text-sm text-gray-500">
+												{total === 0 ? (
+													<>Mostrando 0 experiencias</>
+												) : (
+													(() => {
+														const startIdx = Math.min(total, start + 1);
+														const endIdx = Math.min(total, start + paginated.length);
+														return <>Mostrando {startIdx}-{endIdx} de {total} experiencias</>;
+													})()
+												)}
+											</div>
+											<div className="flex items-center gap-2">
+												<button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>Anterior</button>
+												{(() => {
+													const pages: number[] = [];
+													let startPage = Math.max(1, currentPage - 2);
+													let endPage = Math.min(totalPages, startPage + 4);
+													if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+													for (let i = startPage; i <= endPage; i++) pages.push(i);
+													return pages.map((p) => (
+														<button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
+													));
+												})()}
+												<button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>Siguiente</button>
+											</div>
+										</div>
+									</div>
+								);
+							})()
+						)}
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 };
 
 export default Experiences;

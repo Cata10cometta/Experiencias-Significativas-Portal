@@ -83,7 +83,7 @@ const CriteriaResults: React.FC<CriteriaResultsProps> = ({ value, onChange, erro
             <label key={val} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="resultados1"
+                name="resultados-bloque1"
                 className="custom-radio"
                 value={val}
                 checked={criteria.score === val}
@@ -108,7 +108,7 @@ const CriteriaResults: React.FC<CriteriaResultsProps> = ({ value, onChange, erro
               <label key={val} className="inline-flex items-center cursor-pointer">
                 <input
                   type="radio"
-                  name="resultados2"
+                  name="resultados-bloque2"
                   className="custom-radio"
                   value={val}
                   checked={criteria.score === val}

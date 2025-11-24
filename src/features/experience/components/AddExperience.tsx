@@ -60,7 +60,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver }) => {
     PedagogicalStrategies: "",
     CrossCuttingProject: [],
     Coverage: "",
-    population: [],
+    Population: [],
     experiencesCovidPandemic: ""
   });
   const [nivelesForm, setNivelesForm] = useState<LevelsFormValue>({
@@ -449,8 +449,40 @@ Population: Array.isArray(tematicaForm.Population)
         return;
       }
 
-      alert("Experiencia registrada correctamente");
-      onVolver();
+      // Try to parse created resource to obtain its id
+      let created: any = null;
+      try {
+        created = await res.clone().json();
+      } catch (e) {
+        // response may be empty or non-json
+      }
+
+      // Determine id from response body or Location header
+      const extractIdFromLocation = (loc: string | null) => {
+        if (!loc) return null;
+        const m = loc.match(/\/(\d+)(?:\/|$)/);
+        return m ? Number(m[1]) : null;
+      };
+
+      let createdId: number | null = null;
+      if (created) {
+        createdId = created?.id || created?.data?.id || created?.experience?.id || created?.result?.id || null;
+        if (typeof createdId === 'string') createdId = Number(createdId);
+        if (!createdId && created?.data && typeof created.data === 'number') createdId = created.data;
+      }
+
+      if (!createdId) {
+        const loc = res.headers.get('Location');
+        createdId = extractIdFromLocation(loc);
+      }
+
+      // If we have an id, call the generate-pdf endpoint and download/open the PDF
+      // Eliminado modal de PDF generado. Solo mostrar mensaje de éxito simple.
+
+      try {
+        await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada correctamente', icon: 'success', confirmButtonText: 'Aceptar' });
+      } catch (e) {}
+      if (onVolver) onVolver();
     } catch (err: any) {
       setErrorMessage(err?.message || "Error inesperado al registrar la experiencia");
     }

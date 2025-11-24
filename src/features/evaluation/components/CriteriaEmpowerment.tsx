@@ -88,7 +88,7 @@ const CriteriaEmpowerment: React.FC<CriteriaEmpowermentProps> = ({ value, onChan
             <label key={val} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="empoderamiento"
+                name="empoderamiento-bloque1"
                 className="custom-radio"
                 value={val}
                 checked={criteria.score === val}
@@ -124,7 +124,7 @@ const CriteriaEmpowerment: React.FC<CriteriaEmpowermentProps> = ({ value, onChan
               <label key={val} className="inline-flex items-center cursor-pointer">
                 <input
                   type="radio"
-                  name="empoderamiento2"
+                  name="empoderamiento-bloque2"
                   className="custom-radio"
                   value={val}
                   checked={criteria.score === val}

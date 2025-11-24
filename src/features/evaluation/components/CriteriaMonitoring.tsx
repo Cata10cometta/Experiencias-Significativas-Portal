@@ -94,7 +94,7 @@ const CriteriaMonitoring: React.FC<CriteriaMonitoringProps> = ({ value, onChange
             <label key={val} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="seguimiento"
+                name="seguimiento-bloque1"
                 className="custom-radio"
                 value={val}
                 checked={criteria.score === val}
@@ -140,7 +140,7 @@ const CriteriaMonitoring: React.FC<CriteriaMonitoringProps> = ({ value, onChange
               >
                 <input
                   type="radio"
-                  name="seguimiento2"
+                  name="seguimiento-bloque2"
                   className="custom-radio"
                   value={val}
                   checked={criteria.score === val}
