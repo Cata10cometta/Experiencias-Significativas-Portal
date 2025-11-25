@@ -70,7 +70,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     PedagogicalStrategies: "",
     CrossCuttingProject: [],
     Coverage: "",
-    Population: [],
+    population: [],
     experiencesCovidPandemic: ""
   });
   const [nivelesForm, setNivelesForm] = useState<any>({
@@ -346,7 +346,8 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
           {
             monitoringEvaluation: monitoringNormalized.monitoringEvaluation || "",
             result: monitoringNormalized.result || "",
-            sustainability: monitoringNormalized.sustainability || "",
+         sustainability: monitoringNormalized.sustainability ?? "",
+
             tranfer: monitoringNormalized.tranfer || "",
           },
         ],
@@ -377,9 +378,9 @@ population: Array.isArray(tematicaForm.Population)
   ? tematicaForm.Population.join(', ')
   : (tematicaForm.Population || ""),
 
-populationGrade: Array.isArray(tematicaForm.PopulationGrade)
-  ? tematicaForm.PopulationGrade.join(', ')
-  : (tematicaForm.PopulationGrade || ""),
+Population: Array.isArray(tematicaForm.Population)
+  ? tematicaForm.Population.join(', ')
+  : (tematicaForm.Population || ""),
 
         pedagogicalStrategies: Array.isArray(tematicaForm.PedagogicalStrategies)
   ? tematicaForm.PedagogicalStrategies.join(', ')

@@ -116,7 +116,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
         </div>
       </div>
 
-     {/* Educational model box (styled to match screenshot) */}
+      {/* Educational model box (styled to match screenshot) */}
 <div className="mb-6">
   <label className="block mb-2 font-medium">
     Indique el modelo educativo en el que se enmarca el desarrollo de la Experiencia Significativa
@@ -166,6 +166,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
     </div>
   </div>
 </div>
+
 
 
       {/* inputs removed per request (kept only checkboxes) */}
@@ -340,7 +341,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                   'Docentes Universitarios',
                   'Ninguno',
                 ].map((label) => {
-                  const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                  const id = label;
                   const existing = Array.isArray((value as any).PedagogicalStrategies)
                     ? (value as any).PedagogicalStrategies.map((v: any) => String(v))
                     : [];
@@ -384,7 +385,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
                       'Sí , Componente Gestión Comunitaria',
                       'No',
                     ].map((label) => {
-                      const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                     const id = label;
                       const checked = (value as any).Coverage === id || (value as any).CoverageText === label;
                       return (
                         <label key={id} className="flex items-start gap-2 text-sm">
@@ -416,7 +417,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
               'Sí, por parte de una entidad privada o pública externa',
               'Aún no cuenta con reconocimiento',
             ].map((label) => {
-              const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+              const id = label;
               const checked = (value as any).recognition === id || (value as any).recognitionText === label;
               return (
                 <label key={id} className="flex items-start gap-2 text-sm">
@@ -449,7 +450,7 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
               'Constancia de participación en eventos de divulgación',
               'Ninguna de las anteriores',
             ].map((label) => {
-              const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+             const id = label;
               const existing = Array.isArray((value as any).socialization)
                 ? (value as any).socialization.map((v: any) => String(v))
                 : Array.isArray((value as any).socializationLabels)
