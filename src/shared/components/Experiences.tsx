@@ -766,18 +766,20 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 															);
 														})()}
 													</div>
-													{/* Aplicar Evaluación */}
+													{/* Aplicar Evaluación: visible para todos excepto profesores */}
 													<div className="text-center">
-														<button
-															className="px-4 py-2 bg-blue-600 text-white rounded-md! font-medium hover:bg-blue-700"
-															title="Evaluación"
-															onClick={() => {
-																setEvalExpId(exp.id);
-																setShowEvalModal(true);
-															}}
-														>
-															Evaluación
-														</button>
+														{!isProfessor() && (
+															<button
+																className="px-4 py-2 bg-blue-600 text-white rounded-md! font-medium hover:bg-blue-700"
+																title="Evaluación"
+																onClick={() => {
+																	setEvalExpId(exp.id);
+																	setShowEvalModal(true);
+																}}
+															>
+																Evaluación
+															</button>
+														)}
 													</div>
 																{/* Modal de Evaluación (fuera del map) */}
 																{showEvalModal && evalExpId && (

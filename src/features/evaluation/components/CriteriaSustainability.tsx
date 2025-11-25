@@ -30,13 +30,7 @@ const CriteriaSustainability: React.FC<CriteriaSustainabilityProps> = ({ value, 
       score,
     };
 
-    onChange({
-      ...value,
-      criteriaEvaluations: [
-  ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
-        updatedCriteria,
-      ],
-    });
+    onChange({ criteriaEvaluation: updatedCriteria } as any);
   };
 
   const updateDescription = (desc: string) => {
@@ -46,12 +40,11 @@ const CriteriaSustainability: React.FC<CriteriaSustainabilityProps> = ({ value, 
     };
 
     onChange({
-      ...value,
       criteriaEvaluations: [
         ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
         updatedCriteria,
       ],
-    });
+    } as any);
   };
 
   return (

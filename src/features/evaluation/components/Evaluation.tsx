@@ -28,6 +28,7 @@ interface EvaluationProps {
 
 function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdated }: EvaluationProps) {
     const [activeStep, setActiveStep] = useState(0);
+    const CRITERIA_IDS = [1,2,3,4,5,6,7,8,9];
     const [form, setForm] = useState<Evaluation>({
         evaluationId: 0,
         typeEvaluation: "",
@@ -39,7 +40,16 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         experienceName: "",
         stateId: 0,
         institutionName: "",
-        criteriaEvaluations: [],
+        criteriaEvaluations: CRITERIA_IDS.map(id => ({
+            criteriaId: id,
+            descriptionContribution: '',
+            score: 0,
+            evaluationId: 0,
+            id: 0,
+            state: true,
+            createdAt: null,
+            deletedAt: null
+        })),
         thematicLineNames: [],
         userId: Number(localStorage.getItem("userId")) || 0,
         experience: {} as any // provide empty experience object to satisfy required type
@@ -414,19 +424,21 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         setActiveStep((prev) => Math.max(prev - 1, 0));
     };
 
-    const handleChange = (changes: Partial<Evaluation>) => {
+    const handleChange = (changes: Partial<Evaluation> & { criteriaEvaluation?: any }) => {
         setForm((prev) => {
-            // Si el cambio incluye criteriaEvaluations, fusionar con los existentes
+            // Si viene un solo criterio (criteriaEvaluation), lo fusionamos
+            if (changes.criteriaEvaluation) {
+                const crit = changes.criteriaEvaluation;
+                const merged = prev.criteriaEvaluations.map(c => c.criteriaId === crit.criteriaId ? { ...c, ...crit } : c);
+                return { ...prev, ...changes, criteriaEvaluations: merged };
+            }
+            // Si viene un array de criterios (criteriaEvaluations), fusionamos cada uno
             if (changes.criteriaEvaluations) {
-                // Tomar los criterios existentes que no están en el nuevo array
-                const existing = prev.criteriaEvaluations.filter(
-                    (c) => !changes.criteriaEvaluations?.some((nc) => nc.criteriaId === c.criteriaId)
-                );
-                return {
-                    ...prev,
-                    ...changes,
-                    criteriaEvaluations: [...existing, ...changes.criteriaEvaluations]
-                };
+                let merged = [...prev.criteriaEvaluations];
+                changes.criteriaEvaluations.forEach((crit) => {
+                    merged = merged.map(c => c.criteriaId === crit.criteriaId ? { ...c, ...crit } : c);
+                });
+                return { ...prev, ...changes, criteriaEvaluations: merged };
             }
             return { ...prev, ...changes };
         });
@@ -459,11 +471,20 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         // Ordenar por criteriaId ascendente
         criteriaEvaluationsToSend = criteriaEvaluationsToSend.sort((a, b) => a.criteriaId - b.criteriaId);
 
+        // Transformar a evaluationCriteriaDetail para el backend
+        const evaluationCriteriaDetail = criteriaEvaluationsToSend.map(c => ({
+            criteriaId: c.criteriaId,
+            scores: [c.score],
+            descriptionContribution: c.descriptionContribution
+        }));
+
         const formToSend = {
-            ...form,
+            typeEvaluation: form.typeEvaluation,
+            comments: form.comments,
+            accompanimentRole: form.accompanimentRole,
             userId,
-            criteriaEvaluations: criteriaEvaluationsToSend,
-            criteriaEvaluationList: criteriaEvaluationsToSend // por si el backend espera este nombre
+            experienceId: form.experienceId,
+            evaluationCriteriaDetail
         };
         // Log de depuración para ver exactamente lo que se envía
         console.log("Formulario a enviar:", JSON.stringify(formToSend, null, 2));
@@ -891,32 +912,16 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                     <h2 className="text-2xl font-bold text-center mb-4">Resultado de la Evaluación</h2>
                     <p className="text-center text-green-500 font-semibold">{evaluationResult}</p>
                     {isUrlLoading ? (
-                        <p className="text-center text-gray-600 mt-2">Obteniendo documento...</p>
+                        <p className="text-center text-gray-600 mt-2">Generando PDF...</p>
                     ) : (
-                        evaluationUrl ? (
-                            <div className="text-center mt-4">
-                                <p className="text-sm text-gray-700">El PDF se ha generado. Aparecerá en la tarjeta de la evaluación. </p>
-                                <div className="flex justify-center mt-3">
-                                    <Button variant="contained" color="primary" onClick={handleCloseModal}>
-                                        Cerrar
-                                    </Button>
-                                </div>
+                        <div className="text-center mt-4">
+                            <p className="text-sm text-gray-700">PDF generado correctamente.</p>
+                            <div className="flex justify-center mt-3">
+                                <Button variant="contained" color="primary" onClick={handleCloseModal}>
+                                    Cerrar
+                                </Button>
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center gap-3 mt-4">
-                                <div className="flex gap-3">
-                                    <Button variant="contained" color="primary" onClick={handleGenerateClick} disabled={isUrlLoading}>
-                                        {isUrlLoading ? 'Generando...' : 'Generar PDF'}
-                                    </Button>
-                                    <Button variant="contained" color="primary" onClick={handleCloseModal}>
-                                        Cerrar
-                                    </Button>
-                                </div>
-                                {lastGenerateMessage && (
-                                    <p className="text-sm text-center text-gray-600 mt-2">{lastGenerateMessage}</p>
-                                )}
-                            </div>
-                        )
+                        </div>
                     )}
                 </Box>
             </Modal>

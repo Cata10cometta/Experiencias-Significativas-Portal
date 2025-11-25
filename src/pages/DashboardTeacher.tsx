@@ -26,7 +26,6 @@ const DashboardTeacher: React.FC = () => {
 
   <main style={{ paddingRight: '320px' }} className="flex-1 p-8 transition-all duration-300 ease-in-out overflow-hidden bg-transparent">
         {activeContent === "dashboard" && <StarT />}
-        {activeContent === "experiensGestion" && <Information /> }
         {activeContent === "experiences" && (
           <Experiences onAgregar={() => setActiveContent("agregar-experiencia")} />
         )}

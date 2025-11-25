@@ -30,25 +30,18 @@ const CriteriaTransformation: React.FC<CriteriaTransformationProps> = ({ value, 
       score,
     };
 
-    onChange({
-      ...value,
-      criteriaEvaluations: [
-  ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
-        updated,
-      ],
-    });
+    onChange({ criteriaEvaluation: updated } as any);
   };
 
   const updateDescription = (desc: string) => {
     const updated: CriteriaEvaluation = { ...criteria, descriptionContribution: desc };
 
     onChange({
-      ...value,
       criteriaEvaluations: [
         ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
         updated,
       ],
-    });
+    } as any);
   };
 
   return (

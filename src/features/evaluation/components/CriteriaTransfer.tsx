@@ -31,13 +31,7 @@ const CriteriaTransfer: React.FC<CriteriaTransferProps> = ({ value, onChange, er
       score,
     };
 
-    onChange({
-      ...value,
-      criteriaEvaluations: [
-  ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
-        updatedCriteria,
-      ],
-    });
+    onChange({ criteriaEvaluation: updatedCriteria } as any);
   };
 
   const updateDescription = (desc: string) => {
@@ -47,12 +41,11 @@ const CriteriaTransfer: React.FC<CriteriaTransferProps> = ({ value, onChange, er
     };
 
     onChange({
-      ...value,
       criteriaEvaluations: [
         ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
         updatedCriteria,
       ],
-    });
+    } as any);
   };
 
   return (

@@ -51,6 +51,9 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     historyExperiences: [] as any[],
   });
 
+  
+
+
   // Estados de subformularios
   const [lideres, setLideres] = useState<any[]>([{}]); // Solo 1 líder
   const [identificacionForm, setIdentificacionForm] = useState<any>({
@@ -234,7 +237,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     const documentsSwagger: any[] = [];
     if (pdfFile) {
       const stripDataPrefix = (s: any) => {
-        if (!s || typeof s !== 'string') return s;
+        if (!s || typeof s !== 'string') return '';
         const idx = s.indexOf(',');
         if (s.startsWith('data:') && idx > -1) return s.substring(idx + 1);
         return s;
@@ -245,12 +248,11 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       const doc: any = {
         name: pdfFile.name || pdfFile.name2 || "Documento PDF",
         urlLink: pdfFile.urlLink || "",
-        // send raw base64 payload (without data:...;base64, prefix) which some backends expect
         urlPdf: stripDataPrefix(rawPdf) || "",
         urlPdfExperience: stripDataPrefix(rawPdfExperience) || "",
-        // Compatibility fallbacks: also include the original base64 strings with prefix
-        fileBase64: rawPdf || undefined,
-        fileBase64Experience: rawPdfExperience || undefined,
+        // Enviar base64 puro (sin prefijo) para ambos PDFs
+        fileBase64: stripDataPrefix(rawPdf) || undefined,
+        fileBase64Experience: stripDataPrefix(rawPdfExperience) || undefined,
       };
       documentsSwagger.push(doc);
     }

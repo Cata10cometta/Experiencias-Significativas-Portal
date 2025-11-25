@@ -32,11 +32,10 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
       ...criteria,
       score,
     };
-
     onChange({
       ...value,
       criteriaEvaluations: [
-  ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
+        ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
         updatedCriteria,
       ],
     });
@@ -48,7 +47,6 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
       ...criteria,
       descriptionContribution: text,
     };
-
     onChange({
       ...value,
       criteriaEvaluations: [

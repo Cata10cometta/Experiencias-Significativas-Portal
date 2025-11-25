@@ -30,13 +30,7 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
       score,
     };
 
-    onChange({
-      ...value,
-      criteriaEvaluations: [
-  ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
-        updatedCriteria,
-      ],
-    });
+    onChange({ criteriaEvaluation: updatedCriteria } as any);
   };
 
   const updateDescription = (desc: string) => {
@@ -46,12 +40,11 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
     };
 
     onChange({
-      ...value,
       criteriaEvaluations: [
         ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
         updatedCriteria,
       ],
-    });
+    } as any);
   };
 
   return (

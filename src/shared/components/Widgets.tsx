@@ -7,7 +7,6 @@ import NotificationsModal from './NotificationsModal';
 const Widgets: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(null);
-  const [selectedExperience, setSelectedExperience] = useState<any | null>(null);
   const [selectedEje, setSelectedEje] = useState<number | null>(null);
   const [experiencias, setExperiencias] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -19,7 +18,6 @@ const Widgets: React.FC = () => {
   
 
   React.useEffect(() => {
-    // Fetch all experiences from /api/Experience/getAll
     setLoading(true);
     setError(null);
     const token = localStorage.getItem("token");
@@ -56,21 +54,25 @@ const Widgets: React.FC = () => {
     { id: 8, label: "Convivencia Escolar (Ciencias Sociales y Políticas)", img: "/images/convivencia.png", imgClass: "w-15" },
     { id: 9, label: "Danza, Deporte y Recreación", img: "/images/deporte.png", imgClass: "w-20" },
   ];
-  // derived filtered list for carousel search
+  // derived filtered list for carousel search (mantener por si se usa searchTerm)
   const filteredExperiencias = useMemo(() => {
     if (!searchTerm || searchTerm.trim() === '') return experiencias;
     const q = searchTerm.trim().toLowerCase();
     return experiencias.filter((exp: any) => {
-      const name = String(exp.title ?? exp.name ?? exp.NameExperiences ?? '').toLowerCase();
-      const area = String(exp.ThematicLocation ?? exp.thematicLocation ?? exp.area ?? exp.areaApplied ?? '').toLowerCase();
-      const institution = String(
-        exp.institutionName ?? exp.institution ?? exp.schoolName ?? exp.nombreInstitucion ?? exp.institutionalName ?? exp.organizacion ?? exp.entidad ?? ''
-      ).toLowerCase();
-      return name.includes(q) || area.includes(q) || institution.includes(q);
+      const name = String(exp.nameExperiences ?? exp.title ?? exp.name ?? exp.NameExperiences ?? '').toLowerCase();
+      return name.includes(q);
     });
   }, [experiencias, searchTerm]);
+  // Derivar la experiencia seleccionada a partir del id
+  const selectedExperience = React.useMemo(() => {
+    if (!selectedExperienceId) return null;
+    return experiencias.find(
+      (exp: any) => exp.id === selectedExperienceId || exp.experienceId === selectedExperienceId
+    ) || null;
+  }, [selectedExperienceId, experiencias]);
+
   return (
-  <div>
+    <div>
       <div className="font-bold text-[#00aaff] text-[28.242px] w-full">
       </div>
       {/* Thematic lines as pill bar (no images).
@@ -120,10 +122,7 @@ const Widgets: React.FC = () => {
           </div>
           {selectedExperience && (
             <button
-              onClick={() => {
-                setSelectedExperienceId(selectedExperience.id ?? selectedExperience.experienceId);
-                setModalOpen(true);
-              }}
+              onClick={() => setModalOpen(true)}
               className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shadow-md"
               aria-label="Ver experiencia"
             >
@@ -135,8 +134,6 @@ const Widgets: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Large white container with carousel and action icons */}
       <div className="mt-16">
         <div className="bg-white rounded-2xl p-6 shadow-lg relative">
           {/* action icons (search + notifications) */}
@@ -199,7 +196,9 @@ const Widgets: React.FC = () => {
                         lg:min-w-[320px] lg:max-w-[320px] lg:h-[360px] lg:p-8
                       "
                       style={{ cursor: 'pointer' }}
-                      onClick={() => setSelectedExperience(exp)}
+                      onClick={() => {
+                        setSelectedExperienceId(exp.id ?? exp.experienceId);
+                      }}
                     >
                       <div className="flex flex-col items-center justify-center flex-grow w-full h-full">
                         {/* Imagen centrada */}
@@ -219,11 +218,14 @@ const Widgets: React.FC = () => {
         </div>
       </div>
       {/* Modal de experiencia */}
-      {modalOpen && selectedExperience && (
+      {modalOpen && selectedExperienceId && (
         <ExperienceModal
           show={modalOpen}
-          onClose={() => setModalOpen(false)}
-          experience={selectedExperience}
+          onClose={() => {
+            setModalOpen(false);
+            setSelectedExperienceId(null);
+          }}
+          experienceId={selectedExperienceId}
         />
       )}
 
