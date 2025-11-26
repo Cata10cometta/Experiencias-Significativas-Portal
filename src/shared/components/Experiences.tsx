@@ -637,33 +637,35 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 	return (
 		<div className="p-8 min-h-[80vh]">
 			<div className="bg-gray-50 rounded-lg p-8 shadow">
-				<div className="flex items-start justify-between mb-4">
-					<div>
-						<h1 className="text-2xl font-semibold text-gray-800 mb-2">Gestion de Experiencias significativas</h1>
-						<p className="text-sm text-gray-500">Optimiza la eficiencia de la experiencias</p>
-					</div>
-					<div>
-						{/* Botón flotante para agregar experiencia (tal cual) */}
-						<button
-							onClick={() => { if (onAgregar) { onAgregar(); } else { setShowAddModal(true); } }}
-							title="Agregar experiencia"
-							className="fixed bottom-[40rem] right-80 z-50 inline-flex items-center justify-center w-14 h-14 rounded-lg! bg-sky-600 text-white shadow-lg hover:bg-sky-700"
-							aria-label="Agregar experiencia"
-						>
-							<span className="text-white text-2xl font-bold">+</span>
-						</button>
-					</div>
-				</div>
+							 <div className="flex items-start justify-between mb-4">
+								 <div className="flex items-center gap-4">
+									 {/* Icono eliminado por solicitud del usuario */}
+									 <div>
+										 <h1 className="text-2xl font-semibold text-gray-800 mb-2">Gestion de Experiencias significativas</h1>
+										 <p className="text-sm text-gray-500">Optimiza la eficiencia de la experiencias</p>
+									 </div>
+								 </div>
+								 <div>
+									 {/* Botón flotante para agregar experiencia (tal cual) */}
+									 <button
+										 onClick={() => { if (onAgregar) { onAgregar(); } else { setShowAddModal(true); } }}
+										 title="Agregar experiencia"
+										 className="fixed bottom-[40rem] right-80 z-50 inline-flex items-center justify-center w-14 h-14 rounded-lg! bg-sky-600 text-white shadow-lg hover:bg-sky-700"
+										 aria-label="Agregar experiencia"
+									 >
+										 <span className="text-white text-2xl font-bold">+</span>
+									 </button>
+								 </div>
+							 </div>
 				{/* Mostrar AddExperience (formulario) en modo lectura para reutilizar diseño */}
 				{showViewModal && viewData && (
-					<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-8">
-						<div className="w-[96%] max-w-6xl p-0 max-h-[90vh] flex flex-col">
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+						<div className="w-[96%] max-w-6xl p-0 flex flex-col h-full">
 							{/* Debug panel removed at user's request */}
-							<div className="p-4 flex-1 overflow-auto">
+							<div className="p-4 flex-1">
 								<AddExperience {...({
 									initialData: viewData,
-									/* abrir en modo editable para permitir navegación entre secciones */
-									readOnly: false,
+									readOnly: true,
 									disableValidation: true,
 									onVolver: () => { setShowViewModal(false); setViewData(null); }
 								} as any)} />
@@ -686,9 +688,6 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 								<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
 							</div>
 						</div>
-					</div>
-					<div>
-						<button className="px-4 py-2 rounded bg-white border text-sm flex items-center gap-2">Filtrar</button>
 					</div>
 				</div>
 

@@ -9,6 +9,8 @@ const starT: React.FC = () => {
   const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(null);
   const [selectedEje, setSelectedEje] = useState<number | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Ejes temáticos igual que en Widgets.tsx
   const ejes = [
@@ -23,20 +25,30 @@ const starT: React.FC = () => {
     { id: 9, label: "Danza, Deporte y Recreación", img: "/images/deporte.png", imgClass: "w-20" },
   ];
 
-  // Filtrar experiencias por eje seleccionado
+  // Filtrar experiencias por eje seleccionado y búsqueda
   const experienciasFiltradas = useMemo(() => {
-    if (!selectedEje) return experiencias;
-    return experiencias.filter((exp) => {
-      if (Array.isArray(exp.thematicLineIds)) {
-        return exp.thematicLineIds.includes(selectedEje);
-      }
-      if (Array.isArray(exp.thematicLineNames)) {
-        const ejeLabel = ejes.find(e => e.id === selectedEje)?.label;
-        return exp.thematicLineNames.includes(ejeLabel);
-      }
-      return false;
-    });
-  }, [experiencias, selectedEje]);
+    let lista = experiencias;
+    if (selectedEje) {
+      lista = lista.filter((exp) => {
+        if (Array.isArray(exp.thematicLineIds)) {
+          return exp.thematicLineIds.includes(selectedEje);
+        }
+        if (Array.isArray(exp.thematicLineNames)) {
+          const ejeLabel = ejes.find(e => e.id === selectedEje)?.label;
+          return exp.thematicLineNames.includes(ejeLabel);
+        }
+        return false;
+      });
+    }
+    if (searchTerm.trim() !== '') {
+      const q = searchTerm.trim().toLowerCase();
+      lista = lista.filter(exp => {
+        const nombre = String(exp.nameExperiences || exp.name || '').toLowerCase();
+        return nombre.includes(q);
+      });
+    }
+    return lista;
+  }, [experiencias, selectedEje, searchTerm]);
 
   // Derivar la experiencia seleccionada a partir del id
   const selectedExperience = useMemo(() => {
@@ -114,6 +126,32 @@ const starT: React.FC = () => {
       {/* Carrusel de tarjetas de experiencias */}
       <div className="mt-16">
         <div className="bg-white rounded-2xl p-6 shadow-lg relative">
+          {/* Buscador */}
+          <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
+            {searchOpen ? (
+              <div className="flex items-center gap-2 bg-white rounded-full px-2 shadow-md">
+                <input
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por experiencia..."
+                  className="outline-none px-3 py-1 w-64"
+                />
+                <button onClick={() => { setSearchOpen(false); setSearchTerm(''); }} className="p-2 text-gray-600">
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="w-10 h-10 bg-white rounded-full! shadow-md flex items-center justify-center border border-white/40"
+                aria-label="Buscar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="#4343CD">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="mt-2">
             {loading ? (
               <div className="py-8">Cargando experiencias...</div>

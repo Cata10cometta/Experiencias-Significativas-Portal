@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react';
 interface Props {
   open: boolean;
   onClose: () => void;
+  onCountChange?: (count: number) => void;
 }
 
-const NotificationsModal: React.FC<Props> = ({ open, onClose }) => {
+const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loadingNotifs, setLoadingNotifs] = useState<boolean>(false);
   const [notifError, setNotifError] = useState<string | null>(null);
@@ -57,10 +58,12 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose }) => {
         return !keys.some(k => k != null && removedSet.has(k));
       });
       setNotifications(filtered);
+      if (onCountChange) onCountChange(filtered.length);
     } catch (err) {
       console.error('fetchNotifications exception', err);
       setNotifError('Error al obtener notificaciones');
       setNotifications([]);
+      if (onCountChange) onCountChange(0);
     } finally {
       setLoadingNotifs(false);
     }
@@ -141,58 +144,73 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose }) => {
 
   useEffect(() => {
     if (open) fetchNotifications();
+    // Actualizar el contador al abrir/cerrar el modal
+    if (!open && onCountChange) onCountChange(notifications.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/50 pt-20">
-      <div className="bg-white rounded-lg! w-[90%] max-w-2xl p-6 max-h-[80vh] overflow-auto scrollbar-hide shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Notificaciones <br />Permiso para editar</h3>
-          <button className="px-3 py-1 bg-gray-100 rounded" onClick={onClose}>Cerrar</button>
-        </div>
-        {successMessage ? (
-          <div className="mb-4 rounded-md bg-green-100 border border-green-200 text-green-800 px-4 py-2">
-            {successMessage}
+      <div className="w-[70%] max-w-xl max-h-[95vh] overflow-auto scrollbar-hide shadow-lg"
+        style={{ background: '#e9ecef', borderRadius: '28px', border: '2px solid #4343CD', minHeight: '700px', height: 'auto' }}>
+        {/* Header con título y subrayado naranja y línea azul a la derecha */}
+        <div className="relative flex items-center justify-between mb-4 px-6 pt-6 pb-2">
+          <div className="flex flex-col flex-1">
+            <h3 className="text-2xl font-extrabold text-[#43436D] leading-tight" style={{ lineHeight: '1.1' }}>
+              Notificaciones <br />Permiso para editar
+            </h3>
+            {/* Subrayado naranja */}
+            <span className="block mt-1" style={{ width: 220, height: 4, background: '#FFA940' }} />
           </div>
-        ) : null}
-        {loadingNotifs ? (
-          <div className="py-8 text-center">Cargando notificaciones...</div>
-        ) : notifError ? (
-          <div className="text-red-500">{notifError}</div>
-        ) : notifications.length === 0 ? (
-          <div className="text-gray-600">No hay notificaciones.</div>
-        ) : (
-          <ul className="space-y-4">
-            {notifications.map((n, i) => {
-              const expId = n.raw?.experienceId ?? n.raw?.experience?.id ?? n.raw?.request?.experienceId ?? null;
-              const isApproving = expId ? approvingIds.includes(expId) : false;
-              return (
-                <li key={n.id ?? i}>
-                  <div className="bg-indigo-700 rounded-xl p-5 flex items-start justify-between gap-4">
-                    <div className="flex-1 pr-4">
-                      <div className="text-white font-semibold text-lg leading-tight truncate">{n.experienceName ?? 'Nombre de experiencia'}</div>
-                      <div className="text-white/90 mt-3 truncate">{n.userName ?? 'Nombre usuario'}</div>
-                      <div className="text-white/80 mt-3 truncate">{n.state ?? 'Estado'}</div>
+          {/* Línea azul a la derecha del título */}
+          <div className="absolute right-0 top-8 h-1 w-32 bg-[#4343CD]" style={{ borderRadius: 2 }} />
+          <button className="ml-4 px-3 py-1 bg-gray-100 rounded text-[#43436D] font-semibold border border-[#4343CD]" onClick={onClose}>Cerrar</button>
+        </div>
+        <div className="px-6 pb-6">
+          {successMessage ? (
+            <div className="mb-4 rounded-md bg-green-100 border border-green-200 text-green-800 px-4 py-2">
+              {successMessage}
+            </div>
+          ) : null}
+          {loadingNotifs ? (
+            <div className="py-8 text-center">Cargando notificaciones...</div>
+          ) : notifError ? (
+            <div className="text-red-500">{notifError}</div>
+          ) : notifications.length === 0 ? (
+            <div className="text-gray-600">No hay notificaciones.</div>
+          ) : (
+            <ul className="space-y-4">
+              {notifications.map((n, i) => {
+                const expId = n.raw?.experienceId ?? n.raw?.experience?.id ?? n.raw?.request?.experienceId ?? null;
+                const isApproving = expId ? approvingIds.includes(expId) : false;
+                return (
+                  <li key={n.id ?? i}>
+                    <div className="bg-indigo-700 rounded-xl p-5 flex items-start justify-between gap-4">
+                      <div className="flex-1 pr-4">
+                        <div className="text-white font-semibold text-lg leading-tight truncate">{n.experienceName ?? 'Nombre de experiencia'}</div>
+                        <div className="text-white/90 mt-3 truncate">{n.userName ?? 'Nombre usuario'}</div>
+                        <div className="text-white/80 mt-3 truncate">{n.state ?? 'Estado'}</div>
+                      </div>
+                      <div className="flex items-end">
+                        {expId ? (
+                          <button
+                            onClick={() => approveEdit(Number(expId))}
+                            disabled={isApproving}
+                            className={`ml-2 px-3 py-1 rounded-full text-sm text-white ${isApproving ? 'bg-gray-400' : 'bg-orange-400 hover:bg-orange-500'}`}
+                          >
+                            {isApproving ? 'Aprobando...' : 'Permitir'}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="flex items-end">
-                      {expId ? (
-                        <button
-                          onClick={() => approveEdit(Number(expId))}
-                          disabled={isApproving}
-                          className={`ml-2 px-3 py-1 rounded-full text-sm text-white ${isApproving ? 'bg-gray-400' : 'bg-orange-400 hover:bg-orange-500'}`}
-                        >
-                          {isApproving ? 'Aprobando...' : 'Permitir'}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );

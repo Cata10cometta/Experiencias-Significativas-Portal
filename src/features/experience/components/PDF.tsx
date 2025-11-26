@@ -36,6 +36,7 @@ const PDFUploader: React.FC<{
 
       if (slot === 1) {
         setSelectedFile1(file);
+        setSelectedFile1(file);
         onChange({ ...value, name: file.name, urlPdfExperience: base64 });
       } else {
         setSelectedFile2(file);
@@ -57,6 +58,7 @@ const PDFUploader: React.FC<{
       const base64 = await toBase64(file);
 
       if (slot === 1) {
+        setSelectedFile1(file);
         setSelectedFile1(file);
         onChange({ ...value, name: file.name, urlPdfExperience: base64 });
       } else {
@@ -84,6 +86,8 @@ const PDFUploader: React.FC<{
       <label className="block font-semibold mb-2">ADJUNTAR PDF</label>
       <div className="grid grid-cols-2 gap-4">
         {/* Slot 1 */}
+
+        {/* Primer PDF: Proyecto Experiencia Significativa */}
         <div
           className="bg-gray-50 border rounded-xl flex flex-col justify-center items-center h-56 cursor-pointer relative"
           onClick={() => handleClick(1)}
@@ -125,7 +129,7 @@ const PDFUploader: React.FC<{
           </span>
         </div>
 
-        {/* Slot 2 */}
+        {/* Segundo PDF: Oficio de presentación */}
         <div
           className="bg-gray-50 border rounded-xl flex flex-col justify-center items-center h-56 cursor-pointer relative"
           onClick={() => handleClick(2)}
@@ -139,6 +143,7 @@ const PDFUploader: React.FC<{
             style={{ display: "none" }}
             onChange={(e) => handleFileChange(e, 2)}
           />
+
           {(selectedFile2 || value?.urlPdf) && (
             <button
               type="button"
@@ -153,8 +158,14 @@ const PDFUploader: React.FC<{
               <IoClose />
             </button>
           )}
+
+          <FaRegFilePdf className="mb-4 text-red-600" style={{ fontSize: 72 }} />
           <span className="text-gray-500 text-sm">
-            {selectedFile2 ? selectedFile2.name : value?.urlPdf ? "PDF cargado" : "Haz click o arrastra el segundo PDF aquí"}
+            {selectedFile2
+              ? selectedFile2.name
+              : value?.urlPdf
+              ? "PDF cargado"
+              : "Haz click o arrastra el Oficio de presentación aquí"}
           </span>
         </div>
       </div>

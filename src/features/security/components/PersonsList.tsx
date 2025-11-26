@@ -24,6 +24,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
   const [documentType, setDocumentType] = useState<number | string>("");
   const [documentTypes, setDocumentTypes] = useState<DataSelectRequest[]>([]);
   const [codigoDaneOptions, setCodigoDaneOptions] = useState<DataSelectRequest[]>([]);
+  const [emailInstitucionalOptions, setEmailInstitucionalOptions] = useState<DataSelectRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +35,9 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
         setDocumentTypes(dt || []);
         const cd = await getEnum("CodeDane");
         setCodigoDaneOptions(cd || []);
+        const emailInstitucionalOpts = await getEnum("EmailInstitucional");
+        setEmailInstitucionalOptions(emailInstitucionalOpts || []);
+        // console.log("EmailInstitutional recibidos:", emailInstitucionalOpts);
       } catch (e) {
         // ignore
       }
@@ -113,7 +117,16 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
           </div>
           <div>
             <label className="block mb-2 font-semibold">Email Institucional</label>
-            <input type="email" className="w-full p-2 border rounded" value={emailInstitutional} onChange={e => setEmailInstitutional(e.target.value)} />
+            <select
+              className="w-full p-2 border rounded"
+              value={emailInstitutional}
+              onChange={e => setEmailInstitutional(e.target.value)}
+            >
+              <option value="">Seleccione...</option>
+              {emailInstitucionalOptions.map(opt => (
+                <option key={opt.id} value={opt.displayText}>{opt.displayText}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block mb-2 font-semibold">Teléfono</label>
@@ -123,7 +136,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
             <label className="block mb-2 font-semibold">Código Dane</label>
             <select className="w-full p-2 border rounded" value={codeDane} onChange={e => setCodeDane(e.target.value)}>
               <option value="">Seleccione...</option>
-              {codigoDaneOptions.map(c => <option key={c.id} value={c.displayText}>{c.displayText}</option>)}
+              {codigoDaneOptions.map(c => <option key={c.id} value={c.displayText}>{c.id}</option>)}
             </select>
           </div>
         </div>
@@ -369,8 +382,9 @@ const PersonsList: React.FC = () => {
           <div>
             <button
               onClick={() => setAddPersonOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl shadow hover:bg-sky-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
               Agregar Persona
             </button>
           </div>
@@ -389,13 +403,6 @@ const PersonsList: React.FC = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
               </div>
             </div>
-          </div>
-          <div>
-            <button className="px-4 py-2 rounded bg-white border text-sm flex items-center gap-2">
-              {/* funnel icon */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-gray-600"><path d="M3 5h18v2L13 13v6l-2-1v-5L3 7V5z" fill="currentColor"/></svg>
-              <span>Filtrar</span>
-            </button>
           </div>
         </div>
 

@@ -1,9 +1,11 @@
 // Helper to normalize backend experience detail JSON into the shape AddExperience expects
+
+
+// Helper to normalize backend experience detail JSON into the shape AddExperience expects
 export const normalizeToInitial = (src: any) => {
   if (!src || typeof src !== 'object') return src;
 
   // institutional identification
-  // try many possible keys where the backend might place institution info
   const institutionCandidates = [
     'institution', 'institutional', 'institucion', 'institutionalIdentification', 'institutionInfo', 'institutionData', 'institucionIdentificacion', 'institutional_identification'
   ];
@@ -30,7 +32,7 @@ export const normalizeToInitial = (src: any) => {
     const s = String(v).trim().toLowerCase();
     if (s === 'si' || s === 'sí' || s === 's' || s === 'yes' || s === 'y' || s === 'true' || s === '1') return 'si';
     if (s === 'no' || s === 'n' || s === 'false' || s === '0') return 'no';
-    return s; // fallback: keep raw string (may be descriptive)
+    return s;
   };
 
   const identificacionInstitucional = {
@@ -42,10 +44,26 @@ export const normalizeToInitial = (src: any) => {
     nameRector: pick(institutionSrc, ['nameRector', 'nombreRector', 'rector', 'director']) || pick(src, ['nameRector', 'rector', 'director']) || "",
     caracteristic: pick(institutionSrc, ['caracteristic', 'characteristic', 'caracteristicas', 'characteristics']) || pick(src, ['caracteristic']) || "",
     territorialEntity: pick(institutionSrc, ['territorialEntity', 'entidadTerritorial', 'territorial_entity']) || pick(src, ['territorialEntity']) || "",
-    municipality: pick(institutionSrc, ['municipality', 'municipio', 'city', 'ciudad', 'municipalityName', 'municipioName']) || pick(src, ['municipality', 'municipio', 'city', 'ciudad']) || "",
-    departament: pick(institutionSrc, ['departament', 'department', 'departamento', 'departamentName']) || pick(src, ['departament', 'department', 'departamento']) || "",
+    municipality:
+      (Array.isArray(institutionSrc.municipalitis) && institutionSrc.municipalitis.length > 0 &&
+        (institutionSrc.municipalitis[0].name || institutionSrc.municipalitis[0].city || institutionSrc.municipalitis[0].ciudad))
+        || pick(institutionSrc, ['municipality', 'municipio', 'city', 'ciudad', 'municipalityName', 'municipioName'])
+        || pick(src, ['municipality', 'municipio', 'city', 'ciudad'])
+        || "",
+    departament:
+      (Array.isArray(institutionSrc.departaments) && institutionSrc.departaments.length > 0 &&
+        (institutionSrc.departaments[0].name || institutionSrc.departaments[0].department || institutionSrc.departaments[0].departamento))
+        || pick(institutionSrc, ['departament', 'department', 'departamento', 'departamentName'])
+        || pick(src, ['departament', 'department', 'departamento'])
+        || "",
     communes: pick(institutionSrc, ['communes', 'comunas', 'commune']) || pick(src, ['communes', 'comunas']) || [],
-    eZone: pick(institutionSrc, ['eZone', 'zone', 'zona', 'eeZone']) || pick(src, ['eZone', 'zone', 'zona']) || "",
+    eZone: pick(institutionSrc, [
+      'eZone', 'zone', 'zona', 'eeZone', 'zonaEE', 'zona_ee', 'zoneEE', 'zone_ee', 'zoneExperience', 'experienceZone'
+    ])
+      || pick(src, [
+        'eZone', 'zone', 'zona', 'eeZone', 'zonaEE', 'zona_ee', 'zoneEE', 'zone_ee', 'zoneExperience', 'experienceZone'
+      ])
+      || "",
     testsKnow: pick(institutionSrc, ['testsKnow', 'participaEvento']) || pick(src, ['testsKnow']) || "",
   };
 
@@ -78,7 +96,6 @@ export const normalizeToInitial = (src: any) => {
         return String(item);
       }).filter(Boolean);
     }
-    // If it's a single string or value
     if (typeof val === 'string') return [val];
     return [];
   };
@@ -96,29 +113,67 @@ export const normalizeToInitial = (src: any) => {
     return arr.map(toCheckboxId);
   };
 
+  // Buscar en developments[0] si existe
+  const dev0 = Array.isArray(src.developments) && src.developments.length > 0 ? src.developments[0] : {};
+
+  // DEBUG: log values to verify what is being picked up
+  if (typeof window !== 'undefined') {
+    console.debug('normalizeToInitial: src.CrossCuttingProject', src.CrossCuttingProject);
+    console.debug('normalizeToInitial: dev0.crossCuttingProject', dev0.crossCuttingProject);
+    console.debug('normalizeToInitial: src.Population', src.Population);
+    console.debug('normalizeToInitial: dev0.population', dev0.population);
+  }
+
+  // Helper: always return array (even if value is string)
+  const ensureArray = (val: any) => {
+    if (Array.isArray(val)) return val;
+    if (val === undefined || val === null) return [];
+    return [val];
+  };
+
   const tematicaForm = {
     thematicLineIds: normalizeCheckboxIds(src.thematicLineIds || src.thematicLines || src.thematicLine),
-    PedagogicalStrategies: normalizeCheckboxIds(src.PedagogicalStrategies || src.pedagogicalStrategies),
-    pedagogicalStrategies: normalizeCheckboxIds(src.pedagogicalStrategies || src.PedagogicalStrategies),
-    CrossCuttingProject: normalizeCheckboxIds(src.CrossCuttingProject || src.crossCuttingProject || src.crosscuttingProject),
-    coordinationTransversalProjects: src.coordinationTransversalProjects || src.CoordinationTransversalProjects || "",
-    coverage: src.coverage || src.Coverage || "",
-    Coverage: src.Coverage || src.coverage || "",
-    CoverageText: src.CoverageText || src.coverageText || "",
-    Population: normalizeCheckboxIds(src.Population || src.population || src.populationGradeIds),
-    PopulationGrade: normalizeCheckboxIds(src.PopulationGrade || src.populationGrade),
-    population: normalizeCheckboxIds(src.population || src.Population || src.populationGradeIds),
-    populationGradeIds: normalizeCheckboxIds(src.populationGradeIds || src.PopulationGradeIds),
-    populationGrades: normalizeCheckboxIds(src.populationGrades || src.PopulationGrades),
-    experiencesCovidPandemic: src.experiencesCovidPandemic || src.experiences_covid_pandemic || src.covidPandemic || "",
-    recognition: src.recognition || src.Recognition || "",
-    recognitionText: src.recognitionText || src.RecognitionText || "",
-    socialization: normalizeCheckboxIds(src.socialization || src.Socialization),
-    socializationLabels: normalizeCheckboxIds(src.socializationLabels || src.SocializationLabels),
-    grades: normalizeCheckboxIds(src.grades || src.Grades),
-    gradeId: normalizeCheckboxIds(src.gradeId || src.GradeId),
-    thematicLocation: src.thematicLocation || src.thematic_location || "",
-    thematicFocus: src.thematicFocus || src.thematicLine || src.thematic || src.thematicLocation || "",
+    PedagogicalStrategies: normalizeCheckboxIds(src.PedagogicalStrategies || src.PedagogicalStrategies || dev0.pedagogicalStrategies),
+    pedagogicalStrategies: normalizeCheckboxIds(src.pedagogicalStrategies || src.PedagogicalStrategies || dev0.pedagogicalStrategies),
+    CrossCuttingProject: normalizeCheckboxIds(
+      ensureArray(src.CrossCuttingProject) || ensureArray(src.crossCuttingProject) || ensureArray(src.crosscuttingProject) || ensureArray(dev0.crossCuttingProject)
+    ),
+    coordinationTransversalProjects: src.coordinationTransversalProjects || src.CoordinationTransversalProjects || dev0.coordinationTransversalProjects || "",
+    coverage: src.coverage || src.Coverage || dev0.coverage || "",
+    Coverage: src.Coverage || src.coverage || dev0.Coverage || "",
+    CoverageText: src.CoverageText || src.coverageText || dev0.CoverageText || "",
+    Population: normalizeCheckboxIds(
+      ensureArray(src.Population) || ensureArray(src.population) || ensureArray(src.populationGradeIds) || ensureArray(dev0.population)
+    ),
+    PopulationGrade: normalizeCheckboxIds(
+      ensureArray(src.PopulationGrade) || ensureArray(src.populationGrade) || ensureArray(dev0.populationGrade)
+    ),
+    population: normalizeCheckboxIds(
+      ensureArray(src.population) || ensureArray(src.Population) || ensureArray(src.populationGradeIds) || ensureArray(dev0.population)
+    ),
+    populationGradeIds: normalizeCheckboxIds(
+      ensureArray(src.populationGradeIds) || ensureArray(src.PopulationGradeIds) || ensureArray(dev0.populationGradeIds)
+    ),
+    populationGrades: normalizeCheckboxIds(
+      ensureArray(src.populationGrades) || ensureArray(src.PopulationGrades) || ensureArray(dev0.populationGrades)
+    ),
+    experiencesCovidPandemic: src.experiencesCovidPandemic || src.experiences_covid_pandemic || src.covidPandemic || dev0.covidPandemic || "",
+    recognition: src.recognition || src.Recognition || dev0.recognition || "",
+    recognitionText: src.recognitionText || src.RecognitionText || dev0.recognitionText || "",
+    socialization: normalizeCheckboxIds(
+      ensureArray(src.socialization) || ensureArray(src.Socialization) || ensureArray(dev0.socialization)
+    ),
+    socializationLabels: normalizeCheckboxIds(
+      ensureArray(src.socializationLabels) || ensureArray(src.SocializationLabels) || ensureArray(dev0.socializationLabels)
+    ),
+    grades: normalizeCheckboxIds(
+      ensureArray(src.grades) || ensureArray(src.Grades) || ensureArray(dev0.grades)
+    ),
+    gradeId: normalizeCheckboxIds(
+      ensureArray(src.gradeId) || ensureArray(src.GradeId) || ensureArray(dev0.gradeId)
+    ),
+    thematicLocation: src.thematicLocation || src.thematic_location || dev0.thematicLocation || "",
+    thematicFocus: src.thematicFocus || src.thematicLine || src.thematic || src.thematicLocation || dev0.thematicFocus || "",
   };
 
   // niveles / grades: try to map backend grades to the form shape
@@ -164,7 +219,6 @@ export const normalizeToInitial = (src: any) => {
 
   // assemble summary array (UI expects summary[0].monitoringEvaluation)
   const buildSummaryArray = (mon: any, sup: any) => {
-    // prefer explicit summary from support then monitoring then top-level
     const fromSupport = sup?.summary ?? sup?.resumen ?? sup?.summaries;
     if (Array.isArray(fromSupport) && fromSupport.length > 0) return fromSupport;
     if (fromSupport) return [fromSupport];
@@ -176,12 +230,10 @@ export const normalizeToInitial = (src: any) => {
 
   const summaryArr = buildSummaryArray(rawMonitoring, rawSupport);
 
-  // find candidate monitoring value from many possible keys
   const rawMonitoringCandidates = (
     rawMonitoring?.monitoringEvaluation || rawMonitoring?.monitoring || rawMonitoring?.seguimiento || rawMonitoring?.evaluacion || rawMonitoring?.evaluacionMonitoreo || src.monitoringEvaluation || src.seguimientoEvaluacion || src.seguimiento || rawSupport?.monitoringEvaluation || rawSupport?.monitoring || rawSupport?.seguimiento || null
   );
 
-  // Normalizar summary para radios: monitoringEvaluation, metaphoricalPhrase, testimony, followEvaluation
   let normalizedSummary = [];
   if (Array.isArray(summaryArr) && summaryArr.length > 0) {
     const first = summaryArr[0];
@@ -211,7 +263,6 @@ export const normalizeToInitial = (src: any) => {
       rawMonitoring?.sustainability ?? rawMonitoring?.sustainabilityExperience ?? src.sustainability ?? rawSupport?.sustainability ?? ''
     ),
     tranfer: rawMonitoring?.tranfer || rawMonitoring?.transfer || src.tranfer || rawSupport?.transfer || '',
-    // summary normalizado para radios
     summary: normalizedSummary,
     metaphoricalPhrase: normalizeYesNo(
       (normalizedSummary[0] && normalizedSummary[0].metaphoricalPhrase) ??
@@ -227,21 +278,19 @@ export const normalizeToInitial = (src: any) => {
     ),
   };
 
-  // informacionApoyo also used by SupportInformationForm and should include monitoringEvaluation/sustainability when available
   const informacionApoyo = {
     summary: Array.isArray(rawSupport?.summary) ? rawSupport.summary : (rawSupport?.summary ? [rawSupport.summary] : []),
     metaphoricalPhrase: normalizeYesNo(rawSupport?.metaphoricalPhrase ?? src.metaphoricalPhrase ?? ''),
     testimony: normalizeYesNo(rawSupport?.testimony ?? src.testimony ?? ''),
     followEvaluation: normalizeYesNo(rawSupport?.followEvaluation ?? src.followEvaluation ?? ''),
-    // compatibility: include monitoringEvaluation and sustainability keys used by monitoring components
     monitoringEvaluation: normalizeYesNo(rawMonitoring?.monitoringEvaluation ?? rawSupport?.monitoringEvaluation ?? src.monitoringEvaluation ?? rawSupport?.monitoring ?? src.monitoring ?? ''),
     sustainability: normalizeYesNo(rawMonitoring?.sustainability ?? rawSupport?.sustainability ?? src.sustainability ?? ''),
   };
 
-  // pdf/document
   const pdfFile = (src.documents && src.documents.length > 0) ? src.documents[0] : (src.document || src.pdf || null);
 
   return {
+    id: src.id || src.ID || src.experienceId || src.experienciaId || src._id || null,
     identificacionInstitucional,
     leaders,
     identificacionForm,

@@ -230,47 +230,52 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
           <div className="px-0 py-4 bg-transparent border-0">
             <div className="grid grid-cols-3 gap-3 p-0">
               {[
-                'Preescolar',
-                'Primero',
-                'Segundo',
-                'Tercero',
-                'Cuarto',
-                'Quinto',
-                'Sexto',
-                'Séptimo',
-                'Octavo',
-                'Noveno',
-                'Décimo',
-                'Undecimo',
-                'Todas las anteriores',
-              ].map((label) => {
-                const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-                // normalize existing values to strings for reliable comparison
-                const gradeArr = Array.isArray((value as any).gradeId)
-                  ? (value as any).gradeId.map((v: any) => String(v))
-                  : Array.isArray((value as any).grades)
-                    ? (value as any).grades.map((v: any) => String(v))
-                    : [];
-                const checked = gradeArr.includes(id);
+                { id: 1, label: 'Primaria Infancia (Jardin-transicion)' },
+                { id: 2, label: 'Primaria' },
+                { id: 3, label: 'Basic' },
+                { id: 4, label: 'Media' },
+                { id: 5, label: 'CLEI' },
+                { id: 6, label: 'Todas las anteriores' },
+              ].map((grade) => {
+                // grades: [{ gradeId, description }]
+                const gradesArr = Array.isArray((value as any).grades)
+                  ? (value as any).grades
+                  : [];
+                const found = gradesArr.find((g: any) => g.gradeId === grade.id);
+                const checked = !!found;
                 return (
-                  <label key={id} className="flex items-start gap-2 text-sm">
+                  <div key={grade.id} className="flex items-center gap-2 text-sm mb-1">
                     <input
                       type="checkbox"
                       className="h-5 w-5 accent-green-600 rounded mt-1"
                       checked={checked}
                       onChange={(e) => {
-                        const current = new Set(gradeArr);
-                        if (e.target.checked) current.add(id);
-                        else current.delete(id);
-                        const arr = Array.from(current);
-                        // update both common property names to maximize compatibility
-                        const payload: any = { ...(value as any), gradeId: arr, grades: arr };
-                        console.debug("ThematicForm - grades changed:", arr);
-                        onChange(payload);
+                        let updated = Array.isArray((value as any).grades) ? [...(value as any).grades] : [];
+                        if (e.target.checked) {
+                          updated.push({ gradeId: grade.id, description: '' });
+                        } else {
+                          updated = updated.filter((g: any) => g.gradeId !== grade.id);
+                        }
+                        onChange({ ...(value as any), grades: updated });
                       }}
                     />
-                    <span className="leading-tight break-words whitespace-normal">{label}</span>
-                  </label>
+                    <span className="leading-tight break-words whitespace-normal">{grade.label}</span>
+                    {checked && (
+                      <input
+                        type="text"
+                        className="ml-2 border rounded px-2 py-1 text-xs"
+                        placeholder="Descripción"
+                        value={found?.description || ''}
+                        onChange={e => {
+                          const updated = gradesArr.map((g: any) =>
+                            g.gradeId === grade.id ? { ...g, description: e.target.value } : g
+                          );
+                          onChange({ ...(value as any), grades: updated });
+                        }}
+                        style={{ minWidth: 120 }}
+                      />
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -284,42 +289,43 @@ const ThematicForm: React.FC<ThematicFormProps> = ({ value, onChange }) => {
         <div className="bg-white px-0 py-4">
           <div className="grid grid-cols-3 gap-3 pl-0">
             {[
-              'Negritudes',
-              'Afrodescendiente',
-              'Palenquero',
-              'Raizal',
-              'Rom/Gitano',
-              'Víctima del Conflicto',
-              'Discapacidad',
-              'Talentos Excepcionales',
-              'Indígenas',
-              'Trastornos Específicos',
-              'Ninguno de los anteriores',
-            ].map((label) => {
-              const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+              { id: 1, label: 'Negritudes' },
+              { id: 2, label: 'Afrodescendiente' },
+              { id: 3, label: 'Palenquero' },
+              { id: 4, label: 'Raizal' },
+              { id: 5, label: 'Rom/Gitano' },
+              { id: 6, label: 'Víctima del Conflicto' },
+              { id: 7, label: 'Discapacidad' },
+              { id: 8, label: 'Talentos Excepcionales' },
+              { id: 9, label: 'Indígenas' },
+              { id: 10, label: 'Trastornos Específicos' },
+              { id: 11, label: 'Ninguno de los anteriores' },
+            ].map((item) => {
               const existing = Array.isArray((value as any).populationGradeIds)
-                ? (value as any).populationGradeIds.map((v: any) => String(v))
-                : Array.isArray((value as any).populationGrades)
-                  ? (value as any).populationGrades.map((v: any) => String(v))
-                  : [];
-              const checked = existing.includes(id);
+                ? (value as any).populationGradeIds.map((v: any) => Number(v))
+                : [];
+              const checked = existing.includes(item.id);
               return (
-                <label key={id} className="flex items-start gap-2 text-sm">
+                <label key={item.id} className="flex items-start gap-2 text-sm">
                   <input
                     type="checkbox"
                     className="h-5 w-5 accent-green-600 rounded mt-1"
                     checked={checked}
                     onChange={(e) => {
-                      const current = new Set(existing);
-                      if (e.target.checked) current.add(id);
-                      else current.delete(id);
-                      const arr = Array.from(current);
-                      const payload: any = { ...(value as any), populationGradeIds: arr, populationGrades: arr };
-                      console.debug("ThematicForm - population changed:", arr);
+                      let current = Array.isArray((value as any).populationGradeIds)
+                        ? [...(value as any).populationGradeIds]
+                        : [];
+                      if (e.target.checked) {
+                        if (!current.includes(item.id)) current.push(item.id);
+                      } else {
+                        current = current.filter((v: any) => v !== item.id);
+                      }
+                      const payload: any = { ...(value as any), populationGradeIds: current, populationGrades: current.map((id: number) => item.label) };
+                      console.debug("ThematicForm - population changed:", current);
                       onChange(payload);
                     }}
                   />
-                  <span className="leading-tight break-words whitespace-normal">{label}</span>
+                  <span className="leading-tight break-words whitespace-normal">{item.label}</span>
                 </label>
               );
             })}

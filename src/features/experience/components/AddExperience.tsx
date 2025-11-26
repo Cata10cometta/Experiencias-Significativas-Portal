@@ -1,6 +1,124 @@
+// Utilidad para obtener el userId del token o localStorage
+function getUserId(token?: string | null) {
+  let userId = null;
+  const parseJwt = (token: string): any => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          })
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
+  };
+  if (token) {
+    const claims = parseJwt(token);
+    userId = claims?.id || claims?.userId || claims?.sub || null;
+  }
+  if (!userId) {
+    const storedUserId = Number(localStorage.getItem('userId'));
+    if (storedUserId && Number.isFinite(storedUserId) && storedUserId > 0) userId = storedUserId;
+  }
+  return typeof userId === 'string' ? Number(userId) : userId;
+}
+
+// Función para construir el payload genérico con todos los campos requeridos
+function buildExperiencePayload({
+  initialData,
+  identificacionForm,
+  identificacionInstitucional,
+  lideres,
+  nivelesForm,
+  tematicaForm,
+  seguimientoEvaluacion,
+  informacionApoyo,
+  pdfFile,
+  userId
+}: any) {
+  // Mapear leaders (siempre array, aunque vacío)
+  const leaders = Array.isArray(lideres)
+    ? lideres.map((l: any) => ({
+        nameLeaders: l.nameLeaders || l.name || '',
+        identityDocument: l.identityDocument || '',
+        email: l.email || '',
+        position: l.position || '',
+        phone: l.phone || 0,
+      }))
+    : [];
+  // Mapear grados seleccionados a array de objetos { id, code, name, description } (siempre array)
+  const nivelesArray = Object.values(nivelesForm?.niveles || {});
+  const gradesUpdate = Array.isArray(nivelesArray)
+    ? nivelesArray
+        .flatMap((nivel: any) => nivel.grados)
+        .filter((g: any) => g && typeof g.gradeId === 'number')
+        .map((g: any) => ({
+          id: g.gradeId,
+          code: g.code || '',
+          name: g.name || '',
+          description: g.description || ''
+        }))
+    : [];
+  // Formatear developmenttime a ISO string o null
+  let devTime = initialData?.developmenttime || '';
+  if (devTime) {
+    const dateObj = typeof devTime === 'string' ? new Date(devTime) : devTime;
+    devTime = isNaN(dateObj?.getTime?.()) ? null : dateObj.toISOString();
+  } else {
+    devTime = null;
+  }
+  // InstitutionUpdate: siempre objeto (aunque vacío)
+  const institutionUpdate = identificacionInstitucional && Object.keys(identificacionInstitucional).length > 0 ? identificacionInstitucional : {};
+  // DevelopmentsUpdate: siempre array
+  const developmentsUpdate = Array.isArray(tematicaForm?.developments) ? tematicaForm.developments : [];
+  // DocumentsUpdate: siempre array
+  const documentsUpdate = Array.isArray(initialData?.documents) ? initialData.documents : [];
+  // ObjectivesUpdate: siempre array
+  const objectivesUpdate = Array.isArray(initialData?.objectives) ? initialData.objectives : [];
+  // ThematicLineIds: siempre array
+  const thematicLineIds = Array.isArray(tematicaForm?.thematicLineIds) ? tematicaForm.thematicLineIds : [];
+  // PopulationGradeIds: siempre array
+  const populationGradeIds = Array.isArray(tematicaForm?.populationGradeIds) ? tematicaForm.populationGradeIds : [];
+  // HistoryExperiencesUpdate: siempre array
+  const historyExperiencesUpdate = Array.isArray(initialData?.historyExperiences) ? initialData.historyExperiences : [];
+  // Construir el objeto request con TODOS los campos requeridos SIEMPRE presentes
+  return {
+    request: {
+      ExperienceId: initialData?.id ?? 0,
+      NameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
+      Code: initialData?.code || '',
+      ThematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
+      Developmenttime: devTime,
+      Recognition: initialData?.recognition || '',
+      Socialization: initialData?.socialization || '',
+      StateExperienceId: initialData?.stateExperienceId || 0,
+      UserId: userId ?? 0,
+      Leaders: leaders,
+      InstitutionUpdate: institutionUpdate,
+      GradesUpdate: gradesUpdate,
+      DocumentsUpdate: documentsUpdate,
+      ThematicLineIds: thematicLineIds,
+      ObjectivesUpdate: objectivesUpdate,
+      DevelopmentsUpdate: developmentsUpdate,
+      PopulationGradeIds: populationGradeIds,
+      HistoryExperiencesUpdate: historyExperiencesUpdate,
+      FollowUpUpdate: seguimientoEvaluacion || {},
+      SupportInfoUpdate: informacionApoyo || {},
+      ComponentsUpdate: [], // TODO: reemplazar por el estado real si existe
+      // Puedes agregar más campos aquí si el backend los requiere
+    }
+  };
+}
 import React, { useState, useEffect } from "react";
 import Swal from 'sweetalert2';
 import { getToken } from "../../../Api/Services/Auth";
+import { UpdateExperienceRequest } from '../types/updateExperience';
 import LeadersForm from "./LeadersForm";
 import IdentificationForm from "./IdentificationForm";
 import ThematicForm from "./ThematicForm";
@@ -22,6 +140,349 @@ interface AddExperienceProps {
 }
 
 const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = null, readOnly = false, disableValidation = false, showBackButton = true }) => {
+  // Estado para saber qué sección está en modo edición
+  const [editSection, setEditSection] = useState<number | null>(null);
+
+  // Handlers para guardar cambios por sección (stubs, implementar PATCH luego)
+  const handlePatchInstitutional = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+      const endpoint = `${API_BASE}/api/Experience/patch`;
+      const token = localStorage.getItem('token') || getToken?.();
+      if (!initialData?.id) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        return;
+      }
+      const userId = getUserId(token);
+      const payload = buildExperiencePayload({
+        initialData,
+        identificacionForm,
+        identificacionInstitucional,
+        lideres,
+        nivelesForm,
+        tematicaForm,
+        seguimientoEvaluacion,
+        informacionApoyo,
+        pdfFile,
+        userId
+      });
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+        return;
+      }
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+      setEditSection(null);
+    } catch (err: any) {
+      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  };
+  const handlePatchLeaders = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+      const endpoint = `${API_BASE}/api/Experience/patch`;
+      const token = localStorage.getItem('token') || getToken?.();
+      if (!initialData?.id) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        return;
+      }
+      const userId = getUserId(token);
+      const payload = buildExperiencePayload({
+        initialData,
+        identificacionForm,
+        identificacionInstitucional,
+        lideres,
+        nivelesForm,
+        tematicaForm,
+        seguimientoEvaluacion,
+        informacionApoyo,
+        pdfFile,
+        userId
+      });
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+        return;
+      }
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+      setEditSection(null);
+    } catch (err: any) {
+      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  };
+  const handlePatchIdentification = () => {
+    // PATCH para Identificación de la Experiencia usando el payload genérico
+    (async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+        const endpoint = `${API_BASE}/api/Experience/patch`;
+        const token = localStorage.getItem('token') || getToken?.();
+        if (!initialData?.id) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+          return;
+        }
+        const userId = getUserId(token);
+        const payload = buildExperiencePayload({
+          initialData,
+          identificacionForm,
+          identificacionInstitucional,
+          lideres,
+          nivelesForm,
+          tematicaForm,
+          seguimientoEvaluacion,
+          informacionApoyo,
+          pdfFile,
+          userId
+        });
+        const res = await fetch(endpoint, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+          return;
+        }
+        Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+        setEditSection(null);
+      } catch (err: any) {
+        const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+      }
+    })();
+  };
+  const handlePatchThematic = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+      const endpoint = `${API_BASE}/api/Experience/patch`;
+      const token = localStorage.getItem('token') || getToken?.();
+      if (!initialData?.id) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        return;
+      }
+      const userId = getUserId(token);
+      const payload = buildExperiencePayload({
+        initialData,
+        identificacionForm,
+        identificacionInstitucional,
+        lideres,
+        nivelesForm,
+        tematicaForm,
+        seguimientoEvaluacion,
+        informacionApoyo,
+        pdfFile,
+        userId
+      });
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+        return;
+      }
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+      setEditSection(null);
+    } catch (err: any) {
+      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  };
+  const handlePatchComponents = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+      const endpoint = `${API_BASE}/api/Experience/patch`;
+      const token = localStorage.getItem('token') || getToken?.();
+      if (!initialData?.id) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        return;
+      }
+      const userId = getUserId(token ?? undefined);
+      const payload = buildExperiencePayload({
+        initialData,
+        identificacionForm,
+        identificacionInstitucional,
+        lideres,
+        nivelesForm,
+        tematicaForm,
+        seguimientoEvaluacion,
+        informacionApoyo,
+        pdfFile,
+        userId
+      });
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+        return;
+      }
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+      setEditSection(null);
+    } catch (err: any) {
+      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  };
+  const handlePatchFollowUp = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+      const endpoint = `${API_BASE}/api/Experience/patch`;
+      const token = localStorage.getItem('token') || getToken?.();
+      if (!initialData?.id) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        return;
+      }
+      const userId = getUserId(token);
+      const payload = buildExperiencePayload({
+        initialData,
+        identificacionForm,
+        identificacionInstitucional,
+        lideres,
+        nivelesForm,
+        tematicaForm,
+        seguimientoEvaluacion,
+        informacionApoyo,
+        pdfFile,
+        userId
+      });
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+        return;
+      }
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+      setEditSection(null);
+    } catch (err: any) {
+      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  };
+  const handlePatchSupportInfo = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+      const endpoint = `${API_BASE}/api/Experience/patch`;
+      const token = localStorage.getItem('token') || getToken?.();
+      if (!initialData?.id) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        return;
+      }
+      const userId = getUserId(token);
+      const payload = buildExperiencePayload({
+        initialData,
+        identificacionForm,
+        identificacionInstitucional,
+        lideres,
+        nivelesForm,
+        tematicaForm,
+        seguimientoEvaluacion,
+        informacionApoyo,
+        pdfFile,
+        userId
+      });
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+        return;
+      }
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+      setEditSection(null);
+    } catch (err: any) {
+      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  };
+  const handlePatchDocuments = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+      const endpoint = `${API_BASE}/api/Experience/patch`;
+      const token = localStorage.getItem('token') || getToken?.();
+      if (!initialData?.id) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        return;
+      }
+      const userId = getUserId(token);
+      const payload = buildExperiencePayload({
+        initialData,
+        identificacionForm,
+        identificacionInstitucional,
+        lideres,
+        nivelesForm,
+        tematicaForm,
+        seguimientoEvaluacion,
+        informacionApoyo,
+        pdfFile,
+        userId
+      });
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+        return;
+      }
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+      setEditSection(null);
+    } catch (err: any) {
+      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  };
   const [errorMessage, setErrorMessage] = useState("");
   const [currentStep, setCurrentStep] = useState<number>(0);
 
@@ -81,6 +542,13 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     },
   });
   const [grupoPoblacional, setGrupoPoblacional] = useState<number[]>([]);
+
+  // Sincroniza grupoPoblacional con populationGradeIds de tematicaForm
+  useEffect(() => {
+    if (Array.isArray(tematicaForm.populationGradeIds)) {
+      setGrupoPoblacional(tematicaForm.populationGradeIds);
+    }
+  }, [tematicaForm.populationGradeIds]);
   const [tiempo, setTiempo] = useState<any>({});
   const [objectiveExperience, setObjectiveExperience] = useState<any>({});
   const [seguimientoEvaluacion, setSeguimientoEvaluacion] = useState<any>({});
@@ -323,7 +791,14 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       ? seguimientoEvaluacion
       : informacionApoyo;
     const supportInfoNormalized = normalizeSupportInformation(supportSource);
-    const monitoringNormalized = normalizeMonitoring(seguimientoEvaluacion);
+    // Ensure sustainability is always set in monitorings, preferring seguimientoEvaluacion, but falling back to informacionApoyo
+    let monitoringNormalized = normalizeMonitoring(seguimientoEvaluacion);
+    if (!monitoringNormalized.sustainability && informacionApoyo.sustainability) {
+      monitoringNormalized = {
+        ...monitoringNormalized,
+        sustainability: informacionApoyo.sustainability,
+      };
+    }
 
     const objectivesSwagger = [
       {
@@ -914,50 +1389,133 @@ Population: Array.isArray(tematicaForm.Population)
         <form onSubmit={(e) => e.preventDefault()}>
           {/* step-level alert removed — errors shown inline per field */}
           <div className="space-y-4">
+            {/* Estado de edición por sección */}
             {currentStep === 0 && (
               <FormSection>
-                <InstitutionalIdentification value={identificacionInstitucional} onChange={setIdentificacionInstitucional} errors={fieldErrors} />
+                <div className="flex justify-end mb-2">
+                  {readOnly && (
+                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(0)}>Editar</button>
+                  )}
+                </div>
+                <InstitutionalIdentification value={identificacionInstitucional} onChange={setIdentificacionInstitucional} errors={fieldErrors} {...(typeof readOnly !== 'undefined' && { readOnly: readOnly && editSection !== 0 })} />
+                {editSection === 0 && (
+                  <div className="flex justify-end mt-2 gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
+                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchInstitutional}>Guardar</button>
+                  </div>
+                )}
               </FormSection>
             )}
 
             {currentStep === 1 && (
               <FormSection>
+                <div className="flex justify-end mb-2">
+                  {readOnly && (
+                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(1)}>Editar</button>
+                  )}
+                </div>
                 <LeadersForm value={lideres} onChange={setLideres} index={0} />
+                {editSection === 1 && (
+                  <div className="flex justify-end mt-2 gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
+                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchLeaders}>Guardar</button>
+                  </div>
+                )}
               </FormSection>
             )}
 
             {currentStep === 2 && (
               <FormSection>
+                <div className="flex justify-end mb-2">
+                  {readOnly && (
+                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(2)}>Editar</button>
+                  )}
+                </div>
                 <IdentificationForm value={identificacionForm} onChange={setIdentificacionForm} />
+                {editSection === 2 && (
+                  <div className="flex justify-end mt-2 gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
+                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchIdentification}>Guardar</button>
+                  </div>
+                )}
               </FormSection>
             )}
 
             {currentStep === 3 && (
               <FormSection>
+                <div className="flex justify-end mb-2">
+                  {readOnly && (
+                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(3)}>Editar</button>
+                  )}
+                </div>
                 <ThematicForm value={tematicaForm} onChange={setTematicaForm} />
+                {editSection === 3 && (
+                  <div className="flex justify-end mt-2 gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
+                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchThematic}>Guardar</button>
+                  </div>
+                )}
               </FormSection>
             )}
 
             {currentStep === 4 && (
               <FormSection>
+                <div className="flex justify-end mb-2">
+                  {readOnly && (
+                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(4)}>Editar</button>
+                  )}
+                </div>
                 <Components value={objectiveExperience} onChange={setObjectiveExperience} />
+                {editSection === 4 && (
+                  <div className="flex justify-end mt-2 gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
+                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchComponents}>Guardar</button>
+                  </div>
+                )}
               </FormSection>
             )}
 
             {currentStep === 5 && (
               <FormSection>
+                <div className="flex justify-end mb-2">
+                  {readOnly && (
+                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(5)}>Editar</button>
+                  )}
+                </div>
                 <FollowUpEvaluation value={seguimientoEvaluacion} onChange={setSeguimientoEvaluacion} />
+                {editSection === 5 && (
+                  <div className="flex justify-end mt-2 gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
+                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchFollowUp}>Guardar</button>
+                  </div>
+                )}
               </FormSection>
             )}
 
             {currentStep === 6 && (
               <FormSection>
+                <div className="flex justify-end mb-2">
+                  {readOnly && (
+                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(6)}>Editar</button>
+                  )}
+                </div>
                 <SupportInformationForm value={informacionApoyo} onChange={setInformacionApoyo} />
+                {editSection === 6 && (
+                  <div className="flex justify-end mt-2 gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
+                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchSupportInfo}>Guardar</button>
+                  </div>
+                )}
               </FormSection>
             )}
 
             {currentStep === 7 && (
               <FormSection>
+                <div className="flex justify-end mb-2">
+                  {readOnly && (
+                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(7)}>Editar</button>
+                  )}
+                </div>
                 <div className="my-6">
                   <PDFUploader value={pdfFile} onChange={setPdfFile} />
                   {pdfFile && (
@@ -966,13 +1524,40 @@ Population: Array.isArray(tematicaForm.Population)
                     </div>
                   )}
                 </div>
+                {editSection === 7 && (
+                  <div className="flex justify-end mt-2 gap-2">
+                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
+                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchDocuments}>Guardar</button>
+                  </div>
+                )}
               </FormSection>
             )}
           </div>
 
           <div className="sticky bottom-0 z-20 bg-white/90 backdrop-blur-sm border-t border-gray-100 py-3 flex justify-between items-center mt-6">
-            {readOnly ? (
-              <div className="w-full flex justify-end">
+            {/* Navegación siempre habilitada, solo edición bloqueada */}
+            <button
+              type="button"
+              disabled={currentStep === 0}
+              onClick={prevStep}
+              className={`px-4 py-2 rounded ${currentStep === 0 ? "bg-slate-200 text-slate-400" : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+            >
+              Atrás
+            </button>
+
+            {!isLastStep() ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (validateCurrentStep()) nextStep();
+                }}
+                disabled={!isCurrentStepValidSync()}
+                className={`px-4 py-2 rounded ${!isCurrentStepValidSync() ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-sky-500 text-white hover:bg-sky-600"}`}
+              >
+                Siguiente
+              </button>
+            ) : (
+              readOnly ? (
                 <button
                   type="button"
                   onClick={() => { if (onVolver) onVolver(); }}
@@ -980,35 +1565,11 @@ Population: Array.isArray(tematicaForm.Population)
                 >
                   Cerrar
                 </button>
-              </div>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  disabled={currentStep === 0}
-                  onClick={prevStep}
-                  className={`px-4 py-2 rounded ${currentStep === 0 ? "bg-slate-200 text-slate-400" : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
-                >
-                  Atrás
+              ) : (
+                <button type="button" onClick={() => handleSubmit()} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
+                  Guardar Experiencia
                 </button>
-
-                {!isLastStep() ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (validateCurrentStep()) nextStep();
-                    }}
-                    disabled={!isCurrentStepValidSync()}
-                    className={`px-4 py-2 rounded ${!isCurrentStepValidSync() ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-sky-500 text-white hover:bg-sky-600"}`}
-                  >
-                    Siguiente
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => handleSubmit()} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
-                    Guardar Experiencia
-                  </button>
-                )}
-              </>
+              )
             )}
           </div>
         </form>
