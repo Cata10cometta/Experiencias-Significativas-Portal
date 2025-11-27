@@ -459,25 +459,20 @@ const UserList: React.FC = () => {
           </button>
         </div>
 
-        <div className="mt-4 flex items-center gap-4">
-          <button className="px-3 py-2 rounded-lg border bg-white text-sm flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 16 16" className="h-4 w-4 text-gray-600" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-              <path d="M1.5 1.5C1.5 1.22386 1.72386 1 2 1H14C14.2761 1 14.5 1.22386 14.5 1.5V3.5C14.5 3.62352 14.4543 3.74267 14.3716 3.83448L10 8.69187V13.5C10 13.7152 9.86228 13.9063 9.65811 13.9743L6.65811 14.9743C6.50564 15.0252 6.33803 14.9996 6.20764 14.9056C6.07726 14.8116 6 14.6607 6 14.5V8.69187L1.62835 3.83448C1.54572 3.74267 1.5 3.62352 1.5 3.5V1.5ZM2.5 2V3.30813L6.87165 8.16552C6.95428 8.25733 7 8.37648 7 8.5V13.8063L9 13.1396V8.5C9 8.37648 9.04572 8.25733 9.12835 8.16552L13.5 3.30813V2H2.5Z" />
-            </svg>
-            Filtrar
-          </button>
 
+        <div className="mt-4 flex items-center gap-4">
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
               </svg>
-            </div>
+            </span>
             <input
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              placeholder="Buscar"
-              className="w-full pl-10 p-2 border rounded-lg"
+              placeholder="Buscar roles..."
+              className="pl-10 pr-4 h-12 border rounded-full w-full bg-white shadow-sm"
+              style={{ minWidth: 0 }}
             />
           </div>
         </div>

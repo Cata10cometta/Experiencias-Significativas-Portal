@@ -409,7 +409,7 @@ const CriteriaList: React.FC = () => {
       )}
     {/* Modal de éxito/error tipo inicio */}
     {modal.open && (
-      <div className="fixed inset-0 flex items-center justify-center z-[2000]">
+      <div className="fixed inset-0 flex items-center justify-center z-[2000] bg-black bg-opacity-40">
         <div className="bg-white rounded-2xl shadow-lg p-8 min-w-[340px] max-w-sm flex flex-col items-center">
           {modal.type === 'success' ? (
             <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#B7EFC2" strokeWidth="3" fill="#F6FFF9"/><path d="M16 25l6 6 10-14" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>

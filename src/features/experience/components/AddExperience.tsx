@@ -96,32 +96,61 @@ function buildExperiencePayload({
   // Refuerzo: si algún campo es undefined/null, forzar array vacío u objeto vacío
   const safe = (v: any, fallback: any) => (v === undefined || v === null ? fallback : v);
   // Construir el objeto anidado bajo 'request' con TODOS los campos requeridos SIEMPRE presentes
-  return {
-    request: {
-      ExperienceId: initialData?.id ?? 0,
-      NameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
-      Code: initialData?.code || '',
-      ThematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
-      Developmenttime: devTime,
-      Recognition: initialData?.recognition || '',
-      Socialization: initialData?.socialization || '',
-      StateExperienceId: initialData?.stateExperienceId || 0,
-      UserId: userId ?? 0,
-      Leaders: safe(leaders, []),
-      InstitutionUpdate: safe(institutionUpdate, {}),
-      GradesUpdate: safe(gradesUpdate, []),
-      DocumentsUpdate: safe(documentsUpdate, []),
-      ThematicLineIds: safe(thematicLineIds, []),
-      ObjectivesUpdate: safe(objectivesUpdate, []),
-      DevelopmentsUpdate: safe(developmentsUpdate, []),
-      PopulationGradeIds: safe(populationGradeIds, []),
-      HistoryExperiencesUpdate: safe(historyExperiencesUpdate, []),
-      FollowUpUpdate: safe(seguimientoEvaluacion, {}),
-      SupportInfoUpdate: safe(informacionApoyo, {}),
-      ComponentsUpdate: [], // TODO: reemplazar por el estado real si existe
-      // Puedes agregar más campos aquí si el backend los requiere
-    }
-  };
+  // Alternar entre PascalCase y camelCase para los campos requeridos
+  const USE_CAMEL = true; // Cambia a false para probar PascalCase
+  if (USE_CAMEL) {
+    return {
+      request: {
+        experienceId: initialData?.id ?? 0,
+        nameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
+        code: initialData?.code || '',
+        thematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
+        developmenttime: devTime,
+        recognition: initialData?.recognition || '',
+        socialization: initialData?.socialization || '',
+        stateExperienceId: initialData?.stateExperienceId || 0,
+        userId: userId ?? 0,
+        leaders: safe(leaders, []),
+        institutionUpdate: safe(institutionUpdate, {}),
+        gradesUpdate: safe(gradesUpdate, []),
+        documentsUpdate: safe(documentsUpdate, []),
+        thematicLineIds: safe(thematicLineIds, []),
+        objectivesUpdate: safe(objectivesUpdate, []),
+        developmentsUpdate: safe(developmentsUpdate, []),
+        populationGradeIds: safe(populationGradeIds, []),
+        historyExperiencesUpdate: safe(historyExperiencesUpdate, []),
+        followUpUpdate: safe(seguimientoEvaluacion, {}),
+        supportInfoUpdate: safe(informacionApoyo, {}),
+        componentsUpdate: [],
+      }
+    };
+  } else {
+    return {
+      request: {
+        ExperienceId: initialData?.id ?? 0,
+        NameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
+        Code: initialData?.code || '',
+        ThematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
+        Developmenttime: devTime,
+        Recognition: initialData?.recognition || '',
+        Socialization: initialData?.socialization || '',
+        StateExperienceId: initialData?.stateExperienceId || 0,
+        UserId: userId ?? 0,
+        Leaders: safe(leaders, []),
+        InstitutionUpdate: safe(institutionUpdate, {}),
+        GradesUpdate: safe(gradesUpdate, []),
+        DocumentsUpdate: safe(documentsUpdate, []),
+        ThematicLineIds: safe(thematicLineIds, []),
+        ObjectivesUpdate: safe(objectivesUpdate, []),
+        DevelopmentsUpdate: safe(developmentsUpdate, []),
+        PopulationGradeIds: safe(populationGradeIds, []),
+        HistoryExperiencesUpdate: safe(historyExperiencesUpdate, []),
+        FollowUpUpdate: safe(seguimientoEvaluacion, {}),
+        SupportInfoUpdate: safe(informacionApoyo, {}),
+        ComponentsUpdate: [],
+      }
+    };
+  }
 }
 import React, { useState, useEffect } from "react";
 import Swal from 'sweetalert2';

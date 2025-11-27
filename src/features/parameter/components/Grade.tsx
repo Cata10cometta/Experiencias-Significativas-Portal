@@ -329,7 +329,7 @@ const GradeList: React.FC = () => {
                       {grade.state ? (
                         <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs sm:text-sm">Activo</span>
                       ) : (
-                        <span className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs sm:text-sm">Inactivo</span>
+                        <span className="inline-block bg-red-100 text-red-500 px-3 py-1 rounded-full text-xs sm:text-sm border border-red-200">Inactivo</span>
                       )}
                     </td>
                     <td className="py-2 px-3">
