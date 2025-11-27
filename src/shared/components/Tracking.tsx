@@ -287,7 +287,7 @@ const Tracking = () => {
               <Tooltip formatter={(value, name) => [`${value}`, name]} />
             </PieChart>
           </ResponsiveContainer>
-          {/* Leyenda debajo, alineada a la izquierda */}
+          {/* Leyenda debajo, alineada a la izquierda (siempre visible aunque los valores sean 0) */}
           <div className="w-full flex justify-start mt-8">
             <ul className="flex flex-col items-start gap-4">
               {pieData.map((entry, index) => (

@@ -119,7 +119,7 @@ const RolFormPermissionList: React.FC = () => {
             </div>
           </div>
           <div>
-            <button onClick={() => setAddPermissionOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-sky-600 text-white hover:bg-sky-700">
+            <button onClick={() => setAddPermissionOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
               <span>Agregar permiso</span>
             </button>
@@ -136,9 +136,6 @@ const RolFormPermissionList: React.FC = () => {
             </div>
           </div>
           <div>
-            <button className="px-4 py-2 rounded bg-white border text-sm">
-              <span>Filtrar</span>
-            </button>
           </div>
         </div>
 
@@ -181,25 +178,38 @@ const RolFormPermissionList: React.FC = () => {
                       )}
                     </td>
                     <td className="py-3 px-4 align-top whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {/* Editar: lápiz diagonal gris (como en la imagen) */}
-                        <button title="Editar" onClick={() => setEditPermission(permission)} className="p-2 rounded-md hover:bg-gray-100">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
-                            <path d="M15.232 5.232l3.536 3.536M9 19l7.071-7.071a2 2 0 10-2.828-2.828L6.172 16.172A2 2 0 006 17.586V19h1.414a2 2 0 001.414-.586z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <div className="flex items-center gap-4">
+                        <button
+                          className="text-gray-400 hover:text-sky-600"
+                          onClick={() => setEditPermission(permission)}
+                          title="Editar"
+                        >
+                          {/* Filled pencil icon (like PersonsList) */}
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z" />
                           </svg>
                         </button>
-                        {/* Desactivar: tacho de basura rojo (como en la imagen) */}
                         {permission.state ? (
-                          <button title="Desactivar" onClick={() => handleDeactivate(permission.id)} className="p-2 rounded-md hover:bg-gray-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24">
-                              <path d="M9 3h6m2 3v14a2 2 0 01-2 2H9a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h2a1 1 0 011 1v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                          <button
+                            className="text-red-400 hover:text-red-600"
+                            onClick={() => handleDeactivate(permission.id)}
+                            title="Desactivar"
+                          >
+                            {/* Filled trash icon (like PersonsList) */}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/>
                             </svg>
                           </button>
                         ) : (
-                          <button title="Activar" onClick={() => handleActivate(permission.id)} className="p-2 rounded-md hover:bg-gray-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24">
-                              <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <button
+                            className="text-emerald-500 hover:text-emerald-600"
+                            onClick={() => handleActivate(permission.id)}
+                            title="Activar"
+                          >
+                            {/* Filled check icon (like PersonsList) */}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/>
+                              <path d="M10 6v5l3 3"/>
                             </svg>
                           </button>
                         )}
@@ -224,9 +234,14 @@ const RolFormPermissionList: React.FC = () => {
               })()
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className={`px-3 py-1 rounded-full border ${currentPage === 1 ? 'text-gray-300 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}>Anterior</button>
-
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`px-4 py-1 rounded border ${currentPage === 1 ? 'text-gray-400 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}
+            >
+              Anterior
+            </button>
             {(() => {
               const pages: number[] = [];
               let start = Math.max(1, currentPage - 2);
@@ -234,11 +249,24 @@ const RolFormPermissionList: React.FC = () => {
               if (end - start < 4) start = Math.max(1, end - 4);
               for (let i = start; i <= end; i++) pages.push(i);
               return pages.map((p) => (
-                <button key={p} onClick={() => goToPage(p)} aria-current={p === currentPage} className={`w-8 h-8 flex items-center justify-center rounded-full border text-sm ${p === currentPage ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{p}</button>
+                <button
+                  key={p}
+                  onClick={() => goToPage(p)}
+                  aria-current={p === currentPage}
+                  className={`w-8 h-8 flex items-center justify-center rounded border text-sm transition-colors duration-150
+                    ${p === currentPage ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                >
+                  {p}
+                </button>
               ));
             })()}
-
-            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className={`px-3 py-1 rounded-full border ${currentPage === totalPages ? 'text-gray-300 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}>Siguiente</button>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`px-4 py-1 rounded border ${currentPage === totalPages ? 'text-gray-400 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}
+            >
+              Siguiente
+            </button>
           </div>
         </div>
       </div>

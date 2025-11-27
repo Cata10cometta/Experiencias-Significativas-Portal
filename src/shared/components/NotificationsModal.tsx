@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { startNotificationsHub, stopNotificationsHub } from '../Service/notificationsHub';
 
 interface Props {
   open: boolean;
@@ -142,10 +143,36 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
     }
   };
 
+
+  // SignalR: mantener referencia para evitar duplicados
+  const signalRStarted = useRef(false);
+
   useEffect(() => {
-    if (open) fetchNotifications();
-    // Actualizar el contador al abrir/cerrar el modal
-    if (!open && onCountChange) onCountChange(notifications.length);
+    if (open) {
+      fetchNotifications();
+      if (!signalRStarted.current) {
+        startNotificationsHub((notification) => {
+          // Normalizar la notificación recibida y agregarla al principio de la lista
+          setNotifications((prev) => [
+            {
+              id: notification.id ?? notification.notificationId ?? notification.requestId ?? null,
+              experienceName: notification.experienceName ?? notification.nameExperiences ?? notification.title ?? notification.experience?.name ?? `Solicitud edición #${notification.id ?? ''}`,
+              userName: notification.userName ?? notification.user?.name ?? notification.requestUser ?? notification.requestedBy ?? notification.username ?? notification.solicitante ?? (notification.request?.userName) ?? '',
+              state: notification.status ?? notification.state ?? notification.requestState ?? notification.estado ?? notification.stateName ?? notification.state?.name ?? 'Pendiente',
+              createdAt: notification.createdAt ?? notification.createdDate ?? notification.date ?? notification.requestedAt ?? null,
+              raw: notification,
+            },
+            ...prev,
+          ]);
+          if (onCountChange) onCountChange(notifications.length + 1);
+        });
+        signalRStarted.current = true;
+      }
+    } else {
+      if (onCountChange) onCountChange(notifications.length);
+      stopNotificationsHub();
+      signalRStarted.current = false;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

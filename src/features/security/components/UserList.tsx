@@ -483,89 +483,51 @@ const UserList: React.FC = () => {
             <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
               <table className="min-w-full">
                 <thead className="text-left text-sm text-gray-600 bg-gray-50">
-              <tr className="border-b">
-                <th className="py-3 px-4">Nombres</th>
-                <th className="py-3 px-4">Correo</th>
-                <th className="py-3 px-4">Tipo de usuario</th>
-                <th className="py-3 px-4">Estado</th>
-                <th className="py-3 px-4">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm text-gray-700">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-6 px-4 text-center text-gray-500">No hay usuarios para mostrar.</td>
-                </tr>
-              ) : (
-                paginated.map((user) => {
-                  const embeddedPerson = (user as any).person as Person | undefined;
-                  const person = embeddedPerson || (user.personId ? personsMap[user.personId as number] : undefined);
-                  // Nombres: preferir FirstName + FirstLastName (con algunos alias comunes), si no usar fullName, si no mostrar '-' (no username)
-                  const getFirst = (p: any) => p?.firstName || p?.first_name || p?.nombre || p?.nombres || "";
-                  const getLast = (p: any) => p?.firstLastName || p?.first_last_name || p?.primerApellido || p?.lastName || p?.apellido || "";
-                  let name = "";
-                  const first = String(getFirst(person)).trim();
-                  const last = String(getLast(person)).trim();
-                  if (first || last) {
-                    name = `${first} ${last}`.replace(/\s+/g, ' ').trim();
-                  } else if (person && (person as any).first_name) {
-                    name = String((person as any).first_name).trim();
-                  } else {
-                    name = "-";
-                  }
-                  // Correo: aquí mostramos lo que antes aparecía en el campo "nombres" (username o code)
-                  const correo = user.username || user.code || (person?.email) || "";
-                  const role = rolesMap[user.id] || (user as any).roleName || (user as any).role || "Administrador";
-                  // Fecha: usar user.createdAt, si no existe usar person.createdAt o person.birthDate
-                  // note: usamos (person as any) para soportar propiedades que el tipo Person podría no declarar exactamente
-
-                  return (
-                    <tr key={user.id} className="border-b last:border-b-0">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 flex-shrink-0 rounded-full bg-sky-50 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-sky-500" viewBox="0 0 20 20" fill="currentColor"><path d="M13 7a3 3 0 11-6 0 3 3 0 016 0z"/><path fillRule="evenodd" d="M2 13.5A5.5 5.5 0 0110 8h0a5.5 5.5 0 018 5.5V15a1 1 0 01-1 1H3a1 1 0 01-1-1v-1.5z" clipRule="evenodd"/></svg>
-                          </div>
-                          <div>
-                            {/* Prefer the person's displayed full name when available */}
-                            <div className="font-semibold">
-                              {person?.fullName || name || first || user.username || user.code || '-'}
-                            </div>
-                            {/* optional small secondary line (first + last) if available to give more detail */}
-                            {(first || last) && (
-                              <div className="text-xs text-gray-400">{`${first} ${last}`.trim()}</div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-gray-500">{correo}</td>
-                      <td className="py-4 px-4">{role}</td>
-                      <td className="py-4 px-4">
-                        {user.state ? <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm">Activo</span> : <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">Inactivo</span>}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditUser(user)} title="Editar">
-                            {/* Pencil icon (from roles) */}
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
-                          </button>
-                          {user.state ? (
-                            <button className="text-red-400 hover:text-red-600" onClick={() => handleDeactivate(user.id)} title="Desactivar">
-                              {/* Trash icon (from roles) */}
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
-                            </button>
-                          ) : (
-                            <button className="text-emerald-500 hover:text-emerald-600" onClick={() => handleActivate(user.id)} title="Activar">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                  <tr className="border-b">
+                    <th className="py-3 px-4">Correo</th>
+                    <th className="py-3 px-4">Tipo de usuario</th>
+                    <th className="py-3 px-4">Estado</th>
+                    <th className="py-3 px-4">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm text-gray-700">
+                  {paginated.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 px-4 text-center text-gray-500">No hay usuarios para mostrar.</td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
+                  ) : (
+                    paginated.map((user) => {
+                      const person = user.personId ? personsMap[user.personId as number] : undefined;
+                      const correo = user.username || user.code || (person?.email) || "";
+                      const role = rolesMap[user.id] || (user as any).roleName || (user as any).role || "Administrador";
+                      return (
+                        <tr key={user.id} className="border-b last:border-b-0">
+                          <td className="py-4 px-4 text-gray-500">{correo}</td>
+                          <td className="py-4 px-4">{role}</td>
+                          <td className="py-4 px-4">
+                            {user.state ? <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm">Activo</span> : <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">Inactivo</span>}
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditUser(user)} title="Editar">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
+                              </button>
+                              {user.state ? (
+                                <button className="text-red-400 hover:text-red-600" onClick={() => handleDeactivate(user.id)} title="Desactivar">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
+                                </button>
+                              ) : (
+                                <button className="text-emerald-500 hover:text-emerald-600" onClick={() => handleActivate(user.id)} title="Activar">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
           </table>
             </div>
             </div>

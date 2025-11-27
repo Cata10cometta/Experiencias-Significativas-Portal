@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import configApi from "../../../Api/Config/Config";
 import { getEnum } from "../../../Api/Services/Helper";
 import { DataSelectRequest } from "../../../shared/types/HelperTypes";
 import { Person } from "../types/Person";
@@ -54,8 +54,8 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
     setError(null);
     const token = localStorage.getItem("token");
     try {
-      await axios.post(
-        "/api/Person/create",
+      await configApi.post(
+        "/Person/create",
         {
           documentType,
           identificationNumber,
@@ -70,8 +70,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
           code,
           username,
           password
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
       onAdded();
       onClose();
@@ -188,8 +187,8 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onClose, onUpda
 
     const token = localStorage.getItem("token");
     try {
-      await axios.put(
-        `/api/Person`,
+      await configApi.put(
+        `/Person`,
         {
           id: person.id,
           firstName,
@@ -198,9 +197,6 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onClose, onUpda
           secondLastName,
           email,
           phone: parseInt(phone, 10),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
         }
       );
       onUpdated(); // Refrescar la lista
@@ -313,10 +309,9 @@ const PersonsList: React.FC = () => {
 
   const fetchPersons = () => {
     const token = localStorage.getItem("token");
-    axios
-      .get("/api/Person/getAll", {
+    configApi
+      .get("/Person/getAll", {
         params: { OnlyActive: onlyActive },
-        headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
         if (Array.isArray(res.data.data)) {
@@ -352,9 +347,7 @@ const PersonsList: React.FC = () => {
   const handleDeactivate = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await axios.delete(`/api/Person/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await configApi.delete(`/Person/${id}`);
       fetchPersons(); // Refrescar lista
     } catch (err) {
       console.error("Error al desactivar persona:", err);
@@ -364,9 +357,7 @@ const PersonsList: React.FC = () => {
   const handleActivate = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await axios.patch(`/api/Person/restore/${id}`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await configApi.patch(`/Person/restore/${id}`);
       fetchPersons(); // Refrescar lista
     } catch (err) {
       console.error("Error al activar persona:", err);
