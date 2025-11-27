@@ -277,7 +277,7 @@ const LineThematicList: React.FC = () => {
                       {lineThematic.state ? (
                         <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm">Activo</span>
                       ) : (
-                        <span className="inline-block px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm">Inactivo</span>
+                        <span className="inline-block bg-red-100 text-red-500 px-3 py-1 rounded-full text-xs sm:text-sm border border-red-200">Inactivo</span>
                       )}
                     </td>
                     <td className="py-2 px-4 border-b flex gap-2">

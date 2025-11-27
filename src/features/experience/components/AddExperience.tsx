@@ -1,4 +1,161 @@
-import React, { useState } from "react";
+// Utilidad para obtener el userId del token o localStorage
+function getUserId(token?: string | null) {
+  let userId = null;
+  const parseJwt = (token: string): any => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          })
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
+  };
+  if (token) {
+    const claims = parseJwt(token);
+    userId = claims?.id || claims?.userId || claims?.sub || null;
+  }
+  if (!userId) {
+    const storedUserId = Number(localStorage.getItem('userId'));
+    if (storedUserId && Number.isFinite(storedUserId) && storedUserId > 0) userId = storedUserId;
+  }
+  return typeof userId === 'string' ? Number(userId) : userId;
+}
+
+// Función para construir el payload genérico con todos los campos requeridos
+function buildExperiencePayload({
+  initialData,
+  identificacionForm,
+  identificacionInstitucional,
+  lideres,
+  nivelesForm,
+  tematicaForm,
+  seguimientoEvaluacion,
+  informacionApoyo,
+  pdfFile,
+  userId
+}: any) {
+  // Mapear leaders (siempre array, aunque vacío)
+  const leaders = Array.isArray(lideres)
+    ? lideres.map((l: any) => ({
+        nameLeaders: l.nameLeaders || l.name || '',
+        identityDocument: l.identityDocument || '',
+        email: l.email || '',
+        position: l.position || '',
+        phone: l.phone || 0,
+      }))
+    : [];
+  // Mapear grados seleccionados a array de objetos { id, code, name, description } (siempre array)
+  const nivelesArray = Object.values(nivelesForm?.niveles || {});
+  const gradesUpdate = Array.isArray(nivelesArray)
+    ? nivelesArray
+        .flatMap((nivel: any) => nivel.grados)
+        .filter((g: any) => g && typeof g.gradeId === 'number')
+        .map((g: any) => ({
+          id: g.gradeId,
+          code: g.code || '',
+          name: g.name || '',
+          description: g.description || ''
+        }))
+    : [];
+  // Formatear developmenttime a string ISO 8601 o null
+  let devTime = initialData?.developmenttime || '';
+  if (devTime) {
+    if (typeof devTime === 'string') {
+      const parsed = new Date(devTime);
+      devTime = isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    } else if (devTime instanceof Date) {
+      devTime = isNaN(devTime.getTime()) ? null : devTime.toISOString();
+    } else {
+      devTime = null;
+    }
+  } else {
+    devTime = null;
+  }
+  // InstitutionUpdate: siempre objeto (aunque vacío)
+  const institutionUpdate = (identificacionInstitucional && typeof identificacionInstitucional === 'object') ? identificacionInstitucional : {};
+  // DevelopmentsUpdate: siempre array
+  const developmentsUpdate = Array.isArray(tematicaForm?.developments) ? tematicaForm.developments : [];
+  // DocumentsUpdate: siempre array
+  const documentsUpdate = Array.isArray(initialData?.documents) ? initialData.documents : [];
+  // ObjectivesUpdate: siempre array
+  const objectivesUpdate = Array.isArray(initialData?.objectives) ? initialData.objectives : [];
+  // ThematicLineIds: siempre array
+  const thematicLineIds = Array.isArray(tematicaForm?.thematicLineIds) ? tematicaForm.thematicLineIds : [];
+  // PopulationGradeIds: siempre array
+  const populationGradeIds = Array.isArray(tematicaForm?.populationGradeIds) ? tematicaForm.populationGradeIds : [];
+  // HistoryExperiencesUpdate: siempre array
+  const historyExperiencesUpdate = Array.isArray(initialData?.historyExperiences) ? initialData.historyExperiences : [];
+  // Refuerzo: si algún campo es undefined/null, forzar array vacío u objeto vacío
+  const safe = (v: any, fallback: any) => (v === undefined || v === null ? fallback : v);
+  // Construir el objeto anidado bajo 'request' con TODOS los campos requeridos SIEMPRE presentes
+  // Alternar entre PascalCase y camelCase para los campos requeridos
+  const USE_CAMEL = true; // Cambia a false para probar PascalCase
+  if (USE_CAMEL) {
+    return {
+      request: {
+        experienceId: initialData?.id ?? 0,
+        nameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
+        code: initialData?.code || '',
+        thematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
+        developmenttime: devTime,
+        recognition: initialData?.recognition || '',
+        socialization: initialData?.socialization || '',
+        stateExperienceId: initialData?.stateExperienceId || 0,
+        userId: userId ?? 0,
+        leaders: safe(leaders, []),
+        institutionUpdate: safe(institutionUpdate, {}),
+        gradesUpdate: safe(gradesUpdate, []),
+        documentsUpdate: safe(documentsUpdate, []),
+        thematicLineIds: safe(thematicLineIds, []),
+        objectivesUpdate: safe(objectivesUpdate, []),
+        developmentsUpdate: safe(developmentsUpdate, []),
+        populationGradeIds: safe(populationGradeIds, []),
+        historyExperiencesUpdate: safe(historyExperiencesUpdate, []),
+        followUpUpdate: safe(seguimientoEvaluacion, {}),
+        supportInfoUpdate: safe(informacionApoyo, {}),
+        componentsUpdate: [],
+      }
+    };
+  } else {
+    return {
+      request: {
+        ExperienceId: initialData?.id ?? 0,
+        NameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
+        Code: initialData?.code || '',
+        ThematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
+        Developmenttime: devTime,
+        Recognition: initialData?.recognition || '',
+        Socialization: initialData?.socialization || '',
+        StateExperienceId: initialData?.stateExperienceId || 0,
+        UserId: userId ?? 0,
+        Leaders: safe(leaders, []),
+        InstitutionUpdate: safe(institutionUpdate, {}),
+        GradesUpdate: safe(gradesUpdate, []),
+        DocumentsUpdate: safe(documentsUpdate, []),
+        ThematicLineIds: safe(thematicLineIds, []),
+        ObjectivesUpdate: safe(objectivesUpdate, []),
+        DevelopmentsUpdate: safe(developmentsUpdate, []),
+        PopulationGradeIds: safe(populationGradeIds, []),
+        HistoryExperiencesUpdate: safe(historyExperiencesUpdate, []),
+        FollowUpUpdate: safe(seguimientoEvaluacion, {}),
+        SupportInfoUpdate: safe(informacionApoyo, {}),
+        ComponentsUpdate: [],
+      }
+    };
+  }
+}
+import React, { useState, useEffect } from "react";
+import Swal from 'sweetalert2';
+import { getToken } from "../../../Api/Services/Auth";
+import { UpdateExperienceRequest } from '../types/updateExperience';
 import LeadersForm from "./LeadersForm";
 import IdentificationForm from "./IdentificationForm";
 import ThematicForm from "./ThematicForm";

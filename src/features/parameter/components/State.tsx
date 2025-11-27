@@ -22,7 +22,7 @@ const EditStateForm: React.FC<EditStateFormProps> = ({ stateItem, onClose, onUpd
     const token = localStorage.getItem("token");
     try {
       await axios.put(
-        `/api/State`,
+        `/api/StateExperience`,
         {
           id: stateItem.id,
           name,
@@ -83,7 +83,7 @@ const AddStateForm: React.FC<AddStateFormProps> = ({ onClose, onAdded }) => {
     const token = localStorage.getItem("token");
     try {
       await axios.post(
-        `/api/State`,
+        `/api/StateExperience`,
         {
           id: 0,
           name,
@@ -132,78 +132,42 @@ const StateList: React.FC = () => {
   const [addStateOpen, setAddStateOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [onlyActive, setOnlyActive] = useState(true); // Estado para filtrar activos/inactivos
+  const [onlyState, setOnlyState] = useState(true); // Estado para filtrar activos/inactivos (OnlyState)
+  const [modal, setModal] = useState<{ open: boolean; type: 'success' | 'error'; message: string }>({ open: false, type: 'success', message: '' });
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 5;
 
-  const fetchStates = async () => {
+  const fetchStates = () => {
     setLoading(true);
     setError(null);
     const token = localStorage.getItem("token");
-
-    // Try several possible endpoints / response shapes to be resilient to backend differences
-    const attempts = [
-      // server in your environment exposes StateExperience/getAll
-      { url: `/api/StateExperience/getAll`, config: { params: { OnlyActive: onlyActive } } },
-      { url: `/api/State/getAll`, config: { params: { OnlyActive: onlyActive } } },
-      { url: `/api/State`, config: { params: { OnlyActive: onlyActive } } },
-      { url: `/api/State/getAll`, config: {} },
-      { url: `/api/State/GetAll`, config: { params: { OnlyActive: onlyActive } } },
-    ];
-
-    for (const attempt of attempts) {
-      try {
-        console.debug('[State] trying', attempt.url, attempt.config || {});
-        const res = await axios.get(attempt.url, {
-          headers: { Authorization: `Bearer ${token}` },
-          ...(attempt.config || {}),
-        } as any);
-
-        console.debug('[State] fetched from', attempt.url, 'status', res.status);
-
-        // Normalize possible response shapes:
-        // - { data: [...] }
-        // - [...] (array)
-        // - { data: { data: [...] } } (some APIs wrap twice)
-        let items: any[] = [];
-        if (Array.isArray(res.data)) items = res.data;
-        else if (Array.isArray(res.data.data)) items = res.data.data;
-        else if (res.data && Array.isArray(res.data.data?.data)) items = res.data.data.data;
-
-        if (!Array.isArray(items)) {
-          // nothing usable, but backend didn't 404 — log payload and treat as empty
-          console.debug('[State] unexpected payload shape from', attempt.url, 'payload sample', res.data);
-          items = [];
+    axios
+      .get(`/api/StateExperience/getAll`, {
+        params: { OnlyState: onlyState }, // Usar el filtro OnlyState
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        if (Array.isArray(res.data.data)) {
+          const statesNormalized = res.data.data.map((stateItem: State) => ({
+            ...stateItem,
+            state: onlyState, // Asignar el estado basado en el filtro OnlyState
+          }));
+          setStates(statesNormalized);
+        } else {
+          setStates([]);
         }
-
-        const statesNormalized = items.map((stateItem: State) => ({
-          ...stateItem,
-          state: typeof stateItem.state === 'boolean' ? stateItem.state : onlyActive,
-        }));
-
-        setStates(statesNormalized);
         setLoading(false);
-        return;
-      } catch (err: any) {
-        // if 404 try next candidate, otherwise surface error
-        const status = err?.response?.status;
-        if (status === 404) continue;
-        console.error('Error fetching states from', attempt.url, err);
-        setError('Error al cargar estados');
+      })
+      .catch(() => {
+        setError("Error al cargar estados");
         setLoading(false);
-        return;
-      }
-    }
-
-    // If we reached here, all attempts failed with 404 or returned unusable payload
-    setError('Error al cargar estados (endpoint no disponible)');
-    setLoading(false);
+      });
   };
 
   useEffect(() => {
     fetchStates();
-  }, [onlyActive]); // Refrescar cuando cambie el filtro
+  }, [onlyState]); // Refrescar cuando cambie el filtro
 
   const filtered = states.filter((s) => {
     const q = searchTerm.trim().toLowerCase();
@@ -226,7 +190,7 @@ const StateList: React.FC = () => {
   const handleDeactivate = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await axios.delete(`/api/State/${id}`, {
+      await axios.delete(`/api/StateExperience/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchStates(); // Refrescar lista
@@ -238,7 +202,7 @@ const StateList: React.FC = () => {
   const handleActivate = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await axios.patch(`/api/State/restore/${id}`, {}, {
+      await axios.patch(`/api/StateExperience/restore/${id}`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchStates(); // Refrescar lista
@@ -272,20 +236,19 @@ const StateList: React.FC = () => {
               </div>
             </div>
           </div>
+          {/* Botones de filtro activos/inactivos, estilo login modal, verde/rojo */}
           <div className="flex gap-4">
             <button
-              className={`px-4 py-2 rounded font-semibold ${
-                onlyActive ? "bg-green-500 hover:bg-green-600 text-white" : "bg-gray-300 hover:bg-gray-400 text-black"
-              }`}
-              onClick={() => setOnlyActive(true)} // Mostrar activos
+              className={`px-4 py-2 rounded font-semibold ${onlyState ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
+              onClick={() => { setOnlyState(true); setCurrentPage(1); }}
+              type="button"
             >
               Mostrar Activos
             </button>
             <button
-              className={`px-4 py-2 rounded font-semibold ${
-                !onlyActive ? "bg-red-500 hover:bg-red-600 text-white" : "bg-gray-300 hover:bg-gray-400 text-black"
-              }`}
-              onClick={() => setOnlyActive(false)} // Mostrar inactivos
+              className={`px-4 py-2 rounded font-semibold ${!onlyState ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
+              onClick={() => { setOnlyState(false); setCurrentPage(1); }}
+              type="button"
             >
               Mostrar Inactivos
             </button>
@@ -316,7 +279,7 @@ const StateList: React.FC = () => {
                       {stateItem.state ? (
                         <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm">Activo</span>
                       ) : (
-                        <span className="inline-block px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm">Inactivo</span>
+                        <span className="inline-block bg-red-100 text-red-500 border border-red-200 px-3 py-1 rounded-full text-xs sm:text-sm">Inactivo</span>
                       )}
                     </td>
                     <td className="py-2 px-4 border-b flex gap-2">

@@ -385,7 +385,27 @@ const CriteriaList: React.FC = () => {
           }}
         />
       )}
-    </div>
+    {/* Modal de éxito/error tipo inicio */}
+    {modal.open && (
+      <div className="fixed inset-0 flex items-center justify-center z-[2000] bg-black bg-opacity-40">
+        <div className="bg-white rounded-2xl shadow-lg p-8 min-w-[340px] max-w-sm flex flex-col items-center">
+          {modal.type === 'success' ? (
+            <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#B7EFC2" strokeWidth="3" fill="#F6FFF9"/><path d="M16 25l6 6 10-14" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          ) : (
+            <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#FECACA" strokeWidth="3" fill="#FFF6F6"/><path d="M17 17l14 14M31 17l-14 14" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"/></svg>
+          )}
+          <h3 className="text-2xl font-bold text-gray-700 mb-2">{modal.type === 'success' ? 'Éxito' : 'Error'}</h3>
+          <p className="text-gray-600 mb-6 text-center">{modal.message}</p>
+          <button
+            className="px-6 py-2 rounded bg-[#7B6EF6] text-white font-semibold text-base hover:bg-[#5f54c7] transition"
+            onClick={() => setModal({ ...modal, open: false })}
+          >
+            Continuar
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };
 
