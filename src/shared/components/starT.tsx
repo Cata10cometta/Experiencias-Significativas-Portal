@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import Joyride from "react-joyride";
 import ExperienceModal from "../../features/experience/components/ExperienceModal";
+import {
+  startTourSteps,
+  startTourLocale,
+  startTourStyles,
+} from "../../features/onboarding/startTour";
+import { hasTourBeenSeen, markTourSeen } from "../utils/tourStorage";
 
 const starT: React.FC = () => {
   const [experiencias, setExperiencias] = useState<any[]>([]);
@@ -11,6 +18,8 @@ const starT: React.FC = () => {
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [runStartTour, setRunStartTour] = useState(false);
+  const tourKey = "startTourDone";
 
   // Ejes temáticos igual que en Widgets.tsx
   const ejes = [
@@ -88,13 +97,33 @@ const starT: React.FC = () => {
     fetchExperiencias();
   }, []);
 
+  useEffect(() => {
+    if (!experiencias.length || hasTourBeenSeen(tourKey)) return;
+    const timer = window.setTimeout(() => setRunStartTour(true), 800);
+    return () => window.clearTimeout(timer);
+  }, [experiencias, tourKey]);
+
   return (
     <div className="w-full h-full rounded-3xl min-h-screen bg-cover bg-center relative">
+      <Joyride
+        steps={startTourSteps}
+        run={runStartTour}
+        continuous
+        showSkipButton
+        locale={startTourLocale}
+        styles={startTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunStartTour(false);
+            markTourSeen(tourKey);
+          }
+        }}
+      />
       {/* Barra de ejes temáticos eliminada */}
 
       {/* Tarjeta destacada de experiencia seleccionada */}
       <div className="mt-12 flex items-center justify-center">
-        <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-8 flex items-center gap-8">
+        <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-8 flex items-center gap-8 start-feature-card">
           <img src="/carts.svg" alt="icono experiencia" className="w-28 h-28" />
           <div className="flex-1">
             <h2 className="text-2xl font-extrabold text-[#1f2937]">
@@ -127,7 +156,7 @@ const starT: React.FC = () => {
       <div className="mt-16">
         <div className="bg-white rounded-2xl p-6 shadow-lg relative">
           {/* Buscador */}
-          <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
+          <div className="absolute top-4 right-4 flex flex-col gap-3 z-20 start-action-icons">
             {searchOpen ? (
               <div className="flex items-center gap-2 bg-white rounded-full px-2 shadow-md">
                 <input
@@ -161,7 +190,7 @@ const starT: React.FC = () => {
               <div className="text-gray-500 py-8">No hay experiencias.</div>
             ) : (
               <div className="relative">
-                <div ref={carouselRef} className="flex gap-4 overflow-x-auto scrollbar-hide py-6 px-2 pr-20">
+                <div ref={carouselRef} className="flex gap-4 overflow-x-auto scrollbar-hide py-6 px-2 pr-20 start-carousel">
                   {experienciasFiltradas.map((exp: any) => (
                     <div
                       key={exp.id ?? exp.experienceId}
@@ -170,7 +199,7 @@ const starT: React.FC = () => {
                         sm:min-w-[240px] sm:max-w-[240px] sm:h-[280px] sm:p-4
                         md:min-w-[280px] md:max-w-[280px] md:h-[320px] md:p-6
                         lg:min-w-[320px] lg:max-w-[320px] lg:h-[360px] lg:p-8
-                        cursor-pointer
+                        cursor-pointer start-experience-card
                         ${selectedExperienceId === (exp.id ?? exp.experienceId) ? 'ring-2 ring-orange-400' : ''}`}
                       onClick={() => setSelectedExperienceId(exp.id ?? exp.experienceId)}
                     >

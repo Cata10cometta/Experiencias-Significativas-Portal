@@ -1,5 +1,7 @@
 // src/pages/RegisterPage.tsx
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
+import { registerPageTourSteps, registerPageTourLocale, registerPageTourStyles } from "../features/onboarding/registerPageTour";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { registerPerson } from "../Api/Services/Register";
@@ -9,6 +11,7 @@ import { DataSelectRequest } from "../shared/types/HelperTypes";
 
 
 const RegisterPage: React.FC = () => {
+  const [runTour, setRunTour] = useState(false);
   // ...existing code...
   const [codigoDaneFocus, setCodigoDaneFocus] = useState(false);
   const [emailInstitucionalFocus, setEmailInstitucionalFocus] = useState(false);
@@ -50,6 +53,10 @@ const RegisterPage: React.FC = () => {
     };
 
     fetchEnums();
+    // Iniciar el tour automáticamente solo la primera vez
+    if (!localStorage.getItem("registerTourDone")) {
+      setTimeout(() => setRunTour(true), 600);
+    }
   }, []);
 
 
@@ -116,6 +123,8 @@ const RegisterPage: React.FC = () => {
         }).then(() => {
           navigate("/login");
         });
+        // Marcar el tour como completado
+        localStorage.setItem("registerTourDone", "true");
       } else {
         Swal.fire({
           title: "Error",
@@ -135,9 +144,33 @@ const RegisterPage: React.FC = () => {
   return (
 
     <div className="min-h-screen bg-gradient-to-b from-[#0b1033] to-[#17132a] text-white overflow-hidden">
-      <header className="flex items-center justify-end px-8 py-5 relative z-30">
+      <Joyride
+        steps={registerPageTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={registerPageTourLocale}
+        styles={registerPageTourStyles}
+        disableScrolling={true}
+        spotlightClicks={true}
+        callback={data => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("registerTourDone", "true");
+          }
+        }}
+      />
+      <header className="flex items-center justify-end px-8 py-5 relative z-30 register-header">
         <div className="flex items-center space-x-2!">
-          <button className="px-3 py-2 rounded-lg! bg-gray-600 text-white font-semibold shadow-sm text-base" onClick={() => navigate('/help')}>Ayuda</button>
+          <button
+            className="px-3 py-2 rounded-lg! bg-gray-600 text-white font-semibold shadow-sm text-base register-help"
+            onClick={() => {
+              setRunTour(true);
+              localStorage.removeItem("registerTourDone");
+            }}
+          >
+            Ayuda
+          </button>
           <button className="px-4 py-2 rounded-lg! bg-orange-400 text-white font-semibold shadow-md text-base" onClick={() => navigate('/login')}>Inicio de sesión</button>
         </div>
       </header>
@@ -164,7 +197,7 @@ const RegisterPage: React.FC = () => {
               <div className="w-full max-w-none">
                 <h2 className="text-6xl sm:text-7xl md:text-7xl font-extrabold text-orange-400 text-center mb-6">Registro</h2>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6 register-form">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Primer Nombre:</label>
@@ -275,7 +308,7 @@ const RegisterPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative">
+                    <div className="relative register-dane">
                       <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Código DANE:</label>
                       <input
                         type="text"
@@ -322,7 +355,7 @@ const RegisterPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative">
+                    <div className="relative register-email-institucional">
                       <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Correo de la Institucion:</label>
                       <input
                         type="text"
@@ -389,7 +422,7 @@ const RegisterPage: React.FC = () => {
                       </p>
                     </div>
 
-                    <div className="relative">
+                    <div className="relative register-password">
                       <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Contraseña:</label>
                       <input
                         type={showPassword ? "text" : "password"}
@@ -426,7 +459,7 @@ const RegisterPage: React.FC = () => {
                   </div>
 
                   <div className="mt-6 justify-center flex">
-                    <button type="submit" className="w-full max-w-md mx-auto bg-orange-400 text-white py-3 rounded-xl! font-extrabold text-xl shadow-md hover:bg-orange-500 transition-colors">Registrarse</button>
+                    <button type="submit" className="w-full max-w-md mx-auto bg-orange-400 text-white py-3 rounded-xl! font-extrabold text-xl shadow-md hover:bg-orange-500 transition-colors register-submit">Registrarse</button>
                   </div>
                 </form>
 
@@ -449,12 +482,12 @@ const RegisterPage: React.FC = () => {
         </aside>
 
         <div className="absolute left-0 bottom-0 w-full pointer-events-none z-10 overflow-visible" aria-hidden style={{ transform: 'translateY(90%)' }}>
-          <svg viewBox="0 0 1440 320" className="w-full h-[260px] lg:h-[420px] block">
-            <path
-              fill="#ffffff"
-              d="M0,1 C300,40 360,300 510,220 C400,200 600,330 1000,30 C1260,280 1320,180 1440,150 L1440,320 L0,320 Z"
-            ></path>
-          </svg>
+          <img
+            src="/images/Smoke.svg"
+            alt="Línea blanca ondulada"
+            className="w-[180vw] max-w-none h-[260px] lg:h-[420px] block mx-auto -translate-x-[40vw]"
+            draggable="false"
+          />
         </div>
 
       </main>

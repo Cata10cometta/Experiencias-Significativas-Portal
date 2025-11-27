@@ -1,3 +1,31 @@
+// Emitir notificación tras crear experiencia
+async function notifyExperienceCreated(experienceId: number | null | undefined) {
+  if (!experienceId || !Number.isFinite(experienceId)) {
+    console.warn('notifyExperienceCreated skipped because experienceId is invalid', experienceId);
+    return;
+  }
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+  const token = localStorage.getItem('token');
+
+  try {
+    const res = await fetch(`${API_BASE}/api/Notifications/experience-created`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ experienceId }),
+    });
+
+    if (!res.ok) {
+      const message = await res.text().catch(() => `HTTP ${res.status}`);
+      console.error('notifyExperienceCreated failed', res.status, message);
+    }
+  } catch (err) {
+    console.error('notifyExperienceCreated exception', err);
+  }
+}
 // Utilidad para obtener el userId del token o localStorage
 function getUserId(token?: string | null) {
   let userId = null;
@@ -1249,10 +1277,48 @@ Population: Array.isArray(tematicaForm.Population)
       };
 
       let createdId: number | null = null;
+      const tryCoerceId = (value: unknown): number | null => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+        if (typeof value === 'string' && value.trim() !== '') {
+          const coerced = Number(value);
+          return Number.isFinite(coerced) && coerced > 0 ? coerced : null;
+        }
+        return null;
+      };
+
+      const findIdDeep = (source: unknown, depth = 0): number | null => {
+        if (depth > 5 || source === null || source === undefined) return null;
+        const direct = tryCoerceId(source);
+        if (direct) return direct;
+
+        if (Array.isArray(source)) {
+          for (const item of source) {
+            const found = findIdDeep(item, depth + 1);
+            if (found) return found;
+          }
+          return null;
+        }
+
+        if (typeof source === 'object') {
+          const obj = source as Record<string, unknown>;
+          const preferredKeys = ['experienceId', 'ExperienceId', 'id', 'Id', 'result'];
+          for (const key of preferredKeys) {
+            if (key in obj) {
+              const found = findIdDeep(obj[key], depth + 1);
+              if (found) return found;
+            }
+          }
+          for (const value of Object.values(obj)) {
+            const found = findIdDeep(value, depth + 1);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
       if (created) {
-        createdId = created?.id || created?.data?.id || created?.experience?.id || created?.result?.id || null;
-        if (typeof createdId === 'string') createdId = Number(createdId);
-        if (!createdId && created?.data && typeof created.data === 'number') createdId = created.data;
+        createdId = findIdDeep(created);
       }
 
       if (!createdId) {
@@ -1260,9 +1326,27 @@ Population: Array.isArray(tematicaForm.Population)
         createdId = extractIdFromLocation(loc);
       }
 
+      if (!createdId) {
+        const location = res.headers.get('Location');
+        if (location) {
+          try {
+            const parsed = new URL(location, window.location.origin);
+            const fromQuery = parsed.searchParams.get('experienceId') || parsed.searchParams.get('id') || parsed.searchParams.get('experience');
+            createdId = tryCoerceId(fromQuery);
+          } catch {
+            // ignore URL parsing errors
+          }
+        }
+      }
+
+      if (!createdId) {
+        console.warn('Experience created but id could not be determined; notification may not be sent');
+      }
+
       // If we have an id, call the generate-pdf endpoint and download/open the PDF
-       // If we have an id, call the generate-pdf endpoint and download/open the PDF
       if (createdId && Number.isFinite(createdId) && createdId > 0) {
+        // Notificar por SignalR (el backend debe emitir la notificación)
+        await notifyExperienceCreated(createdId);
         const pdfEndpoint = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/Experience/${createdId}/generate-pdf`;
         try {
           const pdfRes = await fetch(pdfEndpoint, {
@@ -1274,10 +1358,6 @@ Population: Array.isArray(tematicaForm.Population)
           if (pdfRes.ok) {
             const blob = await pdfRes.blob();
             const url = URL.createObjectURL(blob);
-            // Show a link to the generated PDF and let the user open it manually.
-            // Avoid forcing an automatic download.
-            // No mostrar modal ni abrir PDF tras la generación
-            // revoke after a while to allow user to open the link
             setTimeout(() => URL.revokeObjectURL(url), 60000);
           } else {
             console.warn('Fallo al generar PDF:', await pdfRes.text().catch(() => '')); 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
+import Joyride from "react-joyride";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
 import configApi from "../../Api/Config/Config";
 import { FollowUp } from "../types/FollowUp";
+import { trackingTourSteps, trackingTourLocale, trackingTourStyles } from "../../features/onboarding/trackingTour";
 
 export const getSelectedCards = (trackingData: FollowUp | undefined, keys: (keyof FollowUp)[]) => {
   if (!trackingData) return [];
@@ -17,6 +19,7 @@ export const getSelectedCards = (trackingData: FollowUp | undefined, keys: (keyo
 const Tracking = () => {
   const [trackingData, setTrackingData] = useState<FollowUp | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [runTour, setRunTour] = useState(false);
 
   useEffect(() => {
     const fetchTrackingSummary = async () => {
@@ -41,6 +44,13 @@ const Tracking = () => {
     };
     fetchTrackingSummary();
   }, []);
+
+  useEffect(() => {
+    if (trackingData && !localStorage.getItem("trackingTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 500);
+      return () => window.clearTimeout(timer);
+    }
+  }, [trackingData]);
 
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
   if (!trackingData) return <div className="text-center py-10 text-gray-500">Cargando...</div>;
@@ -67,6 +77,37 @@ const Tracking = () => {
     { name: 'Inspiradora', value: inspiradora, color: colorInspiradora, percent: inspiradoraPct },
   ];
 
+  const barMetrics = [
+    {
+      name: 'Crecimiento en la inscripción de experiencias nuevas',
+      shortName: 'Crec. nuevas',
+      value: trackingData?.totalExperiencesCreadas ?? 0,
+      color: '#D81B8C',
+    },
+    {
+      name: 'Actualización de experiencias en proceso',
+      shortName: 'Actualización',
+      value: trackingData?.totalExperiencesWithComments ?? 0,
+      color: '#2B2B6F',
+    },
+    {
+      name: 'Número de experiencias registradas en la vigencia',
+      shortName: 'Registradas',
+      value: trackingData?.totalExperiencesRegistradas ?? 0,
+      color: '#3EC6FA',
+    },
+  ];
+
+  const barData = barMetrics.map(({ name, shortName, value, color }) => ({
+    name,
+    shortName,
+    color,
+    value,
+    percent: total > 0 ? Math.round((value / total) * 100) : 0,
+  }));
+
+  const maxBarValue = Math.max(100, ...barData.map((item) => item.percent || 0));
+
   // Etiqueta personalizada para mostrar porcentaje respecto al total general
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, index }) => {
     const RADIAN = Math.PI / 180;
@@ -87,10 +128,24 @@ const Tracking = () => {
   // Eliminados cálculos de ángulos personalizados y totalPie, ya no se usan
 
   return (
-    <div className="flex flex-col gap-8 w-full">
+    <div className="flex flex-col gap-8 w-full tracking-layout">
+      <Joyride
+        steps={trackingTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={trackingTourLocale}
+        styles={trackingTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("trackingTourDone", "true");
+          }
+        }}
+      />
 
       {/* Tarjetas blancas */}
-      <div className="flex flex-row justify-center items-center gap-8 w-full">
+      <div className="flex flex-row justify-center items-center gap-8 w-full tracking-summary-cards">
 
         <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-80 h-40 items-start">
           <div className="bg-blue-100 p-2 rounded-lg w-10">
@@ -126,7 +181,7 @@ const Tracking = () => {
       </div>
 
       {/* Tarjetas lila */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ml-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ml-0 tracking-purple-cards">
         <div className="bg-purple-200 rounded-xl p-6 flex flex-col items-center justify-center h-32">
           <p className="text-gray-700 text-sm text-center mb-2">
             experiencias con plan de mejoramiento
@@ -167,104 +222,53 @@ const Tracking = () => {
       {/* Gráficas */}
       <div className="flex flex-col lg:flex-row gap-8 w-full justify-center items-stretch">
 
-        {/* LÍNEAS */}
-        <div className="bg-white rounded-xl p-8 flex flex-col items-center justify-center shadow w-full max-w-3xl">
-          {(() => {
-            const months = 12;
-            const dataFucsia = [30, 100, 200, 400, 500, 300, 200, 100, 50, 30, 10, 0];
-            const dataAzul   = [20, 80, 180, 250, 300, 220, 150, 100, 60, 30, 10, 0];
-
-            const x0 = 60, xStep = 500/11, y0 = 310, yMax = 250;
-            const yScale = (v: number) => y0 - (v/500)*yMax;
-
-            function getSmoothPath(data: number[]) {
-              let d = `M${x0},${yScale(data[0])}`;
-              for (let i = 0; i < data.length - 1; i++) {
-                const x1 = x0 + i * xStep;
-                const x2 = x1 + xStep;
-                const y1 = yScale(data[i]);
-                const y2 = yScale(data[i+1]);
-                const cx = x1 + xStep / 2;
-                d += ` C${cx},${y1} ${cx},${y2} ${x2},${y2}`;
-              }
-              return d;
-            }
-
-            function getGradientPath(data: number[]) {
-              let d = getSmoothPath(data);
-              d += ` L${x0 + (months - 1) * xStep},400 L${x0},400 Z`;
-              return d;
-            }
-
-            return (
-              <svg width="600" height="400">
-                <defs>
-                  <linearGradient id="pinkGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fff" stopOpacity="0.7" />
-                    <stop offset="100%" stopColor="#fff" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-
-                <rect width="600" height="400" fill="#fff" />
-
-                {[0,100,200,300,400,500].map((val)=>(
-                  <g key={val}>
-                    <line x1="60" x2="560" y1={310 - (val/500)*250} y2={310 - (val/500)*250}
-                      stroke="#eee" />
-                    <text x="50" y={314 - (val/500)*250} fontSize="18" fill="#888" textAnchor="end">
-                      {val}
-                    </text>
-                  </g>
+        {/* Barras */}
+        <div className="bg-white rounded-xl p-8 flex flex-col items-center justify-center shadow w-full max-w-3xl tracking-line-chart">
+          <ResponsiveContainer width="100%" height={360} minWidth={280}>
+            <BarChart data={barData} margin={{ top: 30, right: 24, left: 8, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="shortName"
+                tick={{ fill: '#4B5563', fontSize: 13, fontWeight: 500 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={(value) => `${value}%`}
+                tick={{ fill: '#6B7280', fontSize: 12 }}
+                width={40}
+                domain={[0, maxBarValue]}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                formatter={(value: number, _name: string, item: any) => [`${value}%`, `${item?.payload?.value ?? 0} experiencias`]}
+                labelFormatter={(label, payload) => payload?.[0]?.payload?.name ?? label}
+                cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+              />
+              <Bar dataKey="percent" radius={[12, 12, 0, 0]}>
+                {barData.map((entry, index) => (
+                  <Cell key={`bar-${index}`} fill={entry.color} />
                 ))}
-
-                <line x1="60" x2="60" y1="60" y2="310" stroke="#eee" strokeWidth="2" />
-                <line x1="60" x2="560" y1="310" y2="310" stroke="#eee" strokeWidth="2" />
-
-                {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-                  .map((m,i)=>(
-                  <text key={m} x={60 + i*(500/11)} y="350"
-                    fontSize="18" fill="#888" textAnchor="middle">
-                    {m}
-                  </text>
-                ))}
-
-                <path d={getSmoothPath(dataAzul)} fill="none" stroke="#2B2B6F" strokeWidth="4" />
-                <path d={getSmoothPath(dataFucsia)} fill="none" stroke="#D81B8C" strokeWidth="4" />
-
-                <line x1="60" y1="310" x2="510" y2="310"
-                  stroke="#3EC6FA" strokeWidth="8" strokeLinecap="round" />
-
-                <path d={getGradientPath(dataFucsia)} fill="url(#pinkGradient)" />
-              </svg>
-            );
-          })()}
-
-          <div className="mt-6 flex flex-col gap-2 w-full">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-2 rounded-full" style={{background:'#D81B8C'}}></span>
-              <span className="text-gray-700 text-sm">
-                Crecimiento en la inscripción de experiencias nuevas
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-2 rounded-full" style={{background:'#2B2B6F'}}></span>
-              <span className="text-gray-700 text-sm">
-                Actualización de experiencias en proceso
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-2 rounded-full" style={{background:'#3EC6FA'}}></span>
-              <span className="text-gray-700 text-sm">
-                Número de experiencias registradas en la vigencia
-              </span>
-            </div>
+                <LabelList dataKey="percent" position="top" formatter={(value: number) => `${value}%`} fill="#374151" fontSize={14} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="mt-6 grid w-full gap-4 sm:grid-cols-3">
+            {barData.map((entry) => (
+              <div key={entry.name} className="flex items-center gap-3">
+                <span
+                  className="block h-4 w-4 rounded-full shadow"
+                  style={{ backgroundColor: entry.color }}
+                ></span>
+                <span className="text-sm font-medium text-gray-700 leading-tight">{entry.name}</span>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* TORTA con recharts */}
-        <div className="bg-white rounded-xl p-8 flex flex-col items-center shadow w-full max-w-xl">
+        <div className="bg-white rounded-xl p-8 flex flex-col items-center shadow w-full max-w-xl tracking-pie-chart">
           {/* Rueda arriba */}
           <ResponsiveContainer width={320} height={320} minWidth={260} minHeight={260}>
             <PieChart>
@@ -288,7 +292,7 @@ const Tracking = () => {
             </PieChart>
           </ResponsiveContainer>
           {/* Leyenda debajo, alineada a la izquierda (siempre visible aunque los valores sean 0) */}
-          <div className="w-full flex justify-start mt-8">
+          <div className="w-full flex justify-start mt-8 tracking-pie-legend">
             <ul className="flex flex-col items-start gap-4">
               {pieData.map((entry, index) => (
                 <li key={`item-${index}`} className="flex items-center gap-3">

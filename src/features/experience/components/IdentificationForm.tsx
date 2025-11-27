@@ -208,28 +208,30 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
       </div>
 
 
-      {/* Tiempo de desarrollo */}
+      {/* Fechas de desarrollo */}
       <div className="mb-4">
-        <label className="block font-medium">Seleccione el tiempo de desarrollo de la Experiencia Significativa. <span className="text-red-500">*</span></label>
+        <label className="block font-medium">Seleccione la fecha de inicio y fecha final de la Experiencia Significativa. <span className="text-red-500">*</span></label>
         <div className="flex items-center gap-4 mt-2">
-          <input
-            placeholder="Días"
-            className="w-20 border border-gray-200 rounded-md p-2 text-sm"
-            value={(value as any).development?.days ?? ''}
-            onChange={(e) => onChange({ ...value, development: { ...(value as any).development, days: e.target.value } })}
-          />
-          <input
-            placeholder="Meses"
-            className="w-20 border border-gray-200 rounded-md p-2 text-sm"
-            value={(value as any).development?.months ?? ''}
-            onChange={(e) => onChange({ ...value, development: { ...(value as any).development, months: e.target.value } })}
-          />
-          <input
-            placeholder="Años"
-            className="w-20 border border-gray-200 rounded-md p-2 text-sm"
-            value={(value as any).development?.years ?? ''}
-            onChange={(e) => onChange({ ...value, development: { ...(value as any).development, years: e.target.value } })}
-          />
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500 mb-1">Fecha de inicio</span>
+            <input
+              type="text"
+              placeholder="Ej: 01/01/2024 o Enero 2024"
+              className="border border-gray-200 rounded-md p-2 text-sm"
+              value={value.developmenttime ?? ''}
+              onChange={e => onChange({ ...value, developmenttime: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500 mb-1">Fecha final</span>
+            <input
+              type="text"
+              placeholder="Ej: 31/12/2024 o Diciembre 2024"
+              className="border border-gray-200 rounded-md p-2 text-sm"
+              value={value.developmenttime ?? ''}
+              onChange={e => onChange({ ...value, developmenttime: e.target.value })}
+            />
+          </div>
         </div>
       </div>
 

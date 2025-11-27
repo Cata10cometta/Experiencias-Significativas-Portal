@@ -1,5 +1,6 @@
 // src/components/Sidebar.tsx
 import React, { useState, useEffect } from "react";
+import Joyride from "react-joyride";
 import { FaBars, FaUserCog } from "react-icons/fa";
 import { AiOutlineHome, AiOutlineFileText, AiOutlineBarChart, AiOutlineQuestionCircle } from "react-icons/ai";
 
@@ -10,6 +11,7 @@ import { RiAdminLine } from "react-icons/ri";
 import { fetchMenu } from "../../Api/Services/menuService";
 import ChangePasswordModal from './ChangePasswordModal';
 import ConfirmLogoutModal from './ConfirmLogoutModal';
+import { sidebarTourSteps, sidebarTourLocale, sidebarTourStyles } from "../../features/onboarding/sidebarTour";
 
 interface MenuItem {
   module?: string;
@@ -28,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [runSidebarTour, setRunSidebarTour] = useState(false);
 
   // Mantener el ancho estático y la posición
   const sidebarWidth = '320px'; 
@@ -53,6 +56,13 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
     const onOpen = () => setShowPasswordModal(true);
     window.addEventListener('openChangePasswordModal', onOpen as EventListener);
     return () => window.removeEventListener('openChangePasswordModal', onOpen as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (!localStorage.getItem("sidebarTourDone")) {
+      const timer = window.setTimeout(() => setRunSidebarTour(true), 800);
+      return () => window.clearTimeout(timer);
+    }
   }, []);
 
   const handleSelect = (content?: string) => {
@@ -94,6 +104,20 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
 
   return (
     <>
+      <Joyride
+        steps={sidebarTourSteps}
+        run={runSidebarTour}
+        continuous
+        showSkipButton
+        locale={sidebarTourLocale}
+        styles={sidebarTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunSidebarTour(false);
+            localStorage.setItem("sidebarTourDone", "true");
+          }
+        }}
+      />
       <aside 
         style={{ width: sidebarWidth }} 
         className={`fixed top-0 bottom-0 right-0 shadow-2xl z-40 overflow-y-auto rounded-l-3xl
@@ -113,7 +137,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
         </div>
 
         {/* Bloque de Perfil de Usuario */}
-        <div className="px-4 mb-6 border-b border-white/10 pb-4">
+        <div className="px-4 mb-6 border-b border-white/10 pb-4 sidebar-profile">
           <div className="flex items-center gap-3">
             <div className="relative w-14 h-14 flex items-center justify-center">
               <span className="absolute inset-0 rounded-full border-4 border-dashed border-sky-300/90 animate-pulse-slow"></span>
@@ -132,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
         <div className="px-4 mb-2 space-y-2"> {/* Agregado space-y-2 para una mejor separación */}
           <button
             onClick={() => handleSelect(inicioItem?.path ?? 'inicio')}
-            className={`relative flex items-center w-full pl-10 px-4 py-3 bg-transparent rounded-full text-white font-semibold hover:bg-white/5 focus:outline-none focus:ring-0 shadow-none
+            className={`relative flex items-center w-full pl-10 px-4 py-3 bg-transparent rounded-full text-white font-semibold hover:bg-white/5 focus:outline-none focus:ring-0 shadow-none sidebar-home
                        ${activeContent === (inicioItem?.path ?? 'inicio') ? 'bg-white/5' : ''}`} 
           >
             <span className="absolute left-4 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-white">
@@ -142,7 +166,12 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
           </button>
 
           <button
-            onClick={() => handleSelect('ayuda')}
+            onClick={() => {
+              setRunSidebarTour(true);
+              localStorage.removeItem("sidebarTourDone");
+              // Lanzar un evento global para que la pantalla activa muestre su propio tour
+              window.dispatchEvent(new CustomEvent("showScreenTour"));
+            }}
             className={`relative flex items-center w-full pl-10 px-4 py-3 bg-transparent rounded-full text-white font-semibold hover:bg-white/5 focus:outline-none
                        ${activeContent === 'ayuda' ? 'bg-white/5' : ''}`}
           >
@@ -154,7 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
 
           <button
             onClick={() => setShowPasswordModal(true)}
-            className="relative flex items-center w-full pl-10 px-4 py-3 bg-transparent rounded-full text-white font-semibold hover:bg-white/5 focus:outline-none"
+            className="relative flex items-center w-full pl-10 px-4 py-3 bg-transparent rounded-full text-white font-semibold hover:bg-white/5 focus:outline-none sidebar-change-password"
           >
             <span className="absolute left-4 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-white">
               <img src="/images/PasswordUpdate.svg" alt="Actualizar contraseña" className="w-4 h-4" />
@@ -165,7 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
         <ChangePasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
 
         {/* Menú de Navegación Desplegable (se mantiene la lógica de openModules) */}
-        <nav className="mt-4 overflow-y-auto scrollbar-hide px-4" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+        <nav className="mt-4 overflow-y-auto scrollbar-hide px-4 sidebar-modules" style={{ maxHeight: 'calc(100vh - 400px)' }}>
           {Object.keys(groupedMenu).map((moduleName) => {
             const lower = (moduleName || '').toLowerCase().trim();
             const isSecurity = lower.includes("security");
@@ -253,7 +282,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
         </nav>
 
         {/* Botón Cerrar Sesión */}
-        <div className="px-4 mt-6 mb-6"> {/* Más espacio arriba */}
+        <div className="px-4 mt-6 mb-6 sidebar-logout"> {/* Más espacio arriba */}
           <button
             onClick={() => setShowLogoutModal(true)}
             className="relative flex items-center w-full bg-slate-800/60 text-white py-3 px-3 rounded-xl shadow-inner hover:bg-slate-700/80 focus:outline-none justify-start"

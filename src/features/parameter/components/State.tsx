@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { parameterStatesTourSteps, parameterTourLocale, parameterTourStyles } from "../../onboarding/parameterTour";
 import { State } from "../types/state";
-
 
 interface EditStateFormProps {
   stateItem: State;
@@ -20,6 +21,7 @@ const EditStateForm: React.FC<EditStateFormProps> = ({ stateItem, onClose, onUpd
     setLoading(true);
     setError(null);
     const token = localStorage.getItem("token");
+
     try {
       await axios.put(
         `/api/StateExperience`,
@@ -47,11 +49,11 @@ const EditStateForm: React.FC<EditStateFormProps> = ({ stateItem, onClose, onUpd
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
         <h3 className="text-xl font-bold mb-4 text-sky-700">Editar Estado</h3>
-        <label className="block mb-2 font-semibold">Código</label>
+        <label className="block mb-2 font-semibold">Codigo</label>
         <input value={code} onChange={(e) => setCode(e.target.value)} className="w-full mb-4 p-2 border rounded" />
         <label className="block mb-2 font-semibold">Nombre</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className="w-full mb-4 p-2 border rounded" />
-        {error && <div className="text-red-500 mb-2">{error}</div>}
+        {error && <div className="text-red-500 mb-3">{error}</div>}
         <div className="flex gap-4 justify-end">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">
             Cancelar
@@ -81,6 +83,7 @@ const AddStateForm: React.FC<AddStateFormProps> = ({ onClose, onAdded }) => {
     setLoading(true);
     setError(null);
     const token = localStorage.getItem("token");
+
     try {
       await axios.post(
         `/api/StateExperience`,
@@ -108,11 +111,11 @@ const AddStateForm: React.FC<AddStateFormProps> = ({ onClose, onAdded }) => {
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
         <h3 className="text-xl font-bold mb-4 text-sky-700">Agregar Estado</h3>
-        <label className="block mb-2 font-semibold">Código</label>
+        <label className="block mb-2 font-semibold">Codigo</label>
         <input value={code} onChange={(e) => setCode(e.target.value)} className="w-full mb-4 p-2 border rounded" required />
         <label className="block mb-2 font-semibold">Nombre</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className="w-full mb-4 p-2 border rounded" required />
-        {error && <div className="text-red-500 mb-2">{error}</div>}
+        {error && <div className="text-red-500 mb-3">{error}</div>}
         <div className="flex gap-4 justify-end">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">
             Cancelar
@@ -132,51 +135,90 @@ const StateList: React.FC = () => {
   const [addStateOpen, setAddStateOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [onlyState, setOnlyState] = useState(true); // Estado para filtrar activos/inactivos (OnlyState)
-  const [modal, setModal] = useState<{ open: boolean; type: 'success' | 'error'; message: string }>({ open: false, type: 'success', message: '' });
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [onlyState, setOnlyState] = useState(true);
+  const [modal, setModal] = useState<{ open: boolean; type: "success" | "error"; message: string }>({ open: false, type: "success", message: "" });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
+  const [runTour, setRunTour] = useState(false);
 
-  const fetchStates = () => {
+  const fetchStates = async () => {
     setLoading(true);
     setError(null);
     const token = localStorage.getItem("token");
-    axios
-      .get(`/api/StateExperience/getAll`, {
-        params: { OnlyState: onlyState }, // Usar el filtro OnlyState
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        if (Array.isArray(res.data.data)) {
-          const statesNormalized = res.data.data.map((stateItem: State) => ({
-            ...stateItem,
-            state: onlyState, // Asignar el estado basado en el filtro OnlyState
-          }));
-          setStates(statesNormalized);
-        } else {
-          setStates([]);
+
+    const attempts = [
+      { url: `/api/StateExperience/getAll`, config: { params: { OnlyState: onlyState } } },
+      { url: `/api/StateExperience`, config: { params: { OnlyState: onlyState } } },
+      { url: `/api/StateExperience/GetAll`, config: { params: { OnlyState: onlyState } } },
+      { url: `/api/StateExperience/getall`, config: { params: { OnlyState: onlyState } } },
+    ];
+
+    for (const attempt of attempts) {
+      try {
+        const res = await axios.get(attempt.url, {
+          headers: { Authorization: `Bearer ${token}` },
+          ...(attempt.config || {}),
+        } as any);
+
+        let items: any[] = [];
+        if (Array.isArray(res.data)) items = res.data;
+        else if (Array.isArray(res.data.data)) items = res.data.data;
+        else if (res.data && Array.isArray(res.data.result)) items = res.data.result;
+
+        if (!Array.isArray(items)) {
+          console.debug("[State] unexpected payload shape from", attempt.url);
+          continue;
         }
+
+        const normalized = items.map((item: any) => {
+          const code = item.code ?? item.codigo ?? item.clave ?? item.value ?? item.codigoState ?? "";
+          const name = item.name ?? item.nombre ?? item.title ?? item.label ?? item.nombreState ?? "";
+          return {
+            ...item,
+            code,
+            name,
+            state: typeof item.state === "boolean" ? item.state : onlyState,
+          } as State;
+        });
+
+        setStates(normalized);
         setLoading(false);
-      })
-      .catch(() => {
+        return;
+      } catch (err: any) {
+        const status = err?.response?.status;
+        console.debug("[State] fetch error from", attempt.url, "status", status);
+        if (status === 404) continue;
+        console.error("fetchStates error", err);
         setError("Error al cargar estados");
         setLoading(false);
-      });
+        return;
+      }
+    }
+
+    setError("Error al cargar estados (endpoint no disponible o payload inesperado)");
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchStates();
-  }, [onlyState]); // Refrescar cuando cambie el filtro
+  }, [onlyState]);
 
-  const filtered = states.filter((s) => {
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem("parameterStatesTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
+
+  const filtered = states.filter((stateItem) => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
-    return (`${s.code || ''} ${s.name || ''}`).toLowerCase().includes(q);
+    return (`${stateItem.code || ""} ${stateItem.name || ""}`).toLowerCase().includes(q);
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  React.useEffect(() => {
+  useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [filtered.length, totalPages]);
 
@@ -193,10 +235,10 @@ const StateList: React.FC = () => {
       await axios.delete(`/api/StateExperience/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setModal({ open: true, type: 'success', message: 'Estado desactivado correctamente.' });
-      fetchStates(); // Refrescar lista
+      setModal({ open: true, type: "success", message: "Estado desactivado correctamente." });
+      fetchStates();
     } catch (err) {
-      setModal({ open: true, type: 'error', message: 'Error al desactivar estado.' });
+      setModal({ open: true, type: "error", message: "Error al desactivar estado." });
       console.error("Error al desactivar estado:", err);
     }
   };
@@ -207,52 +249,89 @@ const StateList: React.FC = () => {
       await axios.patch(`/api/StateExperience/restore/${id}`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setModal({ open: true, type: 'success', message: 'Estado activado correctamente.' });
-      fetchStates(); // Refrescar lista
+      setModal({ open: true, type: "success", message: "Estado activado correctamente." });
+      fetchStates();
     } catch (err) {
-      setModal({ open: true, type: 'error', message: 'Error al activar estado.' });
+      setModal({ open: true, type: "error", message: "Error al activar estado." });
       console.error("Error al activar estado:", err);
     }
   };
 
-
   return (
-    <div className="max-w-full mx-auto mt-10 p-6">
+    <div className="max-w-full mx-auto mt-10 p-6 parameter-states-layout">
+      <Joyride
+        steps={parameterStatesTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={parameterTourLocale}
+        styles={parameterTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("parameterStatesTourDone", "true");
+          }
+        }}
+      />
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-4 parameter-states-header">
           <div>
             <h2 className="text-2xl font-bold text-sky-700">Lista de Estados</h2>
             <p className="text-sm text-gray-500 mt-1">Administra los estados del sistema</p>
           </div>
           <div>
-            <button onClick={() => setAddStateOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
+            <button
+              onClick={() => setAddStateOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700 parameter-states-create"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
+              </svg>
               <span>Agregar Estado</span>
             </button>
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center gap-4 parameter-states-toolbar">
           <div className="flex-1">
-            <div className="relative">
-              <input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Buscar estados..." className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm" />
+            <div className="relative parameter-states-search">
+              <input
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Buscar estados..."
+                className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm"
+              />
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z"
+                    clipRule="evenodd"
+                  />
+                </svg>
               </div>
             </div>
           </div>
-          {/* Botones de filtro activos/inactivos, estilo login modal, verde/rojo */}
-          <div className="flex gap-4">
+          <div className="flex gap-4 parameter-states-filters">
             <button
-              className={`px-4 py-2 rounded font-semibold ${onlyState ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
-              onClick={() => { setOnlyState(true); setCurrentPage(1); }}
+              className={`px-4 py-2 rounded font-semibold ${onlyState ? "bg-green-500 hover:bg-green-600 text-white" : "bg-gray-300 hover:bg-gray-400 text-black"}`}
+              onClick={() => {
+                setOnlyState(true);
+                setCurrentPage(1);
+              }}
               type="button"
             >
               Mostrar Activos
             </button>
             <button
-              className={`px-4 py-2 rounded font-semibold ${!onlyState ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
-              onClick={() => { setOnlyState(false); setCurrentPage(1); }}
+              className={`px-4 py-2 rounded font-semibold ${!onlyState ? "bg-red-500 hover:bg-red-600 text-white" : "bg-gray-300 hover:bg-gray-400 text-black"}`}
+              onClick={() => {
+                setOnlyState(false);
+                setCurrentPage(1);
+              }}
               type="button"
             >
               Mostrar Inactivos
@@ -260,11 +339,11 @@ const StateList: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 parameter-states-table">
           <table className="min-w-full rounded-lg overflow-hidden text-sm sm:text-base">
             <thead className="text-left text-sm sm:text-base text-gray-600 bg-gray-50">
               <tr>
-                <th className="py-2 px-3 whitespace-break-spaces">Código</th>
+                <th className="py-2 px-3 whitespace-break-spaces">Codigo</th>
                 <th className="py-2 px-3 whitespace-break-spaces">Nombre</th>
                 <th className="py-2 px-3 whitespace-break-spaces">Estado</th>
                 <th className="py-2 px-3 whitespace-break-spaces">Acciones</th>
@@ -273,7 +352,9 @@ const StateList: React.FC = () => {
             <tbody className="text-sm sm:text-base text-gray-700">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-4 px-3 text-center text-gray-500">No hay estados para mostrar.</td>
+                  <td colSpan={4} className="py-4 px-3 text-center text-gray-500">
+                    No hay estados para mostrar.
+                  </td>
                 </tr>
               ) : (
                 paginated.map((stateItem) => (
@@ -282,23 +363,53 @@ const StateList: React.FC = () => {
                     <td className="py-2 px-3 break-words max-w-xs">{stateItem.name}</td>
                     <td className="py-2 px-3">
                       {stateItem.state ? (
-                        <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs sm:text-sm">Activo</span>
+                        <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs sm:text-sm">
+                          Activo
+                        </span>
                       ) : (
-                        <span className="inline-block bg-red-100 text-red-500 border border-red-200 px-3 py-1 rounded-full text-xs sm:text-sm">Inactivo</span>
+                        <span className="inline-block bg-red-100 text-red-500 border border-red-200 px-3 py-1 rounded-full text-xs sm:text-sm">
+                          Inactivo
+                        </span>
                       )}
                     </td>
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <button className="text-gray-400 hover:text-sky-600 p-1 sm:p-1.5" style={{minWidth:24}} onClick={() => setEditState(stateItem)} title="Editar">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
+                        <button
+                          className="text-gray-400 hover:text-sky-600 p-1 sm:p-1.5"
+                          style={{ minWidth: 24 }}
+                          onClick={() => setEditState(stateItem)}
+                          title="Editar"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z" />
+                          </svg>
                         </button>
                         {stateItem.state ? (
-                          <button className="text-red-400 hover:text-red-600 p-1 sm:p-1.5" style={{minWidth:24}} onClick={() => handleDeactivate(stateItem.id)} title="Desactivar">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
+                          <button
+                            className="text-red-400 hover:text-red-600 p-1 sm:p-1.5"
+                            style={{ minWidth: 24 }}
+                            onClick={() => handleDeactivate(stateItem.id)}
+                            title="Desactivar"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path
+                                fillRule="evenodd"
+                                d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
                           </button>
                         ) : (
-                          <button className="text-emerald-500 hover:text-emerald-600 p-1 sm:p-1.5" style={{minWidth:24}} onClick={() => handleActivate(stateItem.id)} title="Activar">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
+                          <button
+                            className="text-emerald-500 hover:text-emerald-600 p-1 sm:p-1.5"
+                            style={{ minWidth: 24 }}
+                            onClick={() => handleActivate(stateItem.id)}
+                            title="Activar"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z" />
+                              <path d="M10 6v5l3 3" />
+                            </svg>
                           </button>
                         )}
                       </div>
@@ -310,7 +421,7 @@ const StateList: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-6 flex items-center justify-between">
+        <div className="mt-6 flex items-center justify-between parameter-states-pagination">
           <div className="text-sm text-gray-500">
             {filtered.length === 0 ? (
               <>Mostrando 0 estados</>
@@ -323,7 +434,9 @@ const StateList: React.FC = () => {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>Anterior</button>
+            <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
+              Anterior
+            </button>
             {(() => {
               const pages: number[] = [];
               let start = Math.max(1, currentPage - 2);
@@ -331,10 +444,18 @@ const StateList: React.FC = () => {
               if (end - start < 4) start = Math.max(1, end - 4);
               for (let i = start; i <= end; i++) pages.push(i);
               return pages.map((p) => (
-                <button key={p} onClick={() => goToPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
+                <button
+                  key={p}
+                  onClick={() => goToPage(p)}
+                  className={`px-3 py-1 rounded ${currentPage === p ? "bg-sky-600 text-white" : "bg-white border"}`}
+                >
+                  {p}
+                </button>
               ));
             })()}
-            <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>Siguiente</button>
+            <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
+              Siguiente
+            </button>
           </div>
         </div>
       </div>
@@ -349,6 +470,7 @@ const StateList: React.FC = () => {
           }}
         />
       )}
+
       {addStateOpen && (
         <AddStateForm
           onClose={() => setAddStateOpen(false)}
@@ -358,26 +480,32 @@ const StateList: React.FC = () => {
           }}
         />
       )}
-    {/* Modal de éxito/error tipo inicio */}
-    {modal.open && (
-      <div className="fixed inset-0 flex items-center justify-center z-[2000]">
-        <div className="bg-white rounded-2xl shadow-lg p-8 min-w-[340px] max-w-sm flex flex-col items-center">
-          {modal.type === 'success' ? (
-            <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#B7EFC2" strokeWidth="3" fill="#F6FFF9"/><path d="M16 25l6 6 10-14" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          ) : (
-            <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#FECACA" strokeWidth="3" fill="#FFF6F6"/><path d="M17 17l14 14M31 17l-14 14" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"/></svg>
-          )}
-          <h3 className="text-2xl font-bold text-gray-700 mb-2">{modal.type === 'success' ? 'Éxito' : 'Error'}</h3>
-          <p className="text-gray-600 mb-6 text-center">{modal.message}</p>
-          <button
-            className="px-6 py-2 rounded bg-[#7B6EF6] text-white font-semibold text-base hover:bg-[#5f54c7] transition"
-            onClick={() => setModal({ ...modal, open: false })}
-          >
-            Continuar
-          </button>
+
+      {modal.open && (
+        <div className="fixed inset-0 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-2xl shadow-lg p-8 min-w-[340px] max-w-sm flex flex-col items-center">
+            {modal.type === "success" ? (
+              <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="24" r="22" stroke="#B7EFC2" strokeWidth="3" fill="#F6FFF9" />
+                <path d="M16 25l6 6 10-14" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="24" r="22" stroke="#FECACA" strokeWidth="3" fill="#FFF6F6" />
+                <path d="M17 17l14 14M31 17l-14 14" stroke="#EF4444" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+            )}
+            <h3 className="text-2xl font-bold text-gray-700 mb-2">{modal.type === "success" ? "Exito" : "Error"}</h3>
+            <p className="text-gray-600 mb-6 text-center">{modal.message}</p>
+            <button
+              className="px-6 py-2 rounded bg-[#7B6EF6] text-white font-semibold text-base hover:bg-[#5f54c7] transition"
+              onClick={() => setModal({ ...modal, open: false })}
+            >
+              Continuar
+            </button>
+          </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 };

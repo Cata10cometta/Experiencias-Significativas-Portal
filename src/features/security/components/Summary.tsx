@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import Joyride from 'react-joyride';
 import axios from 'axios';
+import { securitySummaryTourSteps, securityTourLocale, securityTourStyles } from '../../onboarding/securityTour';
 
 interface RawPerm { id: number; role?: string; form?: string; permission?: string; state?: boolean }
 
@@ -11,6 +13,7 @@ const Summary: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [runTour, setRunTour] = useState(false);
 
   const fetch = async () => {
     const token = localStorage.getItem('token');
@@ -27,6 +30,13 @@ const Summary: React.FC = () => {
   };
 
   useEffect(() => { fetch(); }, []);
+
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem('securitySummaryTourDone')) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
 
   // aggregate per (role, form)
   const grouped = React.useMemo(() => {
@@ -68,9 +78,23 @@ const Summary: React.FC = () => {
   if (error) return <div>{error}</div>;
 
   return (
-    <div className="max-w-full mx-auto -mt-1! p-6">
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-center gap-4 mb-1">
+    <div className="max-w-full mx-auto -mt-1! p-6 security-summary-layout">
+      <Joyride
+        steps={securitySummaryTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={securityTourLocale}
+        styles={securityTourStyles}
+        callback={(data) => {
+          if (data.status === 'finished' || data.status === 'skipped') {
+            setRunTour(false);
+            localStorage.setItem('securitySummaryTourDone', 'true');
+          }
+        }}
+      />
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 security-summary-card">
+        <div className="flex items-center gap-4 mb-1 security-summary-header">
           <div className="flex-shrink-0 -mt-8">
             <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
               <mask id="path-1-inside-1_2506_2260" fill="white">
@@ -87,7 +111,7 @@ const Summary: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6 security-summary-cards">
           {Object.keys(rolesSummary).length === 0 ? (
             <div className="text-gray-500">No hay roles</div>
           ) : (
@@ -105,7 +129,7 @@ const Summary: React.FC = () => {
           )}
         </div>
 
-        <div className="mb-4 flex items-center gap-4">
+        <div className="mb-4 flex items-center gap-4 security-summary-search">
           <div className="flex-1">
             <div className="relative">
               <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Buscar en el modelo de seguridad..." className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm" />
@@ -119,7 +143,7 @@ const Summary: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-100 p-2 overflow-auto">
+        <div className="rounded-lg border border-gray-100 p-2 overflow-auto security-summary-table">
           <table className="min-w-full w-full table-auto">
             <thead className="text-left text-sm text-gray-600 bg-gray-50">
               <tr>
@@ -159,7 +183,7 @@ const Summary: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-500 security-summary-pagination">
           <div>
             {filtered.length === 0 ? (
               <>Mostrando 0 permisos</>

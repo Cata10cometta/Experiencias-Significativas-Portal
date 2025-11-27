@@ -18,9 +18,9 @@ const ParameterMain: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('criteria');
 
   return (
-    <div>
+    <div className="parameter-tabs-container">
       <div className="bg-white rounded-full! shadow-sm py-2 px-3 mb-3">
-        <nav className="flex space-x-4">
+        <nav className="flex space-x-4 parameter-tabs-nav">
           {tabs.map((t) => (
             <button
               key={t.key}

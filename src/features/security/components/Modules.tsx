@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { securityModulesTourSteps, securityTourLocale, securityTourStyles } from "../../onboarding/securityTour";
 import { Module } from "../types/module";
 
 interface AddModuleFormProps {
@@ -296,6 +298,7 @@ const Modules: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [runTour, setRunTour] = useState(false);
 
   const fetchModules = (onlyState: boolean | null) => {
     const token = localStorage.getItem("token");
@@ -329,6 +332,13 @@ const Modules: React.FC = () => {
     fetchModules(onlyState);
   }, [onlyState]);
 
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem("securityModulesTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
+
 
   // Los hooks deben ir siempre al inicio del componente
   const [search, setSearch] = useState("");
@@ -344,8 +354,22 @@ const Modules: React.FC = () => {
 
 
   return (
-    <div className="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg">
-      <div className="flex items-start justify-between mb-4">
+    <div className="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg security-modules-layout">
+      <Joyride
+        steps={securityModulesTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={securityTourLocale}
+        styles={securityTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("securityModulesTourDone", "true");
+          }
+        }}
+      />
+      <div className="flex items-start justify-between mb-4 security-modules-header">
         <div>
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 -mt-8">
@@ -364,7 +388,7 @@ const Modules: React.FC = () => {
             </div>
           </div>
         </div>
-        <div>
+        <div className="security-modules-create">
           <button
             onClick={() => setAddModuleOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
@@ -376,7 +400,7 @@ const Modules: React.FC = () => {
       </div>
 
       {/* Search row below header */}
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex items-center gap-4 security-modules-filters">
         <div className="flex-1">
           <div className="relative">
             <input
@@ -409,7 +433,7 @@ const Modules: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 security-modules-table">
         <table className="min-w-full rounded-lg overflow-hidden">
           <thead className="text-left text-sm text-gray-600 bg-gray-50">
             <tr>
@@ -485,7 +509,7 @@ const Modules: React.FC = () => {
         </table>
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex items-center justify-between security-modules-pagination">
         <div className="text-sm text-gray-500">
           {filtered.length === 0 ? (
             <>Mostrando 0 módulos</>

@@ -880,15 +880,19 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                         top: "50%",
                         left: "50%",
                         transform: "translate(-50%, -50%)",
-                        width: 400,
-                        height: '80vh',
+                        width: 300,
+                        minHeight: 180,
+                        maxWidth: '90vw',
+                        maxHeight: '60vh',
                         overflowY: 'auto',
                         bgcolor: "background.paper",
                         boxShadow: 24,
-                        p: 4,
+                        p: 3,
                         borderRadius: 2,
                         display: 'flex',
                         flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                     }}
                 >
                     {/* Botón X para cerrar */}
@@ -900,7 +904,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                             right: 8,
                             background: 'transparent',
                             border: 'none',
-                            fontSize: 22,
+                            fontSize: 20,
                             cursor: 'pointer',
                             color: '#888',
                             zIndex: 10
@@ -909,18 +913,16 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                     >
                         ×
                     </button>
-                    <h2 className="text-2xl font-bold text-center mb-4">Resultado de la Evaluación</h2>
-                    <p className="text-center text-green-500 font-semibold">{evaluationResult}</p>
+                    <h2 className="text-xl font-bold text-center mt-2 mb-2">Resultado de la Evaluación</h2>
+                    <p className="text-center text-green-500 font-semibold mb-2">{evaluationResult}</p>
                     {isUrlLoading ? (
                         <p className="text-center text-gray-600 mt-2">Generando PDF...</p>
                     ) : (
-                        <div className="text-center mt-4">
-                            <p className="text-sm text-gray-700">PDF generado correctamente.</p>
-                            <div className="flex justify-center mt-3">
-                                <Button variant="contained" color="primary" onClick={handleCloseModal}>
-                                    Cerrar
-                                </Button>
-                            </div>
+                        <div className="text-center mt-2">
+                            <p className="text-sm text-gray-700 mb-3">PDF generado correctamente.</p>
+                            <Button variant="contained" color="primary" onClick={handleCloseModal} sx={{ fontSize: 14, px: 3, py: 1, borderRadius: 1 }}>
+                                Cerrar
+                            </Button>
                         </div>
                     )}
                 </Box>

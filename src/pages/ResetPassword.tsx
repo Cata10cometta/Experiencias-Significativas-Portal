@@ -1,9 +1,13 @@
 import React, { useState } from "react";
+import Joyride from "react-joyride";
+import { resetPasswordTourSteps, resetPasswordTourLocale, resetPasswordTourStyles } from "../features/onboarding/resetPasswordTour";
 import flecha from "/images/flecha.svg";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { hasTourBeenSeen, markTourSeen } from "../shared/utils/tourStorage";
 
 const ResetPassword: React.FC = () => {
+  const [runTour, setRunTour] = useState(false);
   const [step, setStep] = useState(1);
   const [password, setPassword] = useState("");
   const [code, setCode] = useState(Array(6).fill("")); 
@@ -158,17 +162,40 @@ const ResetPassword: React.FC = () => {
     }
   };
 
+  React.useEffect(() => {
+    if (!hasTourBeenSeen("resetPasswordTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0b1033] to-[#17132a] text-white overflow-hidden">
+      <Joyride
+        steps={resetPasswordTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={resetPasswordTourLocale}
+        styles={resetPasswordTourStyles}
+        disableScrolling={true}
+        spotlightClicks={true}
+        callback={data => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            markTourSeen("resetPasswordTourDone");
+          }
+        }}
+      />
       <main className="relative flex flex-col lg:flex-row items-center lg:items-stretch px-8 lg:px-16 py-0 lg:py-4 h-[560px] mt-[0px]">
         <section className="z-20 max-w-2xl lg:flex-1 flex flex-col justify-center mt-100 ml-[190px]">
           <div className={`relative ${step === 3 ? 'w-[520px] sm:w-[560px] md:w-[600px] mx-auto' : 'w-[640px] sm:w-[720px] md:w-[820px]'} max-w-full`}>
           <div className="absolute -inset-1 bg-white/10 blur-md opacity-90 pointer-events-none" />
 
-          <div className={`relative bg-[#1b1333] ${step === 3 ? 'rounded-lg shadow-lg p-8 sm:p-10 md:p-12 min-h-[360px] sm:min-h-[420px] md:min-h-[480px] border border-white/8' : 'rounded-2xl shadow-2xl shadow-[0_16px_56px_rgba(2,6,23,0.6)] p-16 sm:p-20 md:p-24 border border-white/10 min-h-[760px] sm:min-h-[840px] md:min-h-[920px]'} w-full backdrop-blur-md flex flex-col justify-center`}> 
+          <div className={`relative bg-[#1b1333] ${step === 3 ? 'rounded-lg shadow-lg p-8 sm:p-10 md:p-12 min-h-[360px] sm:min-h-[420px] md:min-h-[480px] border border-white/8' : 'rounded-2xl shadow-2xl shadow-[0_16px_56px_rgba(2,6,23,0.6)] p-16 sm:p-20 md:p-24 border border-white/10 min-h-[760px] sm:min-h-[840px] md:min-h-[920px]'} w-full backdrop-blur-md flex flex-col justify-center`}>
             <div className="w-full max-w-none">
               {/* Flecha / volver (esquina superior izquierda) */}
-              <div className="absolute top-6 left-6 z-40">
+              <div className="absolute top-6 left-6 z-40 reset-header">
                 {step === 1 ? (
                   <Link to="/login" aria-label="Volver al login">
                     <img src={flecha} alt="Volver" className="w-16 h-16 cursor-pointer shadow-md" />
@@ -196,8 +223,7 @@ const ResetPassword: React.FC = () => {
                 <>
                   <p className="py-8 text-2xl sm:text-3xl text-slate-300 mb-10">Ingresa el correo registrado para enviarte un código de verificación.</p>
 
-                  <div className="text-left mb-18">
-                    
+                  <div className="text-left mb-18 reset-email">
                     <input
                       type="email"
                       value={email}
@@ -207,7 +233,7 @@ const ResetPassword: React.FC = () => {
                     />
                   </div>
 
-                  <button onClick={sendForgotPasswordEmail} className="w-full bg-orange-400 text-white py-7 rounded-xl! font-extrabold text-2xl sm:text-3xl mt-10 shadow-lg hover:bg-orange-500 transition-colors">Enviar código</button>
+                  <button onClick={sendForgotPasswordEmail} className="w-full bg-orange-400 text-white py-7 rounded-xl! font-extrabold text-2xl sm:text-3xl mt-10 shadow-lg hover:bg-orange-500 transition-colors reset-send-code">Enviar código</button>
                 </>
               )}
 
@@ -216,7 +242,7 @@ const ResetPassword: React.FC = () => {
                 <>
                   <p className="text-base sm:text-lg text-slate-300 mb-6">Ingresa el código que te enviamos a tu correo y crea tu nueva contraseña.</p>
 
-                  <div className="flex justify-center gap-6 mb-10">
+                  <div className="flex justify-center gap-6 mb-10 reset-code-inputs">
                     {code.map((digit, i) => (
                       <input
                         key={i}
@@ -231,9 +257,9 @@ const ResetPassword: React.FC = () => {
                   </div>
 
                   <div className="text-right -mb-4">
-                    <button onClick={() => setStep(3)} className="text-sm text-orange-300 hover:underline">Reenviar Código</button>
+                    <button onClick={() => setStep(3)} className="text-sm text-orange-300 hover:underline reset-resend">Reenviar Código</button>
                   </div>
-                    <div className="text-left mb-6 mt-6 relative">
+                    <div className="text-left mb-6 mt-6 relative reset-password-input">
                       <label className="block text-base sm:text-base md:text-base text-slate-300 mb-2">Contraseña</label>
                       <input
                         type={showPassword ? "text" : "password"}
@@ -275,7 +301,7 @@ const ResetPassword: React.FC = () => {
                     <li className={hasSpecialChar ? "text-green-500" : "text-red-400"}>Al menos un carácter especial (e.g., !@#$%^&*)</li>
                   </ul>
 
-                  <button disabled={!(hasUpperLower && hasNumber && hasMinLength)} onClick={resetPassword} className={`w-full py-6 rounded-xl! font-extrabold text-lg sm:text-xl mt-8 transition ${hasUpperLower && hasNumber && hasMinLength ? 'bg-orange-400 text-white hover:bg-orange-500 shadow-lg' : 'bg-gray-300 text-gray-600 cursor-not-allowed'}`}>Cambiar Contraseña</button>
+                  <button disabled={!(hasUpperLower && hasNumber && hasMinLength)} onClick={resetPassword} className={`w-full py-6 rounded-xl! font-extrabold text-lg sm:text-xl mt-8 transition ${hasUpperLower && hasNumber && hasMinLength ? 'bg-orange-400 text-white hover:bg-orange-500 shadow-lg reset-submit' : 'bg-gray-300 text-gray-600 cursor-not-allowed reset-submit'}`}>Cambiar Contraseña</button>
                 </>
               )}
 
@@ -284,7 +310,7 @@ const ResetPassword: React.FC = () => {
                 <>
                   <p className="py-8 text-2xl sm:text-3xl text-slate-300 mb-10 text-center">Ingresa el correo registrado para reenviarte un nuevo código de verificación.</p>
 
-                  <div className="w-full max-w-[560px] mx-auto mb-8">
+                  <div className="w-full max-w-[560px] mx-auto mb-8 reset-email">
                     <input
                       type="email"
                       value={email}
@@ -294,7 +320,7 @@ const ResetPassword: React.FC = () => {
                     />
                   </div>
 
-                  <button onClick={resendCode} className="w-full bg-orange-400 text-white py-7 rounded-xl! font-extrabold text-2xl sm:text-3xl shadow-md hover:bg-orange-500">Enviar</button>
+                  <button onClick={resendCode} className="w-full bg-orange-400 text-white py-7 rounded-xl! font-extrabold text-2xl sm:text-3xl shadow-md hover:bg-orange-500 reset-send-code">Enviar</button>
                 </>
               )}
             </div>

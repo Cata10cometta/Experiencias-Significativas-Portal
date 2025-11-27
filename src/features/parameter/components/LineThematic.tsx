@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { parameterLinesTourSteps, parameterTourLocale, parameterTourStyles } from "../../onboarding/parameterTour";
 import { LineThematic } from "../types/lineThematic";
 
 
@@ -137,6 +139,7 @@ const LineThematicList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 5;
+  const [runTour, setRunTour] = useState(false);
 
   const fetchLineThematics = () => {
     const token = localStorage.getItem("token");
@@ -166,6 +169,13 @@ const LineThematicList: React.FC = () => {
   useEffect(() => {
     fetchLineThematics();
   }, [onlyState]); // Refrescar cuando cambie el filtro
+
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem("parameterLinesTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
 
   const filtered = lineThematics.filter((lt) => {
     const q = searchTerm.trim().toLowerCase();
@@ -214,31 +224,45 @@ const LineThematicList: React.FC = () => {
   };
 
   return (
-    <div className="max-w-full mx-auto mt-10 p-6">
+    <div className="max-w-full mx-auto mt-10 p-6 parameter-lines-layout">
+      <Joyride
+        steps={parameterLinesTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={parameterTourLocale}
+        styles={parameterTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("parameterLinesTourDone", "true");
+          }
+        }}
+      />
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-4 parameter-lines-header">
           <div>
             <h2 className="text-2xl font-bold text-sky-700">Lista de Líneas Temáticas</h2>
             <p className="text-sm text-gray-500 mt-1">Administra las líneas temáticas del sistema</p>
           </div>
           <div>
-            <button onClick={() => setAddLineThematicOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700">
+            <button onClick={() => setAddLineThematicOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700 parameter-lines-create">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
               <span>Agregar Línea Temática</span>
             </button>
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center gap-4 parameter-lines-toolbar">
           <div className="flex-1">
-            <div className="relative">
+            <div className="relative parameter-lines-search">
               <input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Buscar líneas temáticas..." className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm" />
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
               </div>
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 parameter-lines-filters">
             <button
               className={`px-4 py-2 rounded font-semibold ${onlyState ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
               onClick={() => { setOnlyState(true); setCurrentPage(1); }}
@@ -256,7 +280,7 @@ const LineThematicList: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 parameter-lines-table">
           <table className="min-w-full rounded-lg overflow-hidden text-sm sm:text-base">
             <thead className="text-left text-sm sm:text-base text-gray-600 bg-gray-50">
               <tr>
@@ -306,7 +330,7 @@ const LineThematicList: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-6 flex items-center justify-between">
+        <div className="mt-6 flex items-center justify-between parameter-lines-pagination">
           <div className="text-sm text-gray-500">
             {filtered.length === 0 ? (
               <>Mostrando 0 líneas temáticas</>

@@ -7,13 +7,181 @@ interface Props {
   onCountChange?: (count: number) => void;
 }
 
+type NormalizedNotification = {
+  id: string | null;
+  experienceId: number | null;
+  experienceName: string;
+  userName: string;
+  state: string;
+  createdAt: string | null;
+  raw: any;
+  type?: string | null;
+};
+
+const toNumberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+  if (typeof value === 'string') {
+    const coerced = Number(value);
+    return Number.isFinite(coerced) && coerced > 0 ? coerced : null;
+  }
+  return null;
+};
+
+const takeFirstString = (...values: unknown[]): string | '' => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return '';
+};
+
+const normalizeNotification = (raw: any, source?: string): NormalizedNotification | null => {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const allIdCandidates: unknown[] = [
+    raw.id,
+    raw.Id,
+    raw.notificationId,
+    raw.NotificationId,
+    raw.requestId,
+    raw.RequestId,
+    raw.experienceNotificationId,
+    raw.ExperienceNotificationId,
+    raw.experienceId,
+    raw.ExperienceId,
+    raw.request?.experienceId,
+    raw.request?.ExperienceId,
+    raw.experience?.id,
+    raw.experience?.Id,
+  ];
+
+  let experienceId: number | null = null;
+  for (const candidate of allIdCandidates) {
+    const numeric = toNumberOrNull(candidate);
+    if (numeric) {
+      experienceId = numeric;
+      break;
+    }
+  }
+
+  let id: string | null = null;
+  for (const candidate of allIdCandidates) {
+    if (candidate === null || candidate === undefined) continue;
+    if (experienceId && toNumberOrNull(candidate) === experienceId) {
+      id = String(experienceId);
+      break;
+    }
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      id = candidate;
+      break;
+    }
+  }
+
+  const experienceName = takeFirstString(
+    raw.experienceName,
+    raw.nameExperiences,
+    raw.NameExperiences,
+    raw.title,
+    raw.experience?.nameExperiences,
+    raw.experience?.title,
+    raw.experience?.name,
+    raw.request?.experienceName,
+    raw.request?.nameExperiences,
+    raw.rawExperienceName,
+    `Solicitud edición #${raw.id ?? ''}`,
+  );
+
+  const userName = takeFirstString(
+    raw.userName,
+    raw.user?.name,
+    raw.requestUser,
+    raw.requestedBy,
+    raw.username,
+    raw.solicitante,
+    raw.request?.userName,
+    raw.request?.requestedBy,
+    raw.createdBy,
+    raw.createdUser,
+  );
+
+  const state = takeFirstString(
+    raw.status,
+    raw.state,
+    raw.requestState,
+    raw.estado,
+    raw.stateName,
+    raw.state?.name,
+    raw.statusName,
+    raw.notificationState,
+    raw.type,
+    'Pendiente',
+  );
+
+  const createdAt = takeFirstString(
+    raw.createdAt,
+    raw.createdDate,
+    raw.date,
+    raw.requestedAt,
+    raw.created,
+    raw.timestamp,
+    raw.notificationDate,
+  ) || null;
+
+  return {
+    id,
+    experienceId,
+    experienceName,
+    userName,
+    state,
+    createdAt,
+    raw,
+    type: source || (typeof raw.type === 'string' ? raw.type : null),
+  };
+};
+
+const getNotificationKey = (item: NormalizedNotification): string => {
+  if (item.id) return item.id;
+  if (item.experienceId) {
+    return `${item.experienceId}-${item.state}-${item.createdAt ?? ''}`;
+  }
+  return JSON.stringify({
+    experienceName: item.experienceName,
+    userName: item.userName,
+    state: item.state,
+    createdAt: item.createdAt,
+  });
+};
+
+const sortNotifications = (items: NormalizedNotification[]): NormalizedNotification[] => {
+  const parseTime = (value: string | null): number => {
+    if (!value) return Number.MIN_SAFE_INTEGER;
+    const parsed = new Date(value);
+    const time = parsed.getTime();
+    return Number.isFinite(time) ? time : Number.MIN_SAFE_INTEGER;
+  };
+  return [...items].sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
+};
+
+const dedupeNotifications = (items: NormalizedNotification[]): NormalizedNotification[] => {
+  const map = new Map<string, NormalizedNotification>();
+  items.forEach((item) => {
+    const key = getNotificationKey(item);
+    if (!map.has(key)) {
+      map.set(key, item);
+    }
+  });
+  return Array.from(map.values());
+};
+
 const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) => {
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NormalizedNotification[]>([]);
   const [loadingNotifs, setLoadingNotifs] = useState<boolean>(false);
   const [notifError, setNotifError] = useState<string | null>(null);
   const [approvingIds, setApprovingIds] = useState<number[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [removedIds, setRemovedIds] = useState<number[]>([]);
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
 
   const fetchNotifications = async () => {
     setLoadingNotifs(true);
@@ -146,6 +314,34 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
 
   // SignalR: mantener referencia para evitar duplicados
   const signalRStarted = useRef(false);
+  const removedIdsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    removedIdsRef.current = removedIds;
+  }, [removedIds]);
+
+  const getPersistedApprovedIds = (): string[] => {
+    try {
+      const raw = localStorage.getItem('approvedExperienceIds');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map((value) => String(value));
+    } catch (err) {
+      console.debug('approvedExperienceIds parse error', err);
+    }
+    return [];
+  };
+
+  const shouldFilterOut = (notification: NormalizedNotification): boolean => {
+    if (!notification) return true;
+    if (notification.raw?.approved === true || notification.raw?.Approved === true) return true;
+    const removalSet = new Set<string>([...removedIdsRef.current, ...getPersistedApprovedIds()]);
+    const candidates = [
+      notification.id ? String(notification.id) : null,
+      notification.experienceId ? String(notification.experienceId) : null,
+    ].filter(Boolean) as string[];
+    return candidates.some((candidate) => removalSet.has(candidate));
+  };
 
   useEffect(() => {
     if (open) {

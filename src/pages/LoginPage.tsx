@@ -1,5 +1,7 @@
 // src/pages/LoginPage.tsx
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
+import { loginPageTourSteps, loginPageTourStyles, loginPageTourLocale } from "../features/onboarding/loginPageTour";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -18,11 +20,19 @@ const LoginPage: React.FC = () => {
   const { login: setAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [flash, setFlash] = useState<boolean>(false);
+  const [runTour, setRunTour] = useState(false);
 
   useEffect(() => {
     // Limpiar token y rol antiguos al entrar a login
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+  }, []);
+
+  useEffect(() => {
+    if (!localStorage.getItem("loginPageTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
   }, []);
 
   const onSubmit = async (data: FormData) => {
@@ -98,10 +108,32 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0b1033] to-[#17132a] text-white overflow-hidden">
+      <Joyride
+        steps={loginPageTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={loginPageTourLocale}
+        styles={loginPageTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("loginPageTourDone", "true");
+          }
+        }}
+      />
       <header className="flex items-center justify-end px-8 py-5 relative z-30">
         <div className="flex items-center space-x-2!">
-          <button className="px-3 py-2 rounded-lg! bg-gray-600 text-white font-semibold shadow-sm text-base" onClick={() => navigate('/help')}>Ayuda</button>
-          <button className="px-4 py-2 rounded-lg! bg-blue-500 text-white font-semibold shadow-md text-base" onClick={() => navigate('/register')}>Registrate</button>
+          <button
+            className="btn-ayuda px-3 py-2 rounded-lg! bg-gray-600 text-white font-semibold shadow-sm text-base"
+            onClick={() => {
+              setRunTour(true);
+              localStorage.removeItem("loginPageTourDone");
+            }}
+          >
+            Ayuda
+          </button>
+          <button className="btn-register px-4 py-2 rounded-lg! bg-blue-500 text-white font-semibold shadow-md text-base" onClick={() => navigate('/register')}>Registrate</button>
         </div>
       </header>
 
@@ -127,7 +159,7 @@ const LoginPage: React.FC = () => {
               <div className="w-full max-w-none">
                 <h2 className="text-5xl! sm:text-6xl md:text-7xl font-extrabold text-orange-400 text-center mb-6 -mt-6!">Iniciar Sesión</h2>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="login-form space-y-6">
                   <div>
                     <label htmlFor="username" className="block text-xl sm:text-4xl md:text-3xl text-slate-300 mb-2">Ingrese el correo electrónico</label>
                     <input
@@ -206,15 +238,15 @@ const LoginPage: React.FC = () => {
           </div>
         </aside>
 
-         {/* Línea blanca ondulada debajo del cohete */}
-          <div className="absolute left-0 bottom-0 w-full pointer-events-none z-10 overflow-visible" aria-hidden style={{ transform: 'translateY(90%)' }}>
-                  <svg viewBox="0 0 1440 320" className="w-full h-[260px] lg:h-[420px] block">
-                    <path
-                      fill="#ffffff"
-                      d="M0,1 C300,40 360,300 510,220 C400,200 600,330 1000,30 C1260,280 1320,180 1440,150 L1440,320 L0,320 Z"
-                    ></path>  
-                  </svg>
-                </div>
+        {/* Línea blanca ondulada debajo del cohete - reemplazada por imagen SVG */}
+        <div className="absolute left-0 bottom-0 w-full pointer-events-none z-10 overflow-visible" aria-hidden style={{ transform: 'translateY(90%)' }}>
+              <img
+                src="/images/Smoke.svg"
+                alt="Línea blanca ondulada"
+                className="w-[180vw] max-w-none h-[260px] lg:h-[420px] block mx-auto -translate-x-[40vw]"
+                draggable="false"
+              />
+        </div>
 
       </main>
     </div>

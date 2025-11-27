@@ -36,9 +36,9 @@ const SecurityMain: React.FC = () => {
   return (
     <>
       {/* Single white card that contains only the tab titles */}
-      <div className="bg-white rounded-full! shadow-sm py-2 px-3 mb-3">
+      <div className="bg-white rounded-full! shadow-sm py-2 px-3 mb-3 security-tabs-container">
         <div className="mb-0">
-          <nav className="flex space-x-5!">
+          <nav className="flex space-x-5! security-tabs-nav">
             {/* Example: hideTabs can be used to hide specific tabs without removing them from the array */}
             {visibleTabs.map((t) => (
               <button
@@ -54,7 +54,7 @@ const SecurityMain: React.FC = () => {
       </div>
 
       {/* Content is rendered outside the title card to avoid nested boxes */}
-      <div className="pt-2">
+      <div className="pt-2 security-tab-content">
         {activeTab === "resumen" && <Resumen />}
         {activeTab === "roles" && <RolesList />}
         {activeTab === "users" && <UserList />}

@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { parameterCriteriaTourSteps, parameterTourLocale, parameterTourStyles } from "../../onboarding/parameterTour";
+import { hasTourBeenSeen, markTourSeen } from "../../../shared/utils/tourStorage";
 import { Criteria } from "../types/criteria";
 
 
@@ -188,6 +191,7 @@ const CriteriaList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [modal, setModal] = useState<{ open: boolean; type: 'success' | 'error'; message: string }>({ open: false, type: 'success', message: '' });
   const pageSize = 5;
+  const [runTour, setRunTour] = useState(false);
 
   const fetchCriteria = () => {
     const token = localStorage.getItem("token");
@@ -219,6 +223,13 @@ const CriteriaList: React.FC = () => {
   useEffect(() => {
     fetchCriteria();
   }, [onlyState]); // Refrescar cuando cambie el filtro
+
+  useEffect(() => {
+    if (!loading && !runTour && !hasTourBeenSeen("parameterCriteriaTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
 
   const filtered = criteria.filter((c) => {
     const q = searchTerm.trim().toLowerCase();
@@ -267,31 +278,45 @@ const CriteriaList: React.FC = () => {
   };
 
   return (
-    <div className="max-w-full mx-auto mt-10 p-6">
+    <div className="max-w-full mx-auto mt-10 p-6 parameter-criteria-layout">
+      <Joyride
+        steps={parameterCriteriaTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={parameterTourLocale}
+        styles={parameterTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            markTourSeen("parameterCriteriaTourDone");
+          }
+        }}
+      />
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-4 parameter-criteria-header">
           <div>
             <h2 className="text-2xl font-bold text-sky-700">Lista de Criterios</h2>
             <p className="text-sm text-gray-500 mt-1">Administra los criterios del sistema</p>
           </div>
           <div>
-            <button onClick={() => setAddCriteriaOpen(true)} className="inline-flex items-center gap-2 px-6 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700 shadow-md transition-all">
+            <button onClick={() => setAddCriteriaOpen(true)} className="inline-flex items-center gap-2 px-6 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700 shadow-md transition-all parameter-criteria-create">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
               <span>Agregar Criterio</span>
             </button>
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center gap-4 parameter-criteria-toolbar">
           <div className="flex-1">
-            <div className="relative">
+            <div className="relative parameter-criteria-search">
               <input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Buscar criterios..." className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm" />
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
               </div>
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 parameter-criteria-filters">
             <button
               className={`px-4 py-2 rounded font-semibold ${onlyState ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
               onClick={() => { setOnlyState(true); setCurrentPage(1); }}
@@ -309,7 +334,7 @@ const CriteriaList: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 parameter-criteria-table">
           <table className="min-w-full rounded-lg overflow-hidden text-sm sm:text-base">
             <thead className="text-left text-sm sm:text-base text-gray-600 bg-gray-50">
               <tr>
@@ -359,7 +384,7 @@ const CriteriaList: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-6 flex items-center justify-between">
+        <div className="mt-6 flex items-center justify-between parameter-criteria-pagination">
           <div className="text-sm text-gray-500">
             {filtered.length === 0 ? (
               <>Mostrando 0 criterios</>

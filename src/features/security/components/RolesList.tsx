@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { securityRolesTourSteps, securityTourLocale, securityTourStyles } from "../../onboarding/securityTour";
 import { Role } from "../types/rol";
 
 
@@ -192,6 +194,14 @@ const RolesList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 5;
+  const [runTour, setRunTour] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem("securityRolesTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
 
   // fetch user-role mappings to compute number of users per role
   const fetchUserRoles = () => {
@@ -338,8 +348,22 @@ const RolesList: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg">
-      <div className="flex items-start justify-between mb-4">
+    <div className="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg security-roles-layout">
+      <Joyride
+        steps={securityRolesTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={securityTourLocale}
+        styles={securityTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("securityRolesTourDone", "true");
+          }
+        }}
+      />
+      <div className="flex items-start justify-between mb-4 security-roles-header">
         <div>
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 -mt-8">
@@ -358,7 +382,7 @@ const RolesList: React.FC = () => {
             </div>
           </div>
         </div>
-        <div>
+        <div className="security-roles-create">
           <button
             onClick={() => setAddRoleOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl!   shadow hover:bg-sky-700"
@@ -370,7 +394,7 @@ const RolesList: React.FC = () => {
       </div>
 
       {/* Search row below header */}
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex items-center gap-4 security-roles-search">
         <div className="flex-1">
           <div className="relative">
             <input
@@ -388,7 +412,7 @@ const RolesList: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 security-roles-table">
         <table className="min-w-full rounded-lg overflow-hidden">
           <thead className="text-left text-sm text-gray-600 bg-gray-50">
             <tr>
@@ -459,7 +483,7 @@ const RolesList: React.FC = () => {
         </table>
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex items-center justify-between security-roles-pagination">
         <div className="text-sm text-gray-500">
           {filteredRoles.length === 0 ? (
             <>Mostrando 0 roles</>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import Joyride from 'react-joyride';
 import { FiShield, FiSearch, FiChevronLeft, FiChevronRight, FiFilter } from 'react-icons/fi';
 import { Evaluation as EvaluationBase } from '../evaluation/types/evaluation';
+import { informationTourSteps, informationTourLocale, informationTourStyles } from '../onboarding/informationTour';
 
 // Extiende el tipo para aceptar los campos que llegan del backend
 type Evaluation = EvaluationBase & {
@@ -25,90 +27,52 @@ const Information = () => {
 	const [initialCount, setInitialCount] = useState(0);
 	const [finalCount, setFinalCount] = useState(0);
 	const [sinCount, setSinCount] = useState(0);
-	const [active, setActive] = useState<'inicial'|'final'|'sin'|'all'>('all');
+	const [active, setActive] = useState<'inicial'|'final'|'sin'>('inicial');
 	const [experiences, setExperiences] = useState<Experience[]>([]);
+	const [runTour, setRunTour] = useState(false);
 
-	// Nuevo: función para filtrar y consumir endpoint según la tarjeta
+	// Nuevo: función para filtrar y consumir endpoint según la tarjeta (sin getAll)
 	const fetchFilteredEvaluations = async (type: 'inicial'|'final'|'sin'|'all') => {
-		setActive(type);
-		setPage(1);
-		setLoading(true);
-		setError(null);
-		try {
-			const token = localStorage.getItem('token');
-			const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-			if (type === 'all') {
-				// Mostrar todas las evaluaciones
-				setFiltered(evaluations);
-			} else {
-				let url = '';
-				if (type === 'inicial') url = '/api/Evaluation/filter/inicial';
-				else if (type === 'final') url = '/api/Evaluation/filter/final';
-				else url = '/api/Evaluation/filter/sin-evaluacion';
-				const res = await fetch(`${API_BASE}${url}`, {
-					headers: {
-						'Content-Type': 'application/json',
-						...(token ? { Authorization: `Bearer ${token}` } : {}),
-					},
-				});
-				if (!res.ok) throw new Error('Error al filtrar');
-				const response = await res.json();
-				console.log('Respuesta de filtro', type, response);
-				// Si la respuesta viene en .data, úsala, si no, usa el array directo
-				const data = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
-				setFiltered(data);
-			}
-		} catch (e: any) {
-			setError(e.message || 'Error al filtrar');
-			setFiltered([]);
-		} finally {
-			setLoading(false);
-		}
+ 		setActive(type);
+ 		setPage(1);
+ 		setLoading(true);
+ 		setError(null);
+ 		try {
+ 			const token = localStorage.getItem('token');
+ 			const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+ 			let url = '';
+ 			if (type === 'inicial') url = '/api/Evaluation/filter/inicial';
+ 			else if (type === 'final') url = '/api/Evaluation/filter/final';
+ 			else url = '/api/Evaluation/filter/sin-evaluacion';
+ 			const res = await fetch(`${API_BASE}${url}`, {
+ 				headers: {
+ 					'Content-Type': 'application/json',
+ 					...(token ? { Authorization: `Bearer ${token}` } : {}),
+ 				},
+ 			});
+ 			if (!res.ok) throw new Error('Error al filtrar');
+ 			const response = await res.json();
+ 			const data = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
+ 			setFiltered(data);
+ 		} catch (e: any) {
+ 			setError(e.message || 'Error al filtrar');
+ 			setFiltered([]);
+ 		} finally {
+ 			setLoading(false);
+ 		}
 	};
 
+	// Elimina getAll: por defecto carga inicial
 	useEffect(() => {
-		const fetchAll = async () => {
-			setLoading(true);
-			setError(null);
-			try {
-				const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-				const endpoint = `${API_BASE}/api/Evaluation/getAll`;
-				const token = localStorage.getItem('token');
-				const res = await fetch(endpoint, {
-					headers: {
-						'Content-Type': 'application/json',
-						...(token ? { Authorization: `Bearer ${token}` } : {}),
-					},
-				});
-				if (!res.ok) throw new Error('No se pudo obtener las evaluaciones');
-				const response = await res.json();
-				const data = Array.isArray(response.data) ? response.data : [];
-				setEvaluations(data);
-				setFiltered(data);
-
-				// Segunda llamada para traer experiencias
-				const expRes = await fetch(`${API_BASE}/api/Experience/getAll`, {
-					headers: {
-						'Content-Type': 'application/json',
-						...(token ? { Authorization: `Bearer ${token}` } : {}),
-					},
-				});
-				if (expRes.ok) {
-					const expData = await expRes.json();
-					if (Array.isArray(expData.data)) {
-						setExperiences(expData.data.map((e: any) => ({ id: e.id, name: e.name })));
-					}
-				}
-			} catch (e: any) {
-				setError(e.message || 'Error al obtener las evaluaciones');
-				setEvaluations([]);
-				setFiltered([]);
-			} finally {
-				setLoading(false);
-			}
-		};
-		fetchAll();
+		fetchFilteredEvaluations('inicial');
 	}, []);
+
+	useEffect(() => {
+		if (!loading && !runTour && !localStorage.getItem('informationTourDone')) {
+			const timer = window.setTimeout(() => setRunTour(true), 600);
+			return () => window.clearTimeout(timer);
+		}
+	}, [loading, runTour]);
 
 	useEffect(() => {
 		const fetchCounts = async () => {
@@ -176,14 +140,28 @@ const Information = () => {
 	const paginated = normalizedRows.slice((page-1)*pageSize, page*pageSize);
 
 	return (
-		<div className="p-6 min-h-[70vh] bg-[#f6f8fb]">
+		<div className="p-6 min-h-[70vh] bg-[#f6f8fb] information-layout">
+			<Joyride
+				steps={informationTourSteps}
+				run={runTour}
+				continuous
+				showSkipButton
+				locale={informationTourLocale}
+				styles={informationTourStyles}
+				callback={(data) => {
+					if (data.status === 'finished' || data.status === 'skipped') {
+						setRunTour(false);
+						localStorage.setItem('informationTourDone', 'true');
+					}
+				}}
+			/>
 			<div className="max-w-6xl mx-auto bg-white rounded-2xl p-8 shadow">
-				<div className="mb-2">
+				<div className="mb-2 information-header">
 					<h1 className="text-3xl font-bold text-gray-800 mb-1">Gestión de evaluación</h1>
 					<p className="text-gray-500 mb-6">Optimiza la eficiencia de la evaluación</p>
 				</div>
 				
-				<div className="flex gap-4 mb-6">
+				<div className="flex gap-4 mb-6 information-summary-cards">
 					<SummaryCard
 						title="Evaluación inicial"
 						count={initialCount}
@@ -202,18 +180,9 @@ const Information = () => {
 						active={active === 'sin'}
 						onClick={() => fetchFilteredEvaluations('sin')}
 					/>
-					{/* Botón para limpiar filtro y mostrar todas */}
-					{active !== 'all' && (
-						<button
-							className="ml-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sky-600 hover:bg-sky-50"
-							onClick={() => fetchFilteredEvaluations('all')}
-						>
-							Mostrar todas
-						</button>
-					)}
 				</div>
 				{/* Barra de búsqueda y filtro */}
-				<div className="flex items-center mb-4">
+				<div className="flex items-center mb-4 information-search-bar">
 					<div className="relative flex-1">
 						<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
 						<input
@@ -224,70 +193,67 @@ const Information = () => {
 						/>
 					</div>
 				</div>
-				{/* Tabla */}
-				<div className="overflow-x-auto rounded-2xl border border-gray-200 bg-[#f6f8fb]">
-					<table className="min-w-full">
-						<thead>
-							<tr className="bg-[#dbeafe] text-gray-700 text-sm">
-								<th className="py-3 px-4 text-left rounded-tl-2xl">Nombre de experiencia</th>
-								<th className="py-3 px-4 text-left">Rol de acompañamiento</th>
-								<th className="py-3 px-4 text-left">Tipo de Evaluación</th>
-								<th className="py-3 px-4 text-center">PDF</th>
-								<th className="py-3 px-4 text-center">Inhabilitar/Habilitar</th>
-							</tr>
-						</thead>
-						<tbody>
-							{loading ? (
-								<tr><td colSpan={4} className="py-6 text-center text-gray-400">Cargando evaluaciones...</td></tr>
-							) : error ? (
-								<tr><td colSpan={4} className="py-6 text-center text-red-500">{error}</td></tr>
-							) : paginated.length === 0 ? (
-								<tr><td colSpan={4} className="py-6 text-center text-gray-400">No hay evaluaciones</td></tr>
-							) : (
-								paginated.map((ev, idx) => (
-									<tr key={ev.id ?? ev.evaluationId ?? idx} className="bg-white border-b last:border-b-0">
-										<td className="py-2 px-4">{
-											ev.experienceName || '-'
-										}</td>
-										<td className="py-2 px-4">{ev.accompanimentRole ?? '-'}</td>
-										<td className="py-2 px-4">{ev.typeEvaluation ?? '-'}</td>
-										<td className="py-2 px-4 text-center">
-											{ev.urlEvaPdf ? (
-												<a
-													href={ev.urlEvaPdf}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="inline-block bg-red-600 text-white px-6 py-2 rounded font-semibold shadow hover:bg-red-700 transition-all"
-													style={{ minWidth: 100 }}
-												>
-													Ver PDF
-												</a>
-											) : (
-												<span className="inline-block text-gray-400 font-semibold" style={{ minWidth: 100 }}>Sin PDF</span>
-											)}
-										</td>
-										<td className="py-2 px-4 text-center">
-											{/* Mostrar el estado de la evaluación usando stateId o posibles keys del backend */}
-											{(() => {
-												const rawState = ev.stateId ?? (ev as any).State ?? (ev as any).state;
-												const stateStr = String(rawState).toLowerCase();
-												if (stateStr === 'true' || stateStr === '1') {
-													return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Activo</span>;
-												}
-												if (stateStr === 'false' || stateStr === '0') {
-													return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Inactivo</span>;
-												}
-												return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">{stateStr || '-'}</span>;
-											})()}
-										</td>
-									</tr>
-								))
-							)}
-						</tbody>
-					</table>
-				</div>
+				   {/* Tabla */}
+				   <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow information-table">
+					   <table className="min-w-full">
+						   <thead>
+							   <tr className="bg-[#e8f0fe] text-gray-700 text-base">
+								   <th className="py-3 px-6 text-left font-semibold rounded-tl-2xl">Nombre de experiencia</th>
+								   <th className="py-3 px-6 text-left font-semibold">Rol de acompañamiento</th>
+								   <th className="py-3 px-6 text-left font-semibold">Tipo de Evaluación</th>
+								   <th className="py-3 px-6 text-center font-semibold">PDF</th>
+								   <th className="py-3 px-6 text-center font-semibold">Inhabilitar/Habilitar</th>
+							   </tr>
+						   </thead>
+						   <tbody>
+							   {loading ? (
+								   <tr><td colSpan={5} className="py-6 text-center text-gray-400">Cargando evaluaciones...</td></tr>
+							   ) : error ? (
+								   <tr><td colSpan={5} className="py-6 text-center text-red-500">{error}</td></tr>
+							   ) : paginated.length === 0 ? (
+								   <tr><td colSpan={5} className="py-6 text-center text-gray-400">No hay evaluaciones</td></tr>
+							   ) : (
+								   paginated.map((ev, idx) => (
+									   <tr key={ev.id ?? ev.evaluationId ?? idx} className="bg-white border-b border-gray-200 last:border-b-0 transition hover:bg-gray-50">
+										   <td className="py-4 px-6 font-semibold text-gray-800">{ev.experienceName || '-'}</td>
+										   <td className="py-4 px-6">{ev.accompanimentRole ?? '-'}</td>
+										   <td className="py-4 px-6">{ev.typeEvaluation ?? '-'}</td>
+										   <td className="py-4 px-6 text-center">
+											   {ev.urlEvaPdf ? (
+												   <a
+													   href={ev.urlEvaPdf}
+													   target="_blank"
+													   rel="noopener noreferrer"
+													   className="inline-block bg-red-600 text-white px-6 py-2 rounded font-semibold shadow hover:bg-red-700 transition-all"
+													   style={{ minWidth: 100 }}
+												   >
+													   Ver PDF
+												   </a>
+											   ) : (
+												   <span className="inline-block text-gray-400 font-semibold" style={{ minWidth: 100 }}>Sin PDF</span>
+											   )}
+										   </td>
+										   <td className="py-4 px-6 text-center">
+											   {(() => {
+												   const rawState = ev.stateId ?? (ev as any).State ?? (ev as any).state;
+												   const stateStr = String(rawState).toLowerCase();
+												   if (stateStr === 'true' || stateStr === '1') {
+													   return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Activo</span>;
+												   }
+												   if (stateStr === 'false' || stateStr === '0') {
+													   return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Inactivo</span>;
+												   }
+												   return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">{stateStr || '-'}</span>;
+											   })()}
+										   </td>
+									   </tr>
+								   ))
+							   )}
+						   </tbody>
+					   </table>
+				   </div>
 				{/* Paginación */}
-				<div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+				<div className="flex items-center justify-between mt-4 text-sm text-gray-500 information-pagination">
 					<div>Mostrando {paginated.length} evaluaciones</div>
 					<div className="flex items-center gap-1">
 						<button

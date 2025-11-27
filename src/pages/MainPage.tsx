@@ -1,19 +1,56 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
+import { mainPageTourSteps, mainPageTourStyles, mainPageTourLocale } from "../features/onboarding/mainPageTour";
 import { useNavigate } from "react-router-dom";
 
 const MainPage: React.FC = () => {
   const navigate = useNavigate();
 
+  const [run, setRun] = useState(false);
+  // Permitir relanzar el tour desde el botón Ayuda
+  const handleAyudaClick = () => {
+    setRun(false); // Reinicia el tour si estaba activo
+    setTimeout(() => setRun(true), 100); // Pequeño delay para reiniciar
+    // Si quieres que siempre muestre el tour aunque ya se haya completado antes, comenta la siguiente línea:
+    // localStorage.removeItem("mainPageTourDone");
+  };
+
+  useEffect(() => {
+    if (!localStorage.getItem("mainPageTourDone")) {
+      const timer = window.setTimeout(() => setRun(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0b1033] to-[#17132a] text-white overflow-hidden">
+      <Joyride
+        steps={mainPageTourSteps}
+        run={run}
+        continuous
+        showSkipButton
+        locale={mainPageTourLocale}
+        styles={mainPageTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRun(false);
+            localStorage.setItem("mainPageTourDone", "true");
+          }
+        }}
+      />
       <header className="flex items-center justify-end px-8 py-5 relative z-30">
         <div className="flex items-center space-x-2!">
-          <button className="px-3 py-1 rounded-xl! bg-gray-600 text-white font-semibold shadow-sm">Ayuda</button>
-          <button className="px-4 py-2 rounded-xl! bg-blue-500 text-white font-semibold shadow-md">Registrate</button>
+          <button
+            className="btn-ayuda px-3 py-1 rounded-xl! bg-gray-600 text-white font-semibold shadow-sm"
+            onClick={handleAyudaClick}
+            type="button"
+          >
+            Ayuda
+          </button>
+          <button className="btn-register px-4 py-2 rounded-xl! bg-blue-500 text-white font-semibold shadow-md">Registrate</button>
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="px-4 py-2 rounded-xl! bg-orange-400 text-white font-semibold shadow-md"
+            className="btn-login px-4 py-2 rounded-xl! bg-orange-400 text-white font-semibold shadow-md"
           >
             Inicio de sesión
           </button>

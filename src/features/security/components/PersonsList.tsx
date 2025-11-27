@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import Joyride from "react-joyride";
 import configApi from "../../../Api/Config/Config";
 import { getEnum } from "../../../Api/Services/Helper";
 import { DataSelectRequest } from "../../../shared/types/HelperTypes";
+import { securityPersonsTourSteps, securityTourLocale, securityTourStyles } from "../../onboarding/securityTour";
 import { Person } from "../types/Person";
 
 
@@ -52,7 +54,6 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const token = localStorage.getItem("token");
     try {
       await configApi.post(
         "/Person/create",
@@ -74,8 +75,18 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
       );
       onAdded();
       onClose();
-    } catch (err) {
-      setError("Error al crear la persona. Por favor verifica los datos.");
+    } catch (err: any) {
+      let msg = "Error al crear la persona. Por favor verifica los datos.";
+      if (err?.response?.data) {
+        if (typeof err.response.data === "string") {
+          msg = err.response.data;
+        } else if (typeof err.response.data === "object" && err.response.data.message) {
+          msg = err.response.data.message;
+        } else if (err.response.data.error) {
+          msg = err.response.data.error;
+        }
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -306,6 +317,7 @@ const PersonsList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 5;
+  const [runTour, setRunTour] = useState(false);
 
   const fetchPersons = () => {
     const token = localStorage.getItem("token");
@@ -334,6 +346,13 @@ const PersonsList: React.FC = () => {
   useEffect(() => {
     fetchPersons();
   }, [onlyActive]); // Refrescar cuando cambie el filtro
+
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem("securityPersonsTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
 
   if (loading) return <div>Cargando personas...</div>;
   if (error) return <div>{error}</div>;
@@ -365,11 +384,25 @@ const PersonsList: React.FC = () => {
   };
 
   return (
-  <div className="w-full mx-0 mt-6 px-6 py-6">
+  <div className="w-full mx-0 mt-6 px-6 py-6 security-persons-layout">
+      <Joyride
+        steps={securityPersonsTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={securityTourLocale}
+        styles={securityTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("securityPersonsTourDone", "true");
+          }
+        }}
+      />
       {/* header moved into white card so the card 'grabs' the title and CTA too */}
 
-  <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-6 w-full">
-        <div className="flex items-start justify-between mb-4">
+  <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-6 w-full security-persons-card">
+        <div className="flex items-start justify-between mb-4 security-persons-header">
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 -mt-8">
               <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
@@ -386,7 +419,7 @@ const PersonsList: React.FC = () => {
               <p className="text-sm text-gray-500 mt-1">Administra las personas registradas en el sistema</p>
             </div>
           </div>
-          <div>
+          <div className="security-persons-create">
             <button
               onClick={() => setAddPersonOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
@@ -397,7 +430,7 @@ const PersonsList: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center gap-4 security-persons-search">
           <div className="flex-1">
             <div className="relative">
               <input
@@ -413,7 +446,7 @@ const PersonsList: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-lg bg-white border border-gray-100 p-4 overflow-auto">
+        <div className="rounded-lg bg-white border border-gray-100 p-4 overflow-auto security-persons-table">
           <table className="min-w-full w-full rounded-lg overflow-hidden table-auto">
             <thead className="text-left text-sm text-gray-600 bg-gray-50">
               <tr>
@@ -488,7 +521,7 @@ const PersonsList: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <div className="mt-6 flex items-center justify-between">
+        <div className="mt-6 flex items-center justify-between security-persons-pagination">
           <div className="text-sm text-gray-500">
             {filteredPersons.length === 0 ? (
               <>Mostrando 0 personas</>

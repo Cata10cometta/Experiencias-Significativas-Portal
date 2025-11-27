@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { securityPermissionsTourSteps, securityTourLocale, securityTourStyles } from "../../onboarding/securityTour";
 import { RolFormPermission } from "../types/rolFormPermission";
 
 
@@ -14,6 +16,7 @@ const RolFormPermissionList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
+  const [runTour, setRunTour] = useState(false);
 
   const fetchPermissions = () => {
     const token = localStorage.getItem("token");
@@ -53,6 +56,13 @@ const RolFormPermissionList: React.FC = () => {
   useEffect(() => {
     fetchPermissions();
   }, [onlyActive]); // Refrescar cuando cambie el filtro
+
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem("securityPermissionsTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
 
   const handleDeactivate = async (id: number) => {
     const token = localStorage.getItem("token");
@@ -99,9 +109,23 @@ const RolFormPermissionList: React.FC = () => {
   if (error) return <div>{error}</div>;
 
   return (
-    <div className="max-w-full mx-auto mt-10 p-6">
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-start justify-between mb-4">
+    <div className="max-w-full mx-auto mt-10 p-6 security-rol-permission-layout">
+      <Joyride
+        steps={securityPermissionsTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={securityTourLocale}
+        styles={securityTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("securityPermissionsTourDone", "true");
+          }
+        }}
+      />
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 security-rol-permission-card">
+        <div className="flex items-start justify-between mb-4 security-rol-permission-header">
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 -mt-8">
               <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
@@ -118,7 +142,7 @@ const RolFormPermissionList: React.FC = () => {
               <p className="text-sm text-gray-500 mt-1">Administra la asignación de formularios y permisos por rol</p>
             </div>
           </div>
-          <div>
+          <div className="security-rol-permission-create">
             <button onClick={() => setAddPermissionOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
               <span>Agregar permiso</span>
@@ -126,7 +150,7 @@ const RolFormPermissionList: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center gap-4 security-rol-permission-search">
           <div className="flex-1">
             <div className="relative">
               <input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Buscar permisos..." className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm" />
@@ -139,7 +163,7 @@ const RolFormPermissionList: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-100 p-2 overflow-auto">
+        <div className="rounded-lg border border-gray-100 p-2 overflow-auto security-rol-permission-table">
           <table className="min-w-full w-full table-auto">
             <thead className="text-left text-sm text-gray-600 bg-gray-50">
               <tr>
@@ -222,7 +246,7 @@ const RolFormPermissionList: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-500 security-rol-permission-pagination">
           <div>
             {filtered.length === 0 ? (
               <>Mostrando 0 permisos</>

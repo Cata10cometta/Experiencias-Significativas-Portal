@@ -1,14 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import Joyride from 'react-joyride';
 import Evaluation from '../../features/evaluation/components/Evaluation';
 import Swal from 'sweetalert2';
 import type { Experience } from '../../features/experience/types/experienceTypes';
 import AddExperience from '../../features/experience/components/AddExperience';
+import { experiencesTourBaseSteps, experiencesTourLocale, experiencesTourStyles } from '../../features/onboarding/experiencesTour';
+import { hasTourBeenSeen, markTourSeen } from '../utils/tourStorage';
 
 type ExperiencesProps = {
 	onAgregar?: () => void;
 };
 
 const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
+	const tourKey = 'experiencesTourDone';
 	const [list, setList] = useState<Experience[]>([]);
 	const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(null);
 	const [showModal, setShowModal] = useState(false);
@@ -19,9 +23,11 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 	const pageSize = 5;
 	const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
 	const [showAddModal, setShowAddModal] = useState<boolean>(false);
+	const [runTour, setRunTour] = useState(false);
 	// State for the evaluation modal and currently selected evaluation experience id
 	const [showEvalModal, setShowEvalModal] = useState<boolean>(false);
 	const [evalExpId, setEvalExpId] = useState<number | null>(null);
+	const [existingEditRequest, setExistingEditRequest] = useState<{ message: string; experienceId: number; experience: Experience | any | null } | null>(null);
 
 	// Cache of discovered evaluation PDF URLs by experience id
 	const [evaluationPdfMap, setEvaluationPdfMap] = useState<Record<number, string>>({});
@@ -89,6 +95,13 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 
 		fetchData();
 	}, []);
+
+	useEffect(() => {
+		if (!hasTourBeenSeen(tourKey)) {
+			const timer = window.setTimeout(() => setRunTour(true), 800);
+			return () => window.clearTimeout(timer);
+		}
+	}, [tourKey]);
 
 	// For the current visible page, try to discover evaluation PDF URLs when missing.
 	useEffect(() => {
@@ -174,7 +187,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 		} else if (stateOrExp && typeof stateOrExp === 'object') {
 			// prefer boolean 'state' if present
 			if (typeof stateOrExp.state === 'boolean') return (
-				<span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${stateOrExp.state ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+				<span className={`inline-block px-3 py-1 text-xs font-medium rounded-full experiences-status ${stateOrExp.state ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
 					{stateOrExp.state ? 'Activo' : 'Inactivo'}
 				</span>
 			);
@@ -200,12 +213,11 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 
 		const isActive = stateId === 1;
 		return (
-			<span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+			<span className={`inline-block px-3 py-1 text-xs font-medium rounded-full experiences-status ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
 				{isActive ? 'Activo' : 'Inactivo'}
 			</span>
 		);
 	};
-
 	const formatDevelopmentTime = (value?: string) => {
 		if (!value) return '-';
 		const d = new Date(value);
@@ -266,6 +278,31 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 		if (!roles || roles.length === 0) return false;
 		return roles.some(r => ['profesor', 'profesora', 'teacher', 'docente'].includes(r));
 	};
+
+	const extractUserFacingMessage = (raw?: string | null): string | null => {
+		if (!raw) return null;
+		const trimmed = raw.trim();
+		if (!trimmed) return null;
+		const specific = trimmed.match(/ya existe una solicitud[^.]*\./i);
+		if (specific && specific[0]) return specific[0].trim();
+		const firstLine = trimmed.split(/\r?\n/)[0]?.trim();
+		if (firstLine?.toLowerCase().startsWith('system.exception:')) {
+			const afterColon = firstLine.split(':').slice(1).join(':').trim();
+			if (afterColon) return afterColon;
+		}
+		return firstLine || trimmed;
+	};
+
+	const isProfessorUser = useMemo(() => isProfessor(), []);
+
+	const tourSteps = useMemo(() => {
+		if (isProfessorUser) {
+			return experiencesTourBaseSteps.filter(step => step.target !== '.experiences-evaluation');
+		}
+		return experiencesTourBaseSteps;
+	}, [isProfessorUser]);
+
+	const showEvaluationColumn = !isProfessorUser;
 
 	// Robust helper to locate a PDF URL in several possible shapes the API might return
 	const getPdfUrlFromExp = (exp?: Experience | any): string | null => {
@@ -451,24 +488,24 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 	};
 
 	const requestEdit = async (idOrExp?: number | any) => {
-		// accept either an id or the full experience object
 		const localExp = (idOrExp && typeof idOrExp === 'object') ? idOrExp : null;
 		const id = (typeof idOrExp === 'number') ? idOrExp : (localExp?.id ?? null);
 		if (!id) return;
+
 		if (!isProfessor()) {
 			await Swal.fire({ title: 'No autorizado', text: 'Solo los usuarios con rol de profesor pueden solicitar edición.', icon: 'warning', confirmButtonText: 'Aceptar' });
 			return;
 		}
+
 		const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-		// send userId as query param to match backend swagger example
 		const endpointBase = `${API_BASE}/api/Experience/${id}/request-edit`;
 		const token = localStorage.getItem('token');
-		// try to extract numeric userId from token or fallback to localStorage
+
 		const tryExtractUserId = (t?: string | null) => {
 			if (!t) return null;
 			const parsed = parseJwt(t);
 			if (!parsed || typeof parsed !== 'object') return null;
-			const candidates = ['sub','id','userId','user_id','nameid','http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+			const candidates = ['sub', 'id', 'userId', 'user_id', 'nameid', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
 			for (const k of candidates) {
 				const v = (parsed as any)[k];
 				if (v !== undefined && v !== null) {
@@ -478,13 +515,16 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			}
 			return null;
 		};
+
 		const extractedFromToken = tryExtractUserId(token ?? null);
 		const storedUserId = Number(localStorage.getItem('userId')) || null;
 		const userIdToSend = extractedFromToken ?? (storedUserId && Number.isFinite(storedUserId) && storedUserId > 0 ? storedUserId : null);
+
 		if (!userIdToSend) {
 			await Swal.fire({ title: 'Error', text: 'No se pudo determinar el userId. Por favor inicie sesión.', icon: 'error', confirmButtonText: 'Aceptar' });
 			return;
 		}
+
 		try {
 			const endpoint = `${endpointBase}?userId=${encodeURIComponent(String(userIdToSend))}`;
 			const res = await fetch(endpoint, {
@@ -494,102 +534,97 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 				},
 			});
 
-			// Try to parse JSON body first, fallback to text
 			let body: any = null;
 			try { body = await res.clone().json(); } catch { body = await res.clone().text().catch(() => null); }
-
-			const backendMsg = (body && (body.message || body.msg || body.error || (typeof body === 'string' ? body : null))) || null;
+			const backendMsgRaw = (body && (body.message || body.msg || body.error || (typeof body === 'string' ? body : null))) || null;
+			const friendlyMsg = typeof backendMsgRaw === 'string' ? extractUserFacingMessage(backendMsgRaw) : null;
 
 			if (res.ok) {
-				await Swal.fire({ title: 'Solicitud enviada', text: backendMsg ?? 'La solicitud de edición fue enviada correctamente.', icon: 'success', confirmButtonText: 'Aceptar' });
-			} else {
-				const text = backendMsg ?? `Error al solicitar edición (HTTP ${res.status})`;
-				// If the backend indicates that a request already exists, offer to open the experience
-				// so the user can edit/view it. Match message case-insensitively.
-				if (typeof text === 'string' && /ya existe una solicitud/i.test(text)) {
-					const result = await Swal.fire({
-						title: 'Solicitud existente',
-						text,
-						icon: 'info',
-						showCancelButton: true,
-						confirmButtonText: 'Abrir experiencia',
-						cancelButtonText: 'Cancelar'
-					});
-					if (result.isConfirmed) {
-						// If we have the experience object already (from the list), avoid refetching
-						// which may trigger the global session-expiry handler on 401 and redirect to login.
-						try {
-							if (localExp) {
-								const { normalizeToInitial } = await import('../../features/experience/utils/normalizeExperience');
-								const initialData = normalizeToInitial(localExp);
-								setViewData(initialData);
-								setShowViewModal(true);
-							} else {
-								await fetchAndShowDetail(id);
-							}
-						} catch (err) {
-							console.error('Error al abrir detalle tras solicitud existente', err);
-						}
-					}
-				} else {
-					await Swal.fire({ title: 'Error', text, icon: 'error', confirmButtonText: 'Aceptar' });
-				}
+				await Swal.fire({ title: 'Solicitud enviada', text: friendlyMsg ?? backendMsgRaw ?? 'La solicitud de edición fue enviada correctamente.', icon: 'success', confirmButtonText: 'Aceptar' });
+				setExistingEditRequest(null);
+				return;
 			}
+
+			const defaultError = `Error al solicitar edición (HTTP ${res.status})`;
+			const text = friendlyMsg ?? backendMsgRaw ?? defaultError;
+			if (typeof text === 'string' && /ya existe una solicitud/i.test(text)) {
+				setExistingEditRequest({
+					message: friendlyMsg ?? (typeof text === 'string' ? text : defaultError),
+					experienceId: id,
+					experience: localExp ?? null,
+				});
+				return;
+			}
+
+			await Swal.fire({ title: 'Error', text: text || defaultError, icon: 'error', confirmButtonText: 'Aceptar' });
 		} catch (err: any) {
 			console.error('requestEdit error', err);
 			await Swal.fire({ title: 'Error', text: err?.message || 'Error desconocido al solicitar edición', icon: 'error', confirmButtonText: 'Aceptar' });
 		}
 	};
 
-	// Fetch detail and show it in a read-only modal using the same general layout as the create form
 	const [viewData, setViewData] = useState<any | null>(null);
 	const [showViewModal, setShowViewModal] = useState<boolean>(false);
 
+	const handleDismissExistingEditRequest = () => setExistingEditRequest(null);
+
+	const handleContinueExistingEdit = async () => {
+		if (!existingEditRequest) return;
+		try {
+			if (existingEditRequest.experience) {
+				const { normalizeToInitial } = await import('../../features/experience/utils/normalizeExperience');
+				const initialData = normalizeToInitial(existingEditRequest.experience);
+				setViewData(initialData);
+				setShowViewModal(true);
+			} else {
+				await fetchAndShowDetail(existingEditRequest.experienceId);
+			}
+		} catch (err) {
+			console.error('Error al continuar con la edición existente', err);
+			await Swal.fire({ title: 'Error', text: 'No se pudo abrir la experiencia. Intente nuevamente.', icon: 'error', confirmButtonText: 'Aceptar' });
+		} finally {
+			handleDismissExistingEditRequest();
+		}
+	};
+
 	// Prevent background/body scroll when modals are open to avoid double scrollbars.
-	// Use fixed positioning on body and store scroll position so the page doesn't jump
-	// and the browser scrollbar is removed reliably across browsers.
 	useEffect(() => {
 		const prevBodyOverflow = document.body.style.overflow;
-		const prevHtmlOverflow = document.documentElement.style.overflow;
 		const prevBodyPosition = document.body.style.position;
 		const prevBodyTop = document.body.style.top;
+		const prevHtmlOverflow = document.documentElement.style.overflow;
 		let scrollY = 0;
 
 		const lock = () => {
 			scrollY = window.scrollY || window.pageYOffset || 0;
-			// set fixed positioning to prevent background scroll and remove scrollbar
 			document.body.style.position = 'fixed';
 			document.body.style.top = `-${scrollY}px`;
 			document.body.style.left = '0';
 			document.body.style.right = '0';
 			document.body.style.overflow = 'hidden';
-			// also hide html overflow as a fallback for some layouts
 			document.documentElement.style.overflow = 'hidden';
 		};
 
 		const unlock = () => {
-			// restore previous inline styles
 			document.body.style.position = prevBodyPosition || '';
 			document.body.style.top = prevBodyTop || '';
 			document.body.style.left = '';
 			document.body.style.right = '';
 			document.body.style.overflow = prevBodyOverflow || '';
 			document.documentElement.style.overflow = prevHtmlOverflow || '';
-			// restore scroll position
 			try { window.scrollTo(0, scrollY); } catch {}
 		};
 
-		if (showViewModal || showAddModal) {
+		if (showViewModal || showAddModal || existingEditRequest) {
 			lock();
 		} else {
-			// ensure we restore styles if no modal is open
 			unlock();
 		}
 
 		return () => {
 			unlock();
 		};
-	}, [showViewModal, showAddModal]);
+	}, [showViewModal, showAddModal, existingEditRequest]);
 
 	const fetchAndShowDetail = async (id?: number) => {
 		if (!id) return;
@@ -635,24 +670,39 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 	};
 
 	return (
+		<>
 		<div className="p-8 min-h-[80vh]">
-			<div className="bg-gray-50 rounded-lg p-8 shadow">
-							 <div className="flex items-start justify-between mb-4">
-								 <div className="flex items-center gap-4">
+			<Joyride
+				steps={tourSteps}
+				run={runTour}
+				continuous
+				showSkipButton
+				locale={experiencesTourLocale}
+				styles={experiencesTourStyles}
+				callback={(data) => {
+					if (data.status === 'finished' || data.status === 'skipped') {
+						setRunTour(false);
+						markTourSeen(tourKey);
+					}
+				}}
+			/>
+			<div className="bg-gray-50 rounded-lg p-8 shadow experiences-card">
+						 <div className="flex items-start justify-between mb-4 experiences-header">
+						 	<div className="flex items-center gap-4">
 									 {/* Icono eliminado por solicitud del usuario */}
 									 <div>
 										 <h1 className="text-2xl font-semibold text-gray-800 mb-2">Gestion de Experiencias significativas</h1>
 										 <p className="text-sm text-gray-500">Optimiza la eficiencia de la experiencias</p>
-									 </div>
-								 </div>
-								 <div>
-									 {/* Botón flotante para agregar experiencia (tal cual) */}
-									 <button
-										 onClick={() => { if (onAgregar) { onAgregar(); } else { setShowAddModal(true); } }}
-										 title="Agregar experiencia"
-										 className="fixed bottom-[40rem] right-80 z-50 inline-flex items-center justify-center w-14 h-14 rounded-lg! bg-sky-600 text-white shadow-lg hover:bg-sky-700"
-										 aria-label="Agregar experiencia"
-									 >
+			</div>
+			</div>
+							 	<div>
+							 		{/* Botón flotante para agregar experiencia (tal cual) */}
+							 		<button
+							 			onClick={() => { if (onAgregar) { onAgregar(); } else { setShowAddModal(true); } }}
+							 			title="Agregar experiencia"
+							 			className="fixed bottom-[40rem] right-80 z-50 inline-flex items-center justify-center w-14 h-14 rounded-lg! bg-sky-600 text-white shadow-lg hover:bg-sky-700 experiences-add"
+							 			aria-label="Agregar experiencia"
+							 		>
 										 <span className="text-white text-2xl font-bold">+</span>
 									 </button>
 								 </div>
@@ -661,14 +711,13 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 				{showViewModal && viewData && (
 					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
 						<div className="w-[96%] max-w-6xl p-0 flex flex-col h-full">
-							{/* Debug panel removed at user's request */}
 							<div className="p-4 flex-1">
-								<AddExperience {...({
-									initialData: viewData,
-									readOnly: true,
-									disableValidation: true,
-									onVolver: () => { setShowViewModal(false); setViewData(null); }
-								} as any)} />
+								<AddExperience
+									initialData={viewData}
+									readOnly={!isProfessor()}
+									disableValidation={true}
+									onVolver={() => { setShowViewModal(false); setViewData(null); }}
+								/>
 							</div>
 						</div>
 					</div>
@@ -677,7 +726,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 				{/* Search row */}
 				<div className="mb-6 flex items-center gap-4">
 					<div className="flex-1">
-						<div className="relative">
+						<div className="relative experiences-search">
 							<input
 								value={searchTerm}
 								onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
@@ -691,16 +740,16 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 					</div>
 				</div>
 
-				<div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+				<div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 experiences-table">
 					<div className="text-left text-sm text-gray-600 bg-gray-50 rounded-t-md px-4 py-3 font-semibold">
-						<div className="grid grid-cols-7 gap-4 items-center">
+						<div className={`grid ${showEvaluationColumn ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center`}>
 							<div className="text-center font-semibold">Nombre de la experiencia</div>
 							<div className="text-center font-semibold">Área aplicada</div>
 							<div className="text-center font-semibold">Tiempo</div>
 							<div className="text-center font-semibold">PDF</div>
-							<div className="text-center font-semibold">Aplicar Evaluación</div>
+							{showEvaluationColumn && <div className="text-center font-semibold experiences-evaluation">Aplicar Evaluación</div>}
 							<div className="text-center font-semibold">Edición</div>
-							<div className="text-center font-semibold">Estado</div>
+							<div className="text-center font-semibold experiences-status">Estado</div>
 						</div>
 					</div>
 
@@ -726,7 +775,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 									<div className="divide-y">
 										{paginated.map((exp, idx) => (
 											<div className="px-6 py-4" key={exp.id ?? idx}>
-												<div className="grid grid-cols-7 gap-4 items-center">
+												<div className={`grid ${showEvaluationColumn ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center`}>
 													{/* Nombre de la experiencia */}
 													<div className="flex items-center gap-3 text-center">
 														<button onClick={() => openModal(exp.id)} className="text-sm font-medium text-gray-800 hover:underline">
@@ -754,20 +803,20 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 																		}}
 																		aria-label="Ver PDF"
 																		title="Ver PDF"
-																		className="px-4 py-2 bg-red-600 text-white rounded-md! font-medium hover:bg-red-700"
+																		className="px-4 py-2 bg-red-600 text-white rounded-md! font-medium hover:bg-red-700 experiences-pdf"
 																	>
 																		Ver PDF
 																	</button>
 																);
 															}
 															return (
-																<div className="px-3 py-2 rounded-md! bg-gray-100 text-gray-400 text-sm" title="Sin PDF">Sin PDF</div>
+																<div className="px-3 py-2 rounded-md! bg-gray-100 text-gray-400 text-sm experiences-pdf" title="Sin PDF">Sin PDF</div>
 															);
 														})()}
 													</div>
-													{/* Aplicar Evaluación: visible para todos excepto profesores */}
-													<div className="text-center">
-														{!isProfessor() && (
+													{/* Aplicar Evaluación: oculto para profesores */}
+													{showEvaluationColumn && (
+														<div className="text-center experiences-evaluation">
 															<button
 																className="px-4 py-2 bg-blue-600 text-white rounded-md! font-medium hover:bg-blue-700"
 																title="Evaluación"
@@ -778,8 +827,8 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 															>
 																Evaluación
 															</button>
-														)}
-													</div>
+														</div>
+													)}
 																{/* Modal de Evaluación (fuera del map) */}
 																{showEvalModal && evalExpId && (
 																	<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -789,7 +838,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 																				onClick={() => { setShowEvalModal(false); setEvalExpId(null); }}
 																				aria-label="Cerrar"
 																			>
-																				×
+																				
 																			</button>
 																			<div className="p-6">
 																				<Evaluation experienceId={evalExpId} onClose={() => { setShowEvalModal(false); setEvalExpId(null); }} />
@@ -798,7 +847,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 																	</div>
 																)}
 													{/* Edición */}
-													<div className="text-center">
+													<div className="text-center experiences-edit">
 														<button
 															className="text-gray-500 hover:text-gray-700"
 															title="Ver / Editar"
@@ -829,9 +878,9 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 													</div>
 												</div>
 											</div>
-										))}
+											))}
 
-										{/* Pagination footer */}
+											{/* Pagination footer */}
 										<div className="py-4 px-4 flex items-center justify-between">
 											<div className="text-sm text-gray-500">
 												{total === 0 ? (
@@ -867,6 +916,53 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 				</div>
 			</div>
 		</div>
+
+		{existingEditRequest && (
+			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm px-4 py-10">
+				<div className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+					<div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-sky-500 via-sky-400 to-sky-600" />
+					<button
+						type="button"
+						onClick={handleDismissExistingEditRequest}
+						className="absolute right-5 top-5 text-gray-400 transition hover:text-gray-600"
+						aria-label="Cerrar"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+							<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+						</svg>
+					</button>
+					<div className="flex flex-col items-center gap-2 px-8 pb-8 pt-10 text-center sm:px-14">
+						<div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-sky-50 text-sky-600 shadow-inner">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-8 w-8">
+								<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" strokeWidth="1.4" />
+								<path d="M8.75 9.75h6.5M8.75 13.5h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+							</svg>
+						</div>
+						<h2 className="text-2xl font-semibold text-gray-800">Solicitud ya registrada</h2>
+						<p className="max-w-xl text-base leading-relaxed text-gray-600">
+							{existingEditRequest.message || 'Ya existe una solicitud de edición aprobada para esta experiencia.'}
+						</p>
+						<div className="mt-7 flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+							<button
+								type="button"
+								onClick={handleDismissExistingEditRequest}
+								className="w-full rounded-xl! border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 sm:w-40"
+							>
+								Cancelar
+							</button>
+							<button
+								type="button"
+								onClick={() => { void handleContinueExistingEdit(); }}
+								className="w-full rounded-xl! bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-700 sm:w-44"
+							>
+								Continuar con la edición
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		)}
+		</>
 	);
 };
 

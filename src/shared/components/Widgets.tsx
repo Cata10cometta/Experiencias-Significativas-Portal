@@ -1,10 +1,14 @@
 // src/components/Widgets.tsx
 import React, { useState, useRef, useMemo } from "react";
+import Joyride from "react-joyride";
 
 import ExperienceModal from "../../features/experience/components/ExperienceModal";
 import NotificationsModal from './NotificationsModal';
+import { widgetsTourSteps, widgetsTourStyles, widgetsTourLocale } from "../../features/onboarding/widgetsTour";
+import { hasTourBeenSeen, markTourSeen } from "../utils/tourStorage";
 
 const Widgets: React.FC = () => {
+  const tourKey = "widgetsTourDone";
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(null);
   const [selectedEje, setSelectedEje] = useState<number | null>(null);
@@ -16,6 +20,7 @@ const Widgets: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [notifModalOpen, setNotifModalOpen] = useState<boolean>(false);
   const [notifCount, setNotifCount] = useState<number>(0);
+  const [runWidgetsTour, setRunWidgetsTour] = useState(false);
 
   
 
@@ -69,6 +74,13 @@ const Widgets: React.FC = () => {
         setLoading(false);
       });
   }, [selectedEje]);
+
+  React.useEffect(() => {
+    if (!hasTourBeenSeen(tourKey)) {
+      const timer = window.setTimeout(() => setRunWidgetsTour(true), 800);
+      return () => window.clearTimeout(timer);
+    }
+  }, [tourKey]);
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const ejes = [
     { id: 1, label: "Educación Ambiental", img: "/images/EducacionAmbiental.png", imgClass: "w-15" },
@@ -100,6 +112,20 @@ const Widgets: React.FC = () => {
 
   return (
     <div>
+      <Joyride
+        steps={widgetsTourSteps}
+        run={runWidgetsTour}
+        continuous
+        showSkipButton
+        locale={widgetsTourLocale}
+        styles={widgetsTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunWidgetsTour(false);
+            markTourSeen(tourKey);
+          }
+        }}
+      />
       <div className="font-bold text-[#00aaff] text-[28.242px] w-full">
       </div>
       {/* Thematic lines as pill bar (no images).
@@ -112,7 +138,7 @@ const Widgets: React.FC = () => {
 
             <div
               ref={carouselRef}
-              className="flex gap-3 items-center overflow-x-auto scrollbar-hide py-3 px-6"
+              className="flex gap-3 items-center overflow-x-auto scrollbar-hide py-3 px-6 widgets-lineas"
               style={{ scrollBehavior: 'smooth' }}
             >
               {ejes.map(eje => (
@@ -133,7 +159,7 @@ const Widgets: React.FC = () => {
 
       {/* Featured orange card SIEMPRE visible abajo, mostrando la experiencia seleccionada o mensaje por defecto */}
       <div className="mt-12 flex items-center justify-center">
-        <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-8 flex items-center gap-8">
+        <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-8 flex items-center gap-8 widgets-feature-card">
           <img src="/carts.svg" alt="icono experiencia" className="w-28 h-28" />
           <div className="flex-1">
             <h2 className="text-2xl font-extrabold text-[#1f2937]">
@@ -164,7 +190,7 @@ const Widgets: React.FC = () => {
       <div className="mt-16">
         <div className="bg-white rounded-2xl p-6 shadow-lg relative">
           {/* action icons (search + notifications) */}
-          <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
+          <div className="absolute top-4 right-4 flex flex-col gap-3 z-20 widgets-action-icons">
             {searchOpen ? (
               <div className="flex items-center gap-2 bg-white rounded-full px-2 shadow-md">
                 <input
@@ -209,7 +235,7 @@ const Widgets: React.FC = () => {
           </div>
 
           {/* carousel inside container */}
-          <div className="mt-2">
+          <div className="mt-2 widgets-carousel">
             {loading ? (
               <div className="py-8">Cargando experiencias...</div>
             ) : error ? (

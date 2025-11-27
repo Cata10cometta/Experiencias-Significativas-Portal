@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { securityTourLocale, securityTourStyles, securityUsersTourSteps } from "../../onboarding/securityTour";
 import { Person } from "../types/Person";
 import { User } from "../types/user";
 
@@ -243,6 +245,7 @@ const UserList: React.FC = () => {
   // UI states for search and pagination (must be top-level hooks)
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [runTour, setRunTour] = useState(false);
 
   const fetchUsers = () => {
     const token = localStorage.getItem("token");
@@ -330,6 +333,13 @@ const UserList: React.FC = () => {
     fetchPersons();
   }, []);
 
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem("securityUsersTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
+
   // derived states for pagination and helpers (defined before any early return to keep hook order stable)
   const pageSize = 5;
 
@@ -413,9 +423,23 @@ const UserList: React.FC = () => {
 
 
   return (
-    <div className="w-full max-w-7xl mx-auto mt-8">
+    <div className="w-full max-w-7xl mx-auto mt-8 security-users-layout">
+      <Joyride
+        steps={securityUsersTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={securityTourLocale}
+        styles={securityTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("securityUsersTourDone", "true");
+          }
+        }}
+      />
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between security-users-header">
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 -mt-8!">
               <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
@@ -432,7 +456,7 @@ const UserList: React.FC = () => {
               <p className="text-sm text-gray-500 mt-1">Optimiza la eficiencia y seguridad de tus usuarios.</p>
             </div>
           </div>
-          <div>
+          <div className="security-users-create">
             <button
               onClick={() => setAddUser(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
@@ -445,7 +469,7 @@ const UserList: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-4 flex items-center gap-4 security-users-filters">
           {/* Filter buttons: Habilitados / Registrados / Inhabilitados */}
           <button onClick={() => setFilter('active')} className={`px-34 py-2 rounded-full! text-sm flex items-center gap-2 ${filter === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-700 border'}`}>
             <span>Habilitados</span>
@@ -458,9 +482,7 @@ const UserList: React.FC = () => {
             Inhabilitados <span className="ml-2 bg-red-200 px-2 rounded-full text-xs">{inactiveCount}</span>
           </button>
         </div>
-
-
-        <div className="mt-4 flex items-center gap-4">
+  <div className="mt-4 flex items-center gap-4 security-users-search">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -480,7 +502,7 @@ const UserList: React.FC = () => {
   <div className="mt-6 pt-6">
           <div className="overflow-x-auto">
             {/* outer card like example: rounded box with subtle border and header bg */}
-            <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
+            <div className="rounded-lg border border-gray-100 bg-white shadow-sm security-users-table">
               <table className="min-w-full">
                 <thead className="text-left text-sm text-gray-600 bg-gray-50">
                   <tr className="border-b">
@@ -533,7 +555,7 @@ const UserList: React.FC = () => {
             </div>
 
           {/* pagination */}
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between security-users-pagination">
             <div className="text-sm text-gray-500">
               {filtered.length === 0 ? (
                 <>Mostrando 0 usuarios</>

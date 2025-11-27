@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState, ReactElement } from 'react';
+import Joyride from 'react-joyride';
 import axios from 'axios';
 import { FaLock, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import { BsShieldLockFill } from 'react-icons/bs';
+import { changePasswordTourSteps, changePasswordTourStyles, changePasswordTourLocale } from '../../features/onboarding/changePasswordTour';
+import { hasTourBeenSeen, markTourSeen } from '../utils/tourStorage';
 
 type Props = {
   open: boolean;
@@ -9,6 +12,7 @@ type Props = {
 };
 
 const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
+  const tourKey = 'changePasswordTourDone';
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,6 +22,7 @@ const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
   const [resultModalType, setResultModalType] = useState<'success' | 'error' | null>(null);
   const [resultModalMessage, setResultModalMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [runTour, setRunTour] = useState(false);
 
   const modalRef = useRef<HTMLDivElement | null>(null);
   const currentPasswordRef = useRef<HTMLInputElement | null>(null);
@@ -46,6 +51,17 @@ const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (open) {
+      if (!hasTourBeenSeen(tourKey)) {
+        const timer = window.setTimeout(() => setRunTour(true), 400);
+        return () => window.clearTimeout(timer);
+      }
+    } else {
+      setRunTour(false);
+    }
+  }, [open, tourKey]);
 
   const validatePassword = (password: string) => {
     const hasUpperLower = /[a-z]/.test(password) && /[A-Z]/.test(password);
@@ -116,6 +132,20 @@ const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
+      <Joyride
+        steps={changePasswordTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={changePasswordTourLocale}
+        styles={changePasswordTourStyles}
+        callback={(data) => {
+          if (data.status === 'finished' || data.status === 'skipped') {
+            setRunTour(false);
+            markTourSeen(tourKey);
+          }
+        }}
+      />
       <div ref={modalRef} className="bg-white p-8 rounded-xl w-full max-w-xl relative shadow-2xl"> {/* 🛑 ANCHO CAMBIADO: max-w-xl (más ancho) */}
 
         {/* Botón cerrar (arriba a la derecha) */}
@@ -155,7 +185,7 @@ const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
                   ref={currentPasswordRef}
                   type="password"
                   placeholder="tu contraseña actual "
-                  className="border border-gray-300 rounded-lg px-4 py-3 w-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
+                className="border border-gray-300 rounded-lg px-4 py-3 w-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors change-password-current"
                   value={currentPassword}
                   onChange={e => setCurrentPassword(e.target.value)}
                   autoComplete="current-password"
@@ -169,7 +199,7 @@ const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
                 <input
                   type="password"
                   placeholder="Ej: Contraseña123!"
-                  className="border border-gray-300 rounded-lg px-4 py-3 w-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
+                  className="border border-gray-300 rounded-lg px-4 py-3 w-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors change-password-new"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   autoComplete="new-password"
@@ -183,7 +213,7 @@ const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
                 <input
                   type="password"
                   placeholder="Ej: Contraseña123!"
-                  className={`border border-gray-300 rounded-lg px-4 py-3 w-full text-gray-800 focus:outline-none focus:ring-2 ${confirmPassword && newPassword !== confirmPassword ? 'border-red-500 ring-red-200' : 'focus:ring-sky-500'} transition-colors`}
+                  className={`border border-gray-300 rounded-lg px-4 py-3 w-full text-gray-800 focus:outline-none focus:ring-2 ${confirmPassword && newPassword !== confirmPassword ? 'border-red-500 ring-red-200' : 'focus:ring-sky-500'} transition-colors change-password-confirm`}
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   autoComplete="new-password"
@@ -193,7 +223,7 @@ const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
             </div>
 
             {/* COLUMNA 2: VALIDACIÓN (Aprovechando el ancho extra) */}
-            <div className="pt-8"> 
+            <div className="pt-8 change-password-rules"> 
               {/* Reglas de Validación */}
               <div className="bg-sky-50 border border-sky-200 rounded-lg p-4"> {/* Aumentado el padding para mejor estética */}
                 <div className="font-bold text-sky-600 mb-2 flex items-center gap-2">
@@ -228,7 +258,7 @@ const ChangePasswordModal: React.FC<Props> = ({ open, onClose }) => {
           )}
 
           {/* Botones de Acción */}
-          <div className="flex justify-end gap-4 mt-2"> {/* 🛑 MARGEN REDUCIDO: mt-2 */}
+          <div className="flex justify-end gap-4 mt-2 change-password-actions"> {/* 🛑 MARGEN REDUCIDO: mt-2 */}
             <button
               type="button"
               className="bg-gray-200 text-gray-700 rounded-lg px-6 py-2 font-semibold hover:bg-gray-300 transition-colors text-base"
