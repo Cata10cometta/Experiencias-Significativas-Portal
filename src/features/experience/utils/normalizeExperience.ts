@@ -24,6 +24,21 @@ export const normalizeToInitial = (src: any) => {
     return fallback;
   };
 
+  // Extrae la propiedad `name` (u otras alternativas) si el valor es un objeto o un array de objetos.
+  const extractNameIfObject = (val: any) => {
+    if (val === undefined || val === null) return val;
+    if (typeof val === 'object') {
+      if (Array.isArray(val)) {
+        if (val.length === 0) return '';
+        const first = val[0];
+        if (first && typeof first === 'object') return first.name ?? first.label ?? first.value ?? first.id ?? '';
+        return val.map((it: any) => (typeof it === 'object' ? (it.name ?? it.label ?? it.value ?? it.id ?? '') : String(it))).filter(Boolean).join(', ');
+      }
+      return val.name ?? val.label ?? val.value ?? val.id ?? '';
+    }
+    return val;
+  };
+
   // Normalize various yes/no or boolean representations into 'si' | 'no' | ''
   const normalizeYesNo = (v: any) => {
     if (v === undefined || v === null) return '';
@@ -57,13 +72,13 @@ export const normalizeToInitial = (src: any) => {
         || pick(src, ['departament', 'department', 'departamento'])
         || "",
     communes: pick(institutionSrc, ['communes', 'comunas', 'commune']) || pick(src, ['communes', 'comunas']) || [],
-    eZone: pick(institutionSrc, [
-      'eZone', 'zone', 'zona', 'eeZone', 'zonaEE', 'zona_ee', 'zoneEE', 'zone_ee', 'zoneExperience', 'experienceZone'
-    ])
-      || pick(src, [
+    eZone: extractNameIfObject(
+      pick(institutionSrc, [
+        'eZone', 'zone', 'zona', 'eeZones', 'zonaEE', 'zona_ee', 'zoneEE', 'zone_ee', 'zoneExperience', 'experienceZone'
+      ]) || pick(src, [
         'eZone', 'zone', 'zona', 'eeZone', 'zonaEE', 'zona_ee', 'zoneEE', 'zone_ee', 'zoneExperience', 'experienceZone'
-      ])
-      || "",
+      ]) || ""
+    ),
     testsKnow: pick(institutionSrc, ['testsKnow', 'participaEvento']) || pick(src, ['testsKnow']) || "",
   };
 
@@ -81,7 +96,7 @@ export const normalizeToInitial = (src: any) => {
   const identificacionForm = {
     nameExperience: src.nameExperiences || src.nameExperience || src.name || "",
     development: { days: '', months: '', years: '' },
-    estado: src.stateExperienceId ?? src.state ?? "",
+    stateExperienceId: src.stateExperienceId ?? src.state ?? "",
   };
 
   // Helper to normalize array fields to array of strings
@@ -113,8 +128,87 @@ export const normalizeToInitial = (src: any) => {
     return arr.map(toCheckboxId);
   };
 
+  // Limpia una etiqueta/simple string: normaliza espacios y comas, y hace trim
+  const cleanLabel = (s: any) => {
+    if (s === undefined || s === null) return '';
+    const str = String(s);
+    // Reemplaza múltiples espacios por uno, normaliza espacios alrededor de comas y trim
+    return str.replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim();
+  };
+
   // Buscar en developments[0] si existe
   const dev0 = Array.isArray(src.developments) && src.developments.length > 0 ? src.developments[0] : {};
+
+  // Normalizamos el coverage: usamos la etiqueta *original* (trim) y no
+  // aplicamos la limpieza que altera la puntuación (ej. espacio antes/depués de la coma).
+  const rawCoverage = pick(src, ['coverage', 'Coverage']) || dev0.coverage || dev0.Coverage || '';
+  const coverageRaw = rawCoverage === undefined || rawCoverage === null ? '' : rawCoverage;
+
+  // Normalizamos recognition para que los radios reciban la misma etiqueta
+  const rawRecognition = pick(src, ['recognition', 'Recognition']) || dev0.recognition || dev0.Recognition || src.recognitionText || src.RecognitionText || '';
+  const recognitionLabel = cleanLabel(rawRecognition);
+
+  // Extract grades from experienceGrades array (estructura del backend)
+  const extractGradesFromExperienceGrades = () => {
+    if (!Array.isArray(src.experienceGrades) || src.experienceGrades.length === 0) return [];
+    return src.experienceGrades.map((eg: any) => ({
+      gradeId: eg.gradeId || eg.grade?.id || 0,
+      description: eg.description || eg.grade?.name || eg.grade?.description || ''
+    }));
+  };
+
+  // Extract population names from experiencePopulations array
+  const extractPopulationFromExperiencePopulations = () => {
+    if (!Array.isArray(src.experiencePopulations) || src.experiencePopulations.length === 0) return [];
+    return src.experiencePopulations.map((ep: any) => ep.populationGrade?.name || ep.populationGrade?.code || '');
+  };
+
+  // Extract population ids from experiencePopulations array
+  const extractPopulationIdsFromExperiencePopulations = () => {
+    if (!Array.isArray(src.experiencePopulations) || src.experiencePopulations.length === 0) return [];
+    return src.experiencePopulations.map((ep: any) => ep.populationGrade?.id || ep.populationGradeId || ep.populationGrade?.code || '').filter(Boolean);
+  };
+
+  // Extract thematicLineIds from experienceLineThematics array
+  const extractThematicLineIds = () => {
+    if (!Array.isArray(src.experienceLineThematics) || src.experienceLineThematics.length === 0) return [];
+    return src.experienceLineThematics.map((elt: any) => elt.lineThematicId || elt.lineThematic?.id || '');
+  };
+
+  // Extract cross-cutting projects from several possible backend shapes and return array of labels
+  const extractCrossCuttingProjects = () => {
+    const collected: string[] = [];
+
+    const pushVal = (v: any) => {
+      if (v === undefined || v === null) return;
+      if (Array.isArray(v)) {
+        v.forEach((it) => { if (it !== undefined && it !== null) collected.push(String((typeof it === 'object' && it.name) ? it.name : it)); });
+      } else if (typeof v === 'object') {
+        // object may have name/label
+        collected.push(String(v.name ?? v.label ?? v.description ?? v.value ?? ''));
+      } else {
+        collected.push(String(v));
+      }
+    };
+
+    // Prefer explicit top-level arrays/fields
+    pushVal(src.CrossCuttingProject || src.crossCuttingProject || src.crosscuttingProject || src.CrosscuttingProject);
+    // developments[0] preferred
+    if (dev0 && (dev0.crossCuttingProject || dev0.crossCuttingProject)) pushVal(dev0.crossCuttingProject || dev0.crossCuttingProject);
+    // scan all developments in case there are many selected
+    if (Array.isArray(src.developments)) {
+      src.developments.forEach((d: any) => { if (d && d.crossCuttingProject !== undefined) pushVal(d.crossCuttingProject); });
+    }
+
+    // fallback to any other plausible field
+    if (src.crossCuttingProjects) pushVal(src.crossCuttingProjects);
+
+    // normalize results: trim and dedupe
+    const normalized = collected
+      .map(s => (s === undefined || s === null ? '' : String(s).trim()))
+      .filter(Boolean);
+    return Array.from(new Set(normalized));
+  };
 
   // DEBUG: log values to verify what is being picked up
   if (typeof window !== 'undefined') {
@@ -130,56 +224,68 @@ export const normalizeToInitial = (src: any) => {
     if (val === undefined || val === null) return [];
     return [val];
   };
+  // Extraer ids de líneas temáticas desde varias formas que puede devolver el backend
+  const extractedThematicLineIds = extractThematicLineIds();
+  // Determinar un valor único para 'thematicFocus' (preferir la primera línea temática asociada al experience)
+  const thematicFocusValue = (Array.isArray(src.experienceLineThematics) && src.experienceLineThematics.length > 0)
+    ? (src.experienceLineThematics[0].lineThematicId ?? src.experienceLineThematics[0].lineThematic?.id ?? extractedThematicLineIds[0] ?? '')
+    : (Array.isArray(extractedThematicLineIds) && extractedThematicLineIds.length > 0 ? extractedThematicLineIds[0] : (src.thematicLineId || src.thematicLine || src.thematicLineIds?.[0] || ''));
 
   const tematicaForm = {
-    thematicLineIds: normalizeCheckboxIds(src.thematicLineIds || src.thematicLines || src.thematicLine),
-    PedagogicalStrategies: normalizeCheckboxIds(src.PedagogicalStrategies || src.PedagogicalStrategies || dev0.pedagogicalStrategies),
-    pedagogicalStrategies: normalizeCheckboxIds(src.pedagogicalStrategies || src.PedagogicalStrategies || dev0.pedagogicalStrategies),
-    CrossCuttingProject: normalizeCheckboxIds(
-      ensureArray(src.CrossCuttingProject) || ensureArray(src.crossCuttingProject) || ensureArray(src.crosscuttingProject) || ensureArray(dev0.crossCuttingProject)
-    ),
+    thematicLineIds: normalizeCheckboxIds(ensureArray(src.thematicLineIds || src.thematicLines || src.thematicLine || extractedThematicLineIds)),
+    // Pedagogical strategies in the backend may come as a string or array inside `src` or inside `developments[0]` (dev0).
+    // The form expects an array of labels (strings), so use normalizeArrayOfStrings to preserve labels.
+    PedagogicalStrategies: normalizeArrayOfStrings(src.PedagogicalStrategies || dev0.pedagogicalStrategies || src.pedagogicalStrategies),
+    pedagogicalStrategies: normalizeArrayOfStrings(src.pedagogicalStrategies || src.PedagogicalStrategies || dev0.pedagogicalStrategies),
+    // CrossCuttingProject: keep labels (the UI compares labels), so normalize to array of strings
+    CrossCuttingProject: normalizeArrayOfStrings(extractCrossCuttingProjects()),
     coordinationTransversalProjects: src.coordinationTransversalProjects || src.CoordinationTransversalProjects || dev0.coordinationTransversalProjects || "",
-    coverage: src.coverage || src.Coverage || dev0.coverage || "",
-    Coverage: src.Coverage || src.coverage || dev0.Coverage || "",
-    CoverageText: src.CoverageText || src.coverageText || dev0.CoverageText || "",
-    Population: normalizeCheckboxIds(
-      ensureArray(src.Population) || ensureArray(src.population) || ensureArray(src.populationGradeIds) || ensureArray(dev0.population)
+    coverage: coverageRaw,
+    Coverage: coverageRaw,
+    CoverageText: src.CoverageText || src.coverageText || dev0.CoverageText || coverageRaw,
+    // Population labels: extract from experiencePopulations or developments
+    Population: normalizeArrayOfStrings(
+      // Prefer development[0].population (dev0) if present, then src.population, then other sources
+      ensureArray(dev0.population) || ensureArray(src.population) || ensureArray(src.Population) || extractPopulationFromExperiencePopulations() || ensureArray(src.populationGradeIds)
     ),
     PopulationGrade: normalizeCheckboxIds(
       ensureArray(src.PopulationGrade) || ensureArray(src.populationGrade) || ensureArray(dev0.populationGrade)
     ),
-    population: normalizeCheckboxIds(
-      ensureArray(src.population) || ensureArray(src.Population) || ensureArray(src.populationGradeIds) || ensureArray(dev0.population)
+    population: normalizeArrayOfStrings(
+      // Keep the raw values from the JSON as an array: prefer dev0.population first
+      ensureArray(dev0.population) || ensureArray(src.population) || ensureArray(src.Population) || extractPopulationFromExperiencePopulations() || ensureArray(src.populationGradeIds)
     ),
-    populationGradeIds: normalizeCheckboxIds(
-      ensureArray(src.populationGradeIds) || ensureArray(src.PopulationGradeIds) || ensureArray(dev0.populationGradeIds)
-    ),
-    populationGrades: normalizeCheckboxIds(
-      ensureArray(src.populationGrades) || ensureArray(src.PopulationGrades) || ensureArray(dev0.populationGrades)
-    ),
+    // populationGradeIds should be numeric ids used by the form
+    populationGradeIds: (Array.isArray(src.experiencePopulations) && src.experiencePopulations.length > 0)
+      ? extractPopulationIdsFromExperiencePopulations().map((id: any) => Number(id))
+      : (Array.isArray(src.populationGradeIds) ? src.populationGradeIds.map((n: any) => Number(n)) : []),
+    // populationGrades: labels (names)
+    populationGrades: normalizeArrayOfStrings(src.populationGrades || src.PopulationGrades || extractPopulationFromExperiencePopulations() || dev0.populationGrades),
     experiencesCovidPandemic: src.experiencesCovidPandemic || src.experiences_covid_pandemic || src.covidPandemic || dev0.covidPandemic || "",
-    recognition: src.recognition || src.Recognition || dev0.recognition || "",
-    recognitionText: src.recognitionText || src.RecognitionText || dev0.recognitionText || "",
-    socialization: normalizeCheckboxIds(
-      ensureArray(src.socialization) || ensureArray(src.Socialization) || ensureArray(dev0.socialization)
+    recognition: recognitionLabel,
+    recognitionText: src.recognitionText || src.RecognitionText || dev0.recognitionText || recognitionLabel,
+    // socialization in backend may be a single string or array; form expects arrays of labels
+    socialization: normalizeArrayOfStrings(src.socialization || src.Socialization || dev0.socialization),
+    socializationLabels: normalizeArrayOfStrings(
+      ensureArray(src.socializationLabels) || ensureArray(src.SocializationLabels) || ensureArray(dev0.socializationLabels) || ensureArray(src.socialization)
     ),
-    socializationLabels: normalizeCheckboxIds(
-      ensureArray(src.socializationLabels) || ensureArray(src.SocializationLabels) || ensureArray(dev0.socializationLabels)
-    ),
-    grades: normalizeCheckboxIds(
-      ensureArray(src.grades) || ensureArray(src.Grades) || ensureArray(dev0.grades)
-    ),
+    // grades: form expects array of {gradeId, description}
+    grades: (Array.isArray(src.experienceGrades) && src.experienceGrades.length > 0)
+      ? extractGradesFromExperienceGrades()
+      : (Array.isArray(src.grades) ? src.grades : (Array.isArray(dev0.grades) ? dev0.grades : [])),
     gradeId: normalizeCheckboxIds(
       ensureArray(src.gradeId) || ensureArray(src.GradeId) || ensureArray(dev0.gradeId)
     ),
     thematicLocation: src.thematicLocation || src.thematic_location || dev0.thematicLocation || "",
-    thematicFocus: src.thematicFocus || src.thematicLine || src.thematic || src.thematicLocation || dev0.thematicFocus || "",
+    // thematicFocus: store the id (number/string) of the selected thematic line so the UI
+    // can map it to option ids. Keep empty string if none.
+    thematicFocus: thematicFocusValue,
   };
 
   // niveles / grades: try to map backend grades to the form shape
   const defaultNiveles = { niveles: { Primaria: { checked: false, grados: [] }, Secundaria: { checked: false, grados: [] }, Media: { checked: false, grados: [] } } };
   let nivelesForm = src.nivelesForm || src.levels || src.niveles || defaultNiveles;
-  const possibleGrades = src.grades || src.grados || src.gradesList || src.gradeIds || null;
+  const possibleGrades = src.grades || src.grados || src.gradesList || src.gradeIds || extractGradesFromExperienceGrades() || null;
   if (Array.isArray(possibleGrades) && possibleGrades.length > 0) {
     try {
       const mapByLevel: any = { Primaria: [], Secundaria: [], Media: [] };
@@ -200,7 +306,42 @@ export const normalizeToInitial = (src: any) => {
 
   const grupoPoblacional = src.populationGradeIds || src.grupoPoblacional || src.population || [];
 
-  const tiempo = { developmenttime: src.developmenttime || src.developmentTime || "" };
+  // Convierte una fecha ISO (yyyy-mm-ddTHH:mm:ss) en una duración { days, months, years }
+  const isoDateToDuration = (iso: string) => {
+    const empty = { days: '', months: '', years: '' };
+    if (!iso || typeof iso !== 'string') return empty;
+    // Extraer la fecha inicial (antes de la T si viene con hora)
+    const datePart = iso.split('T')[0];
+    const parsed = new Date(datePart);
+    console.log(datePart, parsed);
+    if (Number.isNaN(parsed.getTime())) return empty;
+    const now = new Date();
+    let years = now.getFullYear() - parsed.getFullYear();
+    let months = now.getMonth() - parsed.getMonth();
+    let days = now.getDate() - parsed.getDate();
+    if (days < 0) {
+      months -= 1;
+      // días del mes anterior
+      const prevMonthDays = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+      days += prevMonthDays;
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    return { days: String(days), months: String(months), years: String(years) };
+  };
+
+  const developmentSource = src.developmenttime || src.developmentTime || src.development || '';
+  const tiempo = { developmenttime: (typeof developmentSource === 'string' && developmentSource.includes('T')) ? isoDateToDuration(developmentSource) : (typeof developmentSource === 'object' ? (developmentSource) : { days: '', months: '', years: '' }) };
+  // Si identificacionForm ya existe (se definió arriba), actualizamos su campo development
+  try {
+    if (identificacionForm && typeof identificacionForm === 'object') {
+      identificacionForm.development = (typeof developmentSource === 'string' && developmentSource.includes('T')) ? isoDateToDuration(developmentSource) : (typeof developmentSource === 'object' ? (developmentSource) : { days: '', months: '', years: '' });
+    }
+  } catch (e) {
+    // noop
+  }
 
   const objectiveExperienceRaw = src.objectives?.[0] || src.objectiveExperience || src.objectives || {};
   const objectiveExperience = {
@@ -303,6 +444,21 @@ export const normalizeToInitial = (src: any) => {
     informacionApoyo,
     pdfFile,
     documents: src.documents || [],
+    // --- CAMPOS REQUERIDOS POR EL BACKEND ---
+    Leaders: Array.isArray(leaders) ? leaders : [],
+    GradesUpdate: Array.isArray(src.GradesUpdate) ? src.GradesUpdate : [],
+    DocumentsUpdate: Array.isArray(src.DocumentsUpdate) ? src.DocumentsUpdate : [],
+    ThematicLineIds: Array.isArray(
+      (tematicaForm && tematicaForm.thematicLineIds) ? tematicaForm.thematicLineIds : src.ThematicLineIds
+    ) ? ((tematicaForm && tematicaForm.thematicLineIds) ? tematicaForm.thematicLineIds : src.ThematicLineIds) : [],
+    ObjectivesUpdate: Array.isArray(src.ObjectivesUpdate) ? src.ObjectivesUpdate : [],
+    InstitutionUpdate: typeof src.InstitutionUpdate === 'object' && src.InstitutionUpdate !== null ? src.InstitutionUpdate : {},
+    DevelopmentsUpdate: Array.isArray(src.DevelopmentsUpdate) ? src.DevelopmentsUpdate : [],
+    PopulationGradeIds: Array.isArray(
+      (tematicaForm && tematicaForm.populationGradeIds) ? tematicaForm.populationGradeIds : src.PopulationGradeIds
+    ) ? ((tematicaForm && tematicaForm.populationGradeIds) ? tematicaForm.populationGradeIds : src.PopulationGradeIds) : [],
+    HistoryExperiencesUpdate: Array.isArray(src.HistoryExperiencesUpdate) ? src.HistoryExperiencesUpdate : [],
+    // --- FIN CAMPOS REQUERIDOS ---
     _raw: src,
   };
 };

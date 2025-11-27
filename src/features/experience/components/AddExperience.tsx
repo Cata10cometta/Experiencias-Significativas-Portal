@@ -65,16 +65,22 @@ function buildExperiencePayload({
           description: g.description || ''
         }))
     : [];
-  // Formatear developmenttime a ISO string o null
+  // Formatear developmenttime a string ISO 8601 o null
   let devTime = initialData?.developmenttime || '';
   if (devTime) {
-    const dateObj = typeof devTime === 'string' ? new Date(devTime) : devTime;
-    devTime = isNaN(dateObj?.getTime?.()) ? null : dateObj.toISOString();
+    if (typeof devTime === 'string') {
+      const parsed = new Date(devTime);
+      devTime = isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    } else if (devTime instanceof Date) {
+      devTime = isNaN(devTime.getTime()) ? null : devTime.toISOString();
+    } else {
+      devTime = null;
+    }
   } else {
     devTime = null;
   }
   // InstitutionUpdate: siempre objeto (aunque vacío)
-  const institutionUpdate = identificacionInstitucional && Object.keys(identificacionInstitucional).length > 0 ? identificacionInstitucional : {};
+  const institutionUpdate = (identificacionInstitucional && typeof identificacionInstitucional === 'object') ? identificacionInstitucional : {};
   // DevelopmentsUpdate: siempre array
   const developmentsUpdate = Array.isArray(tematicaForm?.developments) ? tematicaForm.developments : [];
   // DocumentsUpdate: siempre array
@@ -87,7 +93,9 @@ function buildExperiencePayload({
   const populationGradeIds = Array.isArray(tematicaForm?.populationGradeIds) ? tematicaForm.populationGradeIds : [];
   // HistoryExperiencesUpdate: siempre array
   const historyExperiencesUpdate = Array.isArray(initialData?.historyExperiences) ? initialData.historyExperiences : [];
-  // Construir el objeto request con TODOS los campos requeridos SIEMPRE presentes
+  // Refuerzo: si algún campo es undefined/null, forzar array vacío u objeto vacío
+  const safe = (v: any, fallback: any) => (v === undefined || v === null ? fallback : v);
+  // Construir el objeto anidado bajo 'request' con TODOS los campos requeridos SIEMPRE presentes
   return {
     request: {
       ExperienceId: initialData?.id ?? 0,
@@ -99,17 +107,17 @@ function buildExperiencePayload({
       Socialization: initialData?.socialization || '',
       StateExperienceId: initialData?.stateExperienceId || 0,
       UserId: userId ?? 0,
-      Leaders: leaders,
-      InstitutionUpdate: institutionUpdate,
-      GradesUpdate: gradesUpdate,
-      DocumentsUpdate: documentsUpdate,
-      ThematicLineIds: thematicLineIds,
-      ObjectivesUpdate: objectivesUpdate,
-      DevelopmentsUpdate: developmentsUpdate,
-      PopulationGradeIds: populationGradeIds,
-      HistoryExperiencesUpdate: historyExperiencesUpdate,
-      FollowUpUpdate: seguimientoEvaluacion || {},
-      SupportInfoUpdate: informacionApoyo || {},
+      Leaders: safe(leaders, []),
+      InstitutionUpdate: safe(institutionUpdate, {}),
+      GradesUpdate: safe(gradesUpdate, []),
+      DocumentsUpdate: safe(documentsUpdate, []),
+      ThematicLineIds: safe(thematicLineIds, []),
+      ObjectivesUpdate: safe(objectivesUpdate, []),
+      DevelopmentsUpdate: safe(developmentsUpdate, []),
+      PopulationGradeIds: safe(populationGradeIds, []),
+      HistoryExperiencesUpdate: safe(historyExperiencesUpdate, []),
+      FollowUpUpdate: safe(seguimientoEvaluacion, {}),
+      SupportInfoUpdate: safe(informacionApoyo, {}),
       ComponentsUpdate: [], // TODO: reemplazar por el estado real si existe
       // Puedes agregar más campos aquí si el backend los requiere
     }
@@ -166,13 +174,20 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
         pdfFile,
         userId
       });
+      // Alternar entre objeto plano y anidado bajo 'request'
+      const USE_WRAPPER = true; // Cambia a false para probar el objeto plano
+      if (USE_WRAPPER) {
+        console.log('Payload (anidado bajo request):', JSON.stringify(payload, null, 2));
+      } else {
+        console.log('Payload (plano):', JSON.stringify(payload.request, null, 2));
+      }
       const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: USE_WRAPPER ? JSON.stringify(payload) : JSON.stringify(payload.request),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
@@ -574,6 +589,20 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       if (initialData.documents && Array.isArray(initialData.documents) && initialData.documents.length > 0) setPdfFile(initialData.documents[0]);
     } catch (err) {
       console.warn('AddExperience hydrate initialData failed', err);
+    }
+  }, [initialData]);
+
+  // Asegurar que el campo `thematicFocus` (id) esté también disponible en `identificacionForm`
+  // porque el componente IdentificationForm lo espera en `value.thematicFocus`.
+  useEffect(() => {
+    if (!initialData) return;
+    try {
+      const tf = initialData.tematicaForm?.thematicFocus ?? undefined;
+      if (tf !== undefined && tf !== null) {
+        setIdentificacionForm((prev: any) => ({ ...(prev || {}), thematicFocus: tf }));
+      }
+    } catch (e) {
+      // noop
     }
   }, [initialData]);
 

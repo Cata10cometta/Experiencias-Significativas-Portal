@@ -21,7 +21,10 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
   const [emailInstitutional, setEmailInstitutional] = useState("");
   const [phone, setPhone] = useState("");
   const [codeDane, setCodeDane] = useState("");
-  const [documentType, setDocumentType] = useState<number | string>("");
+  const [documentType, setDocumentType] = useState("");
+  const [code, setCode] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [documentTypes, setDocumentTypes] = useState<DataSelectRequest[]>([]);
   const [codigoDaneOptions, setCodigoDaneOptions] = useState<DataSelectRequest[]>([]);
   const [emailInstitucionalOptions, setEmailInstitucionalOptions] = useState<DataSelectRequest[]>([]);
@@ -52,20 +55,21 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
     const token = localStorage.getItem("token");
     try {
       await axios.post(
-        "/api/Person",
+        "/api/Person/create",
         {
+          documentType,
           identificationNumber,
           firstName,
           middleName,
           firstLastName,
           secondLastName,
-          email,
-          emailInstitutional,
-          phone: phone ? parseInt(phone, 10) : undefined,
           codeDane,
-          documentType: documentType || undefined,
-          state: true,
-          createdAt: new Date().toISOString(),
+          emailInstitutional,
+          email,
+          phone: phone ? parseInt(phone, 10) : 0,
+          code,
+          username,
+          password
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -86,9 +90,9 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block mb-2 font-semibold">Tipo de Documento</label>
-            <select className="w-full p-2 border rounded" value={String(documentType)} onChange={e => setDocumentType(e.target.value)} required>
+            <select className="w-full p-2 border rounded" value={documentType} onChange={e => setDocumentType(e.target.value)} required>
               <option value="">Seleccione...</option>
-              {documentTypes.map(d => <option key={d.id} value={d.id}>{d.displayText}</option>)}
+              {documentTypes.map(d => <option key={d.id} value={d.displayText}>{d.displayText}</option>)}
             </select>
           </div>
           <div>
@@ -136,8 +140,20 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
             <label className="block mb-2 font-semibold">Código Dane</label>
             <select className="w-full p-2 border rounded" value={codeDane} onChange={e => setCodeDane(e.target.value)}>
               <option value="">Seleccione...</option>
-              {codigoDaneOptions.map(c => <option key={c.id} value={c.displayText}>{c.id}</option>)}
+              {codigoDaneOptions.map(c => <option key={c.id} value={c.id}>{c.id}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Código</label>
+            <input className="w-full p-2 border rounded" value={code} onChange={e => setCode(e.target.value)} />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Usuario</label>
+            <input className="w-full p-2 border rounded" value={username} onChange={e => setUsername(e.target.value)} />
+          </div>
+          <div>
+            <label className="block mb-2 font-semibold">Contraseña</label>
+            <input type="password" className="w-full p-2 border rounded" value={password} onChange={e => setPassword(e.target.value)} />
           </div>
         </div>
         <div className="flex gap-4 justify-end mt-6">
@@ -150,7 +166,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
 };
 
 interface EditPersonFormProps {
-  person: Person;
+  person: Person & { id?: number };
   onClose: () => void;
   onUpdated: () => void;
 }
@@ -285,8 +301,8 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onClose, onUpda
 };
 
 const PersonsList: React.FC = () => {
-  const [persons, setPersons] = useState<Person[]>([]);
-  const [editPerson, setEditPerson] = useState<Person | null>(null);
+  const [persons, setPersons] = useState<(Person & { id?: number; state?: boolean })[]>([]);
+  const [editPerson, setEditPerson] = useState<Person & { id?: number } | null>(null);
   const [addPersonOpen, setAddPersonOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -463,12 +479,12 @@ const PersonsList: React.FC = () => {
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
                         </button>
                         {person.state ? (
-                          <button className="text-red-400 hover:text-red-600" onClick={() => handleDeactivate(person.id)} title="Desactivar">
+                          <button className="text-red-400 hover:text-red-600" onClick={() => { if (person.id != null) handleDeactivate(person.id); }} title="Desactivar">
                             {/* Trash icon */}
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
                           </button>
                         ) : (
-                          <button className="text-emerald-500 hover:text-emerald-600" onClick={() => handleActivate(person.id)} title="Activar">
+                          <button className="text-emerald-500 hover:text-emerald-600" onClick={() => { if (person.id != null) handleActivate(person.id); }} title="Activar">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
                           </button>
                         )}

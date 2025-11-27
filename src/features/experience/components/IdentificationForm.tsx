@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getEnum } from "../../../Api/Services/Helper";
 import { DataSelectRequest } from "../../../shared/types/HelperTypes";
-import { Experience } from "../types/experienceTypes";  
+import { Experience } from "../types/experienceTypes";
 import { getToken } from "../../../Api/Services/Auth";
 
 type IdentificationValue = Partial<Experience> & {
@@ -34,7 +34,7 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
         const temasEnum: DataSelectRequest[] = await getEnum("ThematicLocation");
         setTemas(temasEnum);
 
-       
+
       } catch (error) {
         console.error("Error cargando ThematicLocation", error);
       }
@@ -106,8 +106,9 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
           }));
           setLineThematics(mapped);
           setErrorLines(mapped.length === 0 ? "No se encontraron líneas temáticas." : null);
-          const current = (value as any).thematicFocus || "";
-          if (current && !mapped.some((m) => m.displayText === current)) setShowOtro(true);
+          const current = (value as any).thematicFocus ?? "";
+          // si el valor actual no coincide con ningún id disponible, activamos 'Otro'
+          if (current && !mapped.some((m) => String(m.id) === String(current))) setShowOtro(true);
         }
       } catch (err) {
         console.error("Error cargando LineThematic", err);
@@ -135,9 +136,9 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
       ubicaciones: nuevasUbicaciones,
       thematicLocation: nuevasUbicaciones.length > 0
         ? temas
-            .filter((t) => nuevasUbicaciones.includes(Number(t.id)))
-            .map((t) => t.displayText)
-            .join(", ")
+          .filter((t) => nuevasUbicaciones.includes(Number(t.id)))
+          .map((t) => t.displayText)
+          .join(", ")
         : "",
     });
   };
@@ -206,6 +207,7 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
         )}
       </div>
 
+
       {/* Tiempo de desarrollo */}
       <div className="mb-4">
         <label className="block font-medium">Seleccione el tiempo de desarrollo de la Experiencia Significativa. <span className="text-red-500">*</span></label>
@@ -240,7 +242,7 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
           <div>
             <select
               className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
-              value={(value as any).thematicFocus || (showOtro ? "__otro__" : "")}
+              value={value.thematicFocus ? String((value as any).thematicFocus) : (showOtro ? "__otro__" : "")}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "__otro__") {
@@ -248,16 +250,18 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
                   onChange({ ...value, thematicFocus: "" });
                 } else {
                   setShowOtro(false);
-                  onChange({ ...value, thematicFocus: val });
+                  // guardamos el id numérico de la línea temática
+                  const num = Number(val);
+                  onChange({ ...value, thematicFocus: Number.isNaN(num) ? val : num });
                 }
               }}
             >
               <option value="">Seleccione enfoque temático</option>
-              {lineThematics.map((lt) => (
-                <option key={lt.id} value={lt.displayText}>
-                  {lt.displayText}
-                </option>
-              ))}
+                      {lineThematics.map((lt) => (
+                        <option key={lt.id} value={String(lt.id)}>
+                          {lt.displayText}
+                        </option>
+                      ))}
             </select>
 
             {showOtro && (

@@ -183,25 +183,28 @@ const CriteriaList: React.FC = () => {
   const [addCriteriaOpen, setAddCriteriaOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [onlyActive, setOnlyActive] = useState(true); // Estado para filtrar activos/inactivos
+  const [onlyState, setOnlyState] = useState<true | false>(true); // Mostrar activos por defecto
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [modal, setModal] = useState<{ open: boolean; type: 'success' | 'error'; message: string }>({ open: false, type: 'success', message: '' });
   const pageSize = 5;
 
   const fetchCriteria = () => {
     const token = localStorage.getItem("token");
+    const params = { OnlyState: onlyState };
     axios
       .get(`/api/Criteria/getAll`, {
-        params: { OnlyActive: onlyActive }, // Usar el filtro OnlyActive
+        params,
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
         if (Array.isArray(res.data.data)) {
-          const criteriaNormalized = res.data.data.map((criterion: Criteria) => ({
-            ...criterion,
-            state: onlyActive, // Asignar el estado basado en el filtro OnlyActive
+          // Si OnlyState es true y no viene el campo state, asumimos activo; si es false, inactivo
+          const normalized = res.data.data.map((c: any) => ({
+            ...c,
+            state: c.state !== undefined ? (c.state === true || c.state === 1 || c.state === "1" || c.state === "true") : onlyState
           }));
-          setCriteria(criteriaNormalized);
+          setCriteria(normalized);
         } else {
           setCriteria([]);
         }
@@ -215,7 +218,7 @@ const CriteriaList: React.FC = () => {
 
   useEffect(() => {
     fetchCriteria();
-  }, [onlyActive]); // Refrescar cuando cambie el filtro
+  }, [onlyState]); // Refrescar cuando cambie el filtro
 
   const filtered = criteria.filter((c) => {
     const q = searchTerm.trim().toLowerCase();
@@ -241,8 +244,10 @@ const CriteriaList: React.FC = () => {
       await axios.delete(`/api/Criteria/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchCriteria(); // Refrescar lista
+      setModal({ open: true, type: 'success', message: 'Criterio desactivado correctamente.' });
+      fetchCriteria();
     } catch (err) {
+      setModal({ open: true, type: 'error', message: 'Error al desactivar criterio.' });
       console.error("Error al desactivar criterio:", err);
     }
   };
@@ -253,8 +258,10 @@ const CriteriaList: React.FC = () => {
       await axios.patch(`/api/Criteria/restore/${id}`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      setModal({ open: true, type: 'success', message: 'Criterio activado correctamente.' });
       fetchCriteria();
     } catch (err) {
+      setModal({ open: true, type: 'error', message: 'Error al activar criterio.' });
       console.error("Error al activar criterio:", err);
     }
   };
@@ -284,7 +291,22 @@ const CriteriaList: React.FC = () => {
               </div>
             </div>
           </div>
-                  {/* Removed duplicate Agregar Criterio button left by previous patch */}
+          <div className="flex gap-4">
+            <button
+              className={`px-4 py-2 rounded font-semibold ${onlyState ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
+              onClick={() => { setOnlyState(true); setCurrentPage(1); }}
+              type="button"
+            >
+              Mostrar Activos
+            </button>
+            <button
+              className={`px-4 py-2 rounded font-semibold ${!onlyState ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
+              onClick={() => { setOnlyState(false); setCurrentPage(1); }}
+              type="button"
+            >
+              Mostrar Inactivos
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
@@ -308,10 +330,10 @@ const CriteriaList: React.FC = () => {
                     <td className="py-2 px-3 break-words max-w-xs">{criterion.code}</td>
                     <td className="py-2 px-3 break-words max-w-xs">{criterion.name}</td>
                     <td className="py-2 px-3">
-                      {criterion.state ? (
+                      {(criterion.state === true || ['1', 'true'].includes(String(criterion.state))) ? (
                         <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs sm:text-sm">Activo</span>
                       ) : (
-                        <span className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs sm:text-sm">Inactivo</span>
+                        <span className="inline-block bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs sm:text-sm">Inactivo</span>
                       )}
                     </td>
                     <td className="py-2 px-3">
@@ -385,7 +407,27 @@ const CriteriaList: React.FC = () => {
           }}
         />
       )}
-    </div>
+    {/* Modal de éxito/error tipo inicio */}
+    {modal.open && (
+      <div className="fixed inset-0 flex items-center justify-center z-[2000]">
+        <div className="bg-white rounded-2xl shadow-lg p-8 min-w-[340px] max-w-sm flex flex-col items-center">
+          {modal.type === 'success' ? (
+            <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#B7EFC2" strokeWidth="3" fill="#F6FFF9"/><path d="M16 25l6 6 10-14" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          ) : (
+            <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#FECACA" strokeWidth="3" fill="#FFF6F6"/><path d="M17 17l14 14M31 17l-14 14" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"/></svg>
+          )}
+          <h3 className="text-2xl font-bold text-gray-700 mb-2">{modal.type === 'success' ? 'Éxito' : 'Error'}</h3>
+          <p className="text-gray-600 mb-6 text-center">{modal.message}</p>
+          <button
+            className="px-6 py-2 rounded bg-[#7B6EF6] text-white font-semibold text-base hover:bg-[#5f54c7] transition"
+            onClick={() => setModal({ ...modal, open: false })}
+          >
+            Continuar
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };
 
