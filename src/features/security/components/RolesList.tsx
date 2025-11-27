@@ -357,7 +357,6 @@ const RolesList: React.FC = () => {
               <p className="text-sm text-gray-500 mt-1">Administra los roles y permisos del sistema</p>
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-1">Administra los roles y permisos del sistema</p>
         </div>
         <div>
           <button
@@ -386,12 +385,6 @@ const RolesList: React.FC = () => {
           </div>
         </div>
         <div>
-          <button className="px-4 py-2 rounded bg-white border text-sm flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" aria-hidden>
-              <path d="M1.5 1.5C1.5 1.22386 1.72386 1 2 1H14C14.2761 1 14.5 1.22386 14.5 1.5V3.5C14.5 3.62352 14.4543 3.74267 14.3716 3.83448L10 8.69187V13.5C10 13.7152 9.86228 13.9063 9.65811 13.9743L6.65811 14.9743C6.50564 15.0252 6.33803 14.9996 6.20764 14.9056C6.07726 14.8116 6 14.6607 6 14.5V8.69187L1.62835 3.83448C1.54572 3.74267 1.5 3.62352 1.5 3.5V1.5ZM2.5 2V3.30813L6.87165 8.16552C6.95428 8.25733 7 8.37648 7 8.5V13.8063L9 13.1396V8.5C9 8.37648 9.04572 8.25733 9.12835 8.16552L13.5 3.30813V2H2.5Z" fill="currentColor"/>
-            </svg>
-            <span>Filtrar</span>
-          </button>
         </div>
       </div>
 

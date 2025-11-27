@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import configApi from "../../Api/Config/Config";
 import { FollowUp } from "../types/FollowUp";
 
@@ -32,6 +33,7 @@ const Tracking = () => {
           aplyPagination: true
         };
         const response = await configApi.post("/HistoryExperience/tracking-summary", body);
+        console.log('Respuesta tracking-summary:', response.data);
         setTrackingData(response.data);
       } catch (err) {
         setError("Error al obtener datos");
@@ -44,63 +46,45 @@ const Tracking = () => {
   if (!trackingData) return <div className="text-center py-10 text-gray-500">Cargando...</div>;
 
   const total = trackingData?.totalExperiences || 1;
-  const percent = (value: number | undefined) =>
-    value !== undefined && total > 0 ? Math.round((value / total) * 100) : 0;
-
   const naciente = trackingData?.experiencesNaciente || 0;
   const creciente = trackingData?.experiencesCreciente || 0;
   const inspiradora = trackingData?.experiencesInspiradora || 0;
-  const totalPie = naciente + creciente + inspiradora;
+  console.log('Naciente:', naciente, 'Creciente:', creciente, 'Inspiradora:', inspiradora);
 
-  let nacientePct = 0, crecientePct = 0, inspiradoraPct = 0;
-  if (totalPie > 0) {
-    nacientePct = Math.round((naciente / totalPie) * 100);
-    crecientePct = Math.round((creciente / totalPie) * 100);
-    inspiradoraPct = 100 - nacientePct - crecientePct;
-  }
+  // Porcentaje de cada estado respecto al total general
+  const nacientePct = total > 0 ? Math.round((naciente / total) * 100) : 0;
+  const crecientePct = total > 0 ? Math.round((creciente / total) * 100) : 0;
+  const inspiradoraPct = total > 0 ? Math.round((inspiradora / total) * 100) : 0;
 
   const colorNaciente = "#EC1562";
   const colorCreciente = "#3EC6FA";
   const colorInspiradora = "#F3F3F3";
 
- const cx = 130, cy = 130, r = 110, labelR = 75;
+  // Datos para la torta con recharts (los valores siguen siendo absolutos, pero la etiqueta será el porcentaje respecto al total)
+  const pieData = [
+    { name: 'Naciente', value: naciente, color: colorNaciente, percent: nacientePct },
+    { name: 'Creciente', value: creciente, color: colorCreciente, percent: crecientePct },
+    { name: 'Inspiradora', value: inspiradora, color: colorInspiradora, percent: inspiradoraPct },
+  ];
 
-  const inspiradoraAngle = totalPie > 0 ? (inspiradora / totalPie) * 360 : 0;
-  const crecienteAngle = totalPie > 0 ? (creciente / totalPie) * 360 : 0;
-  const nacienteAngle = totalPie > 0 ? 360 - inspiradoraAngle - crecienteAngle : 0;
+  // Etiqueta personalizada para mostrar porcentaje respecto al total general
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, index }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.7;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const percent = pieData[index]?.percent;
+    return (
+      percent > 0 ? (
+        <text x={x} y={y} fill="#222" fontSize={22} fontWeight="bold" textAnchor="middle" dominantBaseline="central">
+          {`${percent}%`}
+        </text>
+      ) : null
+    );
+  };
 
-  function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number) {
-    const start = polarToCartesian(cx, cy, r, endAngle);
-    const end = polarToCartesian(cx, cy, r, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-    return [
-      "M", start.x, start.y,
-      "A", r, r, 0, largeArcFlag, 0, end.x, end.y,
-      "L", cx, cy,
-      "Z"
-    ].join(" ");
-  }
 
-  function polarToCartesian(cx: number, cy: number, r: number, angle: number) {
-    const rad = (angle - 90) * Math.PI / 180.0;
-    return {
-      x: cx + r * Math.cos(rad),
-      y: cy + r * Math.sin(rad)
-    };
-  }
-
-  let startAngle = -90;
-
-  const inspiradoraPath = describeArc(cx, cy, r, startAngle, startAngle + inspiradoraAngle);
-  const inspiradoraMid = polarToCartesian(cx, cy, labelR, startAngle + inspiradoraAngle / 2);
-  startAngle += inspiradoraAngle;
-
-  const crecientePath = describeArc(cx, cy, r, startAngle, startAngle + crecienteAngle);
-  const crecienteMid = polarToCartesian(cx, cy, labelR, startAngle + crecienteAngle / 2);
-  startAngle += crecienteAngle;
-
-  const nacientePath = describeArc(cx, cy, r, startAngle, startAngle + nacienteAngle);
-  const nacienteMid = polarToCartesian(cx, cy, labelR, startAngle + nacienteAngle / 2);
+  // Eliminados cálculos de ángulos personalizados y totalPie, ya no se usan
 
   return (
     <div className="flex flex-col gap-8 w-full">
@@ -148,7 +132,7 @@ const Tracking = () => {
             experiencias con plan de mejoramiento
           </p>
           <p className="text-3xl font-bold text-black">
-            {percent(trackingData?.totalExperiencesWithComments)}%
+            {total > 0 ? Math.round((trackingData?.totalExperiencesWithComments || 0) / total * 100) : 0}%
           </p>
         </div>
 
@@ -157,7 +141,7 @@ const Tracking = () => {
             Cantidad de docentes formados mediante las rutas a la significación
           </p>
           <p className="text-3xl font-bold text-black">
-            {percent(trackingData?.totalTeachersRegistered)}%
+            {total > 0 ? Math.round((trackingData?.totalTeachersRegistered || 0) / total * 100) : 0}%
           </p>
         </div>
 
@@ -166,7 +150,7 @@ const Tracking = () => {
             Número de experiencias que participan en eventos o convocatorias en la actual vigencia
           </p>
           <p className="text-3xl font-bold text-black">
-            {percent(trackingData?.totalExperiencesTestsKnow)}%
+            {total > 0 ? Math.round((trackingData?.totalExperiencesTestsKnow || 0) / total * 100) : 0}%
           </p>
         </div>
 
@@ -175,7 +159,7 @@ const Tracking = () => {
             Instituciones educativas que registraron experiencias
           </p>
           <p className="text-3xl font-bold text-black">
-            {percent(trackingData?.totalInstitutionsWithExperiences)}%
+            {total > 0 ? Math.round((trackingData?.totalInstitutionsWithExperiences || 0) / total * 100) : 0}%
           </p>
         </div>
       </div>
@@ -279,42 +263,43 @@ const Tracking = () => {
           </div>
         </div>
 
-        {/* TORTA */}
+        {/* TORTA con recharts */}
         <div className="bg-white rounded-xl p-8 flex flex-col items-center shadow w-full max-w-xl">
-          <svg width="260" height="260" viewBox="0 0 260 260">
-            <path d={nacientePath} fill={colorNaciente} />
-            <path d={crecientePath} fill={colorCreciente} />
-            <path d={inspiradoraPath} fill={colorInspiradora} />
-
-            <text x={nacienteMid.x} y={nacienteMid.y + 10}
-              textAnchor="middle" fontSize="32" fontWeight="bold">
-              {nacientePct}%
-            </text>
-
-            <text x={crecienteMid.x} y={crecienteMid.y + 10}
-              textAnchor="middle" fontSize="32" fontWeight="bold">
-              {crecientePct}%
-            </text>
-
-            <text x={inspiradoraMid.x} y={inspiradoraMid.y + 10}
-              textAnchor="middle" fontSize="32" fontWeight="bold">
-              {inspiradoraPct}%
-            </text>
-          </svg>
-
-          <div className="flex flex-col items-start gap-3 mt-6">
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full" style={{background: colorNaciente}}></span>
-              <span className="text-base">Naciente</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full" style={{background: colorCreciente}}></span>
-              <span className="text-base">Creciente</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full" style={{background: colorInspiradora}}></span>
-              <span className="text-base">Inspiradora</span>
-            </div>
+          {/* Rueda arriba */}
+          <ResponsiveContainer width={320} height={320} minWidth={260} minHeight={260}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={70}
+                outerRadius={120}
+                label={renderCustomizedLabel}
+                labelLine={false}
+                isAnimationActive={true}
+              >
+                {pieData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value, name) => [`${value}`, name]} />
+            </PieChart>
+          </ResponsiveContainer>
+          {/* Leyenda debajo, alineada a la izquierda */}
+          <div className="w-full flex justify-start mt-8">
+            <ul className="flex flex-col items-start gap-4">
+              {pieData.map((entry, index) => (
+                <li key={`item-${index}`} className="flex items-center gap-3">
+                  <span
+                    className="block w-6 h-6 rounded-full border border-gray-200 shadow"
+                    style={{ backgroundColor: entry.color }}
+                  ></span>
+                  <span className="text-lg text-gray-800 font-medium">{entry.name}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
