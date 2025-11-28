@@ -1,310 +1,375 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Joyride from 'react-joyride';
-import { FiShield, FiSearch, FiChevronLeft, FiChevronRight, FiFilter } from 'react-icons/fi';
+import { FiShield, FiSearch, FiChevronLeft, FiChevronRight, FiFilter, FiDownload } from 'react-icons/fi';
 import { Evaluation as EvaluationBase } from '../evaluation/types/evaluation';
 import { informationTourSteps, informationTourLocale, informationTourStyles } from '../onboarding/informationTour';
+import { ArrowPathIcon, CheckCircleIcon, MinusCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline'; // Iconos modernos
 
 // Extiende el tipo para aceptar los campos que llegan del backend
 type Evaluation = EvaluationBase & {
-	id?: number;
-	experience?: { name?: string } | null;
+    id?: number;
+    experience?: { name?: string } | null;
 };
 
 // Tipo para experiencia
 type Experience = {
-  id: number;
-  name: string;
+    id: number;
+    name: string;
 };
 
+// =========================================================================
+// Componente de Fila/Card de Evaluación (Responsiveness aquí)
+// =========================================================================
+
+type NormalizedRow = Evaluation & { experienceName: string, evaluationId?: number | string };
+
+const EvaluationRow: React.FC<{ ev: NormalizedRow, idx: number }> = ({ ev, idx }) => {
+    // Helper para determinar el estado visual
+    const renderStateBadge = (rawState: any) => {
+        const stateStr = String(rawState ?? '').toLowerCase();
+        
+        let color = 'bg-yellow-100 text-yellow-700';
+        let label = stateStr || 'Pendiente';
+
+        if (stateStr === 'true' || stateStr === '1' || stateStr === 'activo') {
+            color = 'bg-emerald-100 text-emerald-700';
+            label = 'Activo';
+        } else if (stateStr === 'false' || stateStr === '0' || stateStr === 'inactivo') {
+            color = 'bg-rose-100 text-rose-700';
+            label = 'Inactivo';
+        }
+
+        return <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${color}`}>{label}</span>;
+    };
+
+    return (
+        // Estilo de fila/card: oculta las etiquetas en desktop y las muestra en móvil
+        <div key={ev.id ?? ev.evaluationId ?? idx} 
+             className="grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-6 items-center py-4 px-4 border-b border-gray-100 transition hover:bg-sky-50/50">
+            
+            {/* Columna 1: Nombre de experiencia */}
+            <div className="font-semibold text-gray-800 truncate col-span-1 md:text-left">
+                <span className="md:hidden text-xs font-medium text-gray-500 block mb-1">Experiencia:</span>
+                {ev.experienceName || '-'}
+            </div>
+
+            {/* Columna 2: Rol de acompañamiento */}
+            <div className="text-sm text-gray-700 col-span-1 md:text-left">
+                <span className="md:hidden text-xs font-medium text-gray-500 block mb-1">Rol de Acompañamiento:</span>
+                {ev.accompanimentRole ?? '-'}
+            </div>
+
+            {/* Columna 3: Tipo de Evaluación */}
+            <div className="text-sm text-gray-700 col-span-1 md:text-left">
+                <span className="md:hidden text-xs font-medium text-gray-500 block mb-1">Tipo:</span>
+                <span className="font-medium text-sky-700">{ev.typeEvaluation ?? '-'}</span>
+            </div>
+
+            {/* Columna 4: PDF */}
+            <div className="text-center col-span-1 md:text-center">
+                <span className="md:hidden text-xs font-medium text-gray-500 block mb-1">Documento:</span>
+                {ev.urlEvaPdf ? (
+                    <a
+                        href={ev.urlEvaPdf}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center bg-red-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm shadow-md hover:bg-red-700 transition-all min-w-[100px]"
+                        title="Ver Documento de Evaluación"
+                    >
+                        <DocumentTextIcon className="w-4 h-4 mr-1" />
+                        PDF
+                    </a>
+                ) : (
+                    <span className="inline-block text-gray-400 font-semibold text-sm" style={{ minWidth: 100 }}>Sin Documento</span>
+                )}
+            </div>
+
+            {/* Columna 5: Inhabilitar/Habilitar (Estado) */}
+            <div className="text-center col-span-1 md:text-center">
+                <span className="md:hidden text-xs font-medium text-gray-500 block mb-1">Estado (Toggle):</span>
+                {renderStateBadge(ev.stateId)}
+            </div>
+        </div>
+    );
+};
+
+// =========================================================================
+// Componente Principal: Information
+// =========================================================================
+
 const Information = () => {
-	const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
-	const [filtered, setFiltered] = useState<Evaluation[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-	const [search, setSearch] = useState('');
-	const [page, setPage] = useState(1);
-	const pageSize = 6;
-	const [initialCount, setInitialCount] = useState(0);
-	const [finalCount, setFinalCount] = useState(0);
-	const [sinCount, setSinCount] = useState(0);
-	const [active, setActive] = useState<'inicial'|'final'|'sin'>('inicial');
-	const [experiences, setExperiences] = useState<Experience[]>([]);
-	const [runTour, setRunTour] = useState(false);
+    const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+    const [filtered, setFiltered] = useState<Evaluation[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const pageSize = 6;
+    const [initialCount, setInitialCount] = useState(0);
+    const [finalCount, setFinalCount] = useState(0);
+    const [sinCount, setSinCount] = useState(0);
+    const [active, setActive] = useState<'inicial'|'final'|'sin'|'all'>('inicial');
+    const [experiences, setExperiences] = useState<Experience[]>([]);
+    const [runTour, setRunTour] = useState(false);
+    const tourKey = 'informationTourDone';
 
-	// Nuevo: función para filtrar y consumir endpoint según la tarjeta (sin getAll)
-	const fetchFilteredEvaluations = async (type: 'inicial'|'final'|'sin'|'all') => {
- 		setActive(type);
- 		setPage(1);
- 		setLoading(true);
- 		setError(null);
- 		try {
- 			const token = localStorage.getItem('token');
- 			const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
- 			let url = '';
- 			if (type === 'inicial') url = '/api/Evaluation/filter/inicial';
- 			else if (type === 'final') url = '/api/Evaluation/filter/final';
- 			else url = '/api/Evaluation/filter/sin-evaluacion';
- 			const res = await fetch(`${API_BASE}${url}`, {
- 				headers: {
- 					'Content-Type': 'application/json',
- 					...(token ? { Authorization: `Bearer ${token}` } : {}),
- 				},
- 			});
- 			if (!res.ok) throw new Error('Error al filtrar');
- 			const response = await res.json();
- 			const data = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
- 			setFiltered(data);
- 		} catch (e: any) {
- 			setError(e.message || 'Error al filtrar');
- 			setFiltered([]);
- 		} finally {
- 			setLoading(false);
- 		}
-	};
 
-	// Elimina getAll: por defecto carga inicial
-	useEffect(() => {
-		fetchFilteredEvaluations('inicial');
-	}, []);
+    // Nuevo: función para filtrar y consumir endpoint según la tarjeta (sin getAll)
+    const fetchFilteredEvaluations = async (type: 'inicial'|'final'|'sin'|'all') => {
+        if (type !== 'all') {
+            setActive(type);
+        }
+        setPage(1);
+        setLoading(true);
+        setError(null);
+        try {
+            const token = localStorage.getItem('token');
+            const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+            let url = '';
+            if (type === 'inicial') url = '/api/Evaluation/filter/inicial';
+            else if (type === 'final') url = '/api/Evaluation/filter/final';
+            else url = '/api/Evaluation/filter/sin-evaluacion';
+            const res = await fetch(`${API_BASE}${url}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+            });
+            if (!res.ok) throw new Error('Error al filtrar');
+            const response = await res.json();
+            const data = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
+            setEvaluations(data); // Actualiza la lista principal
+        } catch (e: any) {
+            setError(e.message || 'Error al filtrar');
+            setEvaluations([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-	useEffect(() => {
-		if (!loading && !runTour && !localStorage.getItem('informationTourDone')) {
-			const timer = window.setTimeout(() => setRunTour(true), 600);
-			return () => window.clearTimeout(timer);
-		}
-	}, [loading, runTour]);
+    // Elimina getAll: por defecto carga inicial
+    useEffect(() => {
+        fetchFilteredEvaluations('inicial');
+    }, []);
 
-	useEffect(() => {
-		const fetchCounts = async () => {
-			try {
-				const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-				const token = localStorage.getItem('token');
-				const get = async (url: string) => {
-					const res = await fetch(`${API_BASE}${url}`, {
-						headers: {
-							'Content-Type': 'application/json',
-							...(token ? { Authorization: `Bearer ${token}` } : {}),
-						},
-					});
-					if (!res.ok) return 0;
-					const d = await res.json();
-					if (Array.isArray(d)) return d.length;
-					if (typeof d === 'number') return d;
-					if (typeof d === 'object' && typeof d.count === 'number') return d.count;
-					return 0;
-				};
-				setInitialCount(await get('/api/Evaluation/filter/inicial'));
-				setFinalCount(await get('/api/Evaluation/filter/final'));
-				setSinCount(await get('/api/Evaluation/filter/sin-evaluacion'));
-			} catch {}
-		};
-		fetchCounts();
-	}, []);
+    useEffect(() => {
+        if (!loading && !runTour && !localStorage.getItem(tourKey)) {
+            const timer = window.setTimeout(() => setRunTour(true), 600);
+            return () => window.clearTimeout(timer);
+        }
+    }, [loading, runTour, tourKey]);
 
-// handleCard ya no es necesario, usamos fetchFilteredEvaluations
+    useEffect(() => {
+        const fetchCounts = async () => {
+            try {
+                const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+                const token = localStorage.getItem('token');
+                const get = async (url: string) => {
+                    const res = await fetch(`${API_BASE}${url}`, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        },
+                    });
+                    if (!res.ok) return 0;
+                    const d = await res.json();
+                    if (Array.isArray(d)) return d.length;
+                    if (typeof d === 'number') return d;
+                    if (typeof d === 'object' && typeof d.count === 'number') return d.count;
+                    return 0;
+                };
+                setInitialCount(await get('/api/Evaluation/filter/inicial'));
+                setFinalCount(await get('/api/Evaluation/filter/final'));
+                setSinCount(await get('/api/Evaluation/filter/sin-evaluacion'));
+            } catch {}
+        };
+        fetchCounts();
+    }, []);
 
-	useEffect(() => {
-		if (!search) {
-			setFiltered(evaluations);
-			setPage(1);
-			return;
-		}
-		setFiltered(
-			evaluations.filter(ev => {
-				// Busca el nombre de la experiencia por el id
-				const expName = experiences.find(e => e.id === ev.experienceId)?.name
-					|| ev.experienceName
-					|| (ev.experience && typeof ev.experience === 'object' && 'name' in ev.experience ? (ev.experience as { name?: string }).name : undefined)
-					|| '';
-				return expName.toLowerCase().includes(search.toLowerCase());
-			})
-		);
-		setPage(1);
-	}, [search, evaluations, experiences]);
+    // Aplica la búsqueda al cambiar la lista principal o el término
+    useEffect(() => {
+        if (!search) {
+            setFiltered(evaluations);
+            setPage(1);
+            return;
+        }
+        setFiltered(
+            evaluations.filter(ev => {
+                const expName = ev.experienceName
+                    || (ev.experience && typeof ev.experience === 'object' && 'name' in ev.experience ? (ev.experience as { name?: string }).name : undefined)
+                    || '';
+                return expName.toLowerCase().includes(search.toLowerCase());
+            })
+        );
+        setPage(1);
+    }, [search, evaluations]);
 
-	const totalPages = Math.ceil(filtered.length / pageSize) || 1;
-	// Normaliza la estructura para mostrar correctamente los datos anidados de evaluations[]
-	const normalizedRows = filtered.flatMap((item: any) => {
-	  if (Array.isArray(item.evaluations) && item.evaluations.length > 0) {
-	    return item.evaluations.map((ev: any) => ({
-	      ...ev,
-	      experienceName: item.name || item.nameExperiences || item.experienceName || '-',
-	    }));
-	  }
-	  // Si no hay evaluations, intenta mostrar el item como evaluación directa
-	  return [{
-	    ...item,
-	    experienceName: item.name || item.nameExperiences || item.experienceName || '-',
-	  }];
-	});
-	const paginated = normalizedRows.slice((page-1)*pageSize, page*pageSize);
 
-	return (
-		<div className="p-6 min-h-[70vh] bg-[#f6f8fb] information-layout">
-			<Joyride
-				steps={informationTourSteps}
-				run={runTour}
-				continuous
-				showSkipButton
-				locale={informationTourLocale}
-				styles={informationTourStyles}
-				callback={(data) => {
-					if (data.status === 'finished' || data.status === 'skipped') {
-						setRunTour(false);
-						localStorage.setItem('informationTourDone', 'true');
-					}
-				}}
-			/>
-			<div className="max-w-6xl mx-auto bg-white rounded-2xl p-8 shadow">
-				<div className="mb-2 information-header">
-					<h1 className="text-3xl font-bold text-gray-800 mb-1">Gestión de evaluación</h1>
-					<p className="text-gray-500 mb-6">Optimiza la eficiencia de la evaluación</p>
-				</div>
-				
-				<div className="flex gap-4 mb-6 information-summary-cards">
-					<SummaryCard
-						title="Evaluación inicial"
-						count={initialCount}
-						active={active === 'inicial'}
-						onClick={() => fetchFilteredEvaluations('inicial')}
-					/>
-					<SummaryCard
-						title="Evaluación final"
-						count={finalCount}
-						active={active === 'final'}
-						onClick={() => fetchFilteredEvaluations('final')}
-					/>
-					<SummaryCard
-						title="Sin evaluar"
-						count={sinCount}
-						active={active === 'sin'}
-						onClick={() => fetchFilteredEvaluations('sin')}
-					/>
-				</div>
-				{/* Barra de búsqueda y filtro */}
-				<div className="flex items-center mb-4 information-search-bar">
-					<div className="relative flex-1">
-						<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-						<input
-							className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-[#f6f8fb] focus:outline-none focus:ring-2 focus:ring-sky-200"
-							placeholder="Buscar por nombre de experiencia..."
-							value={search}
-							onChange={e => setSearch(e.target.value)}
-						/>
-					</div>
-				</div>
-				   {/* Tabla */}
-				   <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow information-table">
-					   <table className="min-w-full">
-						   <thead>
-							   <tr className="bg-[#e8f0fe] text-gray-700 text-base">
-								   <th className="py-3 px-6 text-left font-semibold rounded-tl-2xl">Nombre de experiencia</th>
-								   <th className="py-3 px-6 text-left font-semibold">Rol de acompañamiento</th>
-								   <th className="py-3 px-6 text-left font-semibold">Tipo de Evaluación</th>
-								   <th className="py-3 px-6 text-center font-semibold">PDF</th>
-								   <th className="py-3 px-6 text-center font-semibold">Inhabilitar/Habilitar</th>
-							   </tr>
-						   </thead>
-						   <tbody>
-							   {loading ? (
-								   <tr><td colSpan={5} className="py-6 text-center text-gray-400">Cargando evaluaciones...</td></tr>
-							   ) : error ? (
-								   <tr><td colSpan={5} className="py-6 text-center text-red-500">{error}</td></tr>
-							   ) : paginated.length === 0 ? (
-								   <tr><td colSpan={5} className="py-6 text-center text-gray-400">No hay evaluaciones</td></tr>
-							   ) : (
-								   paginated.map((ev, idx) => (
-									   <tr key={ev.id ?? ev.evaluationId ?? idx} className="bg-white border-b border-gray-200 last:border-b-0 transition hover:bg-gray-50">
-										   <td className="py-4 px-6 font-semibold text-gray-800">{ev.experienceName || '-'}</td>
-										   <td className="py-4 px-6">{ev.accompanimentRole ?? '-'}</td>
-										   <td className="py-4 px-6">{ev.typeEvaluation ?? '-'}</td>
-										   <td className="py-4 px-6 text-center">
-											   {ev.urlEvaPdf ? (
-												   <a
-													   href={ev.urlEvaPdf}
-													   target="_blank"
-													   rel="noopener noreferrer"
-													   className="inline-block bg-red-600 text-white px-6 py-2 rounded font-semibold shadow hover:bg-red-700 transition-all"
-													   style={{ minWidth: 100 }}
-												   >
-													   Ver PDF
-												   </a>
-											   ) : (
-												   <span className="inline-block text-gray-400 font-semibold" style={{ minWidth: 100 }}>Sin PDF</span>
-											   )}
-										   </td>
-										   <td className="py-4 px-6 text-center">
-											   {(() => {
-												   const rawState = ev.stateId ?? (ev as any).State ?? (ev as any).state;
-												   const stateStr = String(rawState).toLowerCase();
-												   if (stateStr === 'true' || stateStr === '1') {
-													   return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Activo</span>;
-												   }
-												   if (stateStr === 'false' || stateStr === '0') {
-													   return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Inactivo</span>;
-												   }
-												   return <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">{stateStr || '-'}</span>;
-											   })()}
-										   </td>
-									   </tr>
-								   ))
-							   )}
-						   </tbody>
-					   </table>
-				   </div>
-				{/* Paginación */}
-				<div className="flex items-center justify-between mt-4 text-sm text-gray-500 information-pagination">
-					<div>Mostrando {paginated.length} evaluaciones</div>
-					<div className="flex items-center gap-1">
-						<button
-							className={`px-2 py-1 rounded ${page === 1 ? 'text-gray-300' : 'hover:bg-gray-200'}`}
-							onClick={() => setPage(p => Math.max(1, p-1))}
-							disabled={page === 1}
-						>
-							<FiChevronLeft /> Anterior
-						</button>
-						{Array.from({length: totalPages}, (_, i) => (
-							<button
-								key={i}
-								className={`px-2 py-1 rounded ${page === i+1 ? 'bg-sky-100 text-sky-700 font-bold' : 'hover:bg-gray-200'}`}
-								onClick={() => setPage(i+1)}
-							>{i+1}</button>
-						))}
-						<button
-							className={`px-2 py-1 rounded ${page === totalPages ? 'text-gray-300' : 'hover:bg-gray-200'}`}
-							onClick={() => setPage(p => Math.min(totalPages, p+1))}
-							disabled={page === totalPages}
-						>
-							Siguiente <FiChevronRight />
-						</button>
-					</div>
-				</div>
-			</div>
-		</div>
-	);
-}
+    // Normaliza y Pagina
+    const normalizedRows = useMemo(() => {
+        return filtered.flatMap((item: any) => {
+            if (Array.isArray(item.evaluations) && item.evaluations.length > 0) {
+                return item.evaluations.map((ev: any) => ({
+                    ...ev,
+                    experienceName: item.name || item.nameExperiences || item.experienceName || '-',
+                }));
+            }
+            return [{
+                ...item,
+                experienceName: item.name || item.nameExperiences || item.experienceName || '-',
+            }];
+        });
+    }, [filtered]);
 
-function SummaryCard({ title, count, active, onClick }: { title: string, count: number, active: boolean, onClick: () => void }) {
-	return (
-		<div
-			className={`flex-1 cursor-pointer rounded-2xl border bg-white px-8 py-5 flex items-center justify-between shadow transition-all ${active ? 'border-sky-500 shadow-lg' : 'border-gray-200'}`}
-			onClick={onClick}
-			style={{ minWidth: 260, maxWidth: 340 }}
-		>
-			<div className="flex items-center gap-3">
-				<div className="flex items-center justify-center w-10 h-10 rounded-full bg-sky-50">
-					<FiShield className="text-sky-400 text-2xl" />
-				</div>
-				<div>
-					<div className="font-semibold text-gray-800 text-base leading-tight">{title}</div>
-					<div className="text-xs text-gray-400 leading-tight">1 de 3 permisos activos</div>
-				</div>
-			</div>
-			<div className="flex items-center">
-				<span className="inline-block w-8 h-8 rounded-full bg-[#e6edfa] text-[#3b4b6b] font-bold text-center leading-8 text-base shadow border border-[#dbeafe]">{count}</span>
-			</div>
-		</div>
-	);
+    const totalItems = normalizedRows.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const paginated = normalizedRows.slice((page-1)*pageSize, page*pageSize);
+
+    // =========================================================================
+    // Componente de Tarjeta Resumen (Mejorado)
+    // =========================================================================
+
+    function SummaryCard({ title, count, active, onClick }: { title: string, count: number, active: boolean, onClick: () => void }) {
+        return (
+            <div
+                className={`flex-1 cursor-pointer rounded-xl border px-6 py-4 flex items-center justify-between shadow-md transition-all duration-300 transform hover:scale-[1.02]
+                    ${active ? 'bg-sky-50 border-sky-600 shadow-xl' : 'bg-white border-gray-200 hover:shadow-lg'}
+                `}
+                onClick={onClick}
+                style={{ minWidth: '30%', maxWidth: '33%' }}
+            >
+                <div className="flex items-center gap-4">
+                    <div className={`flex items-center justify-center w-12 h-12 rounded-xl ${active ? 'bg-sky-600' : 'bg-sky-50'} shadow-sm`}>
+                        <ArrowPathIcon className={`w-6 h-6 ${active ? 'text-white' : 'text-sky-600'}`} />
+                    </div>
+                    <div>
+                        <div className="font-bold text-lg text-gray-800 leading-tight">{title}</div>
+                        <div className="text-sm text-gray-500 leading-tight">Total: {count}</div>
+                    </div>
+                </div>
+                <div className="flex items-center">
+                    <span className={`inline-block w-10 h-10 rounded-full font-extrabold text-center leading-10 text-xl shadow-lg border-2 ${active ? 'bg-white text-sky-700 border-sky-300' : 'bg-gray-100 text-gray-700 border-gray-300'}`}>{count}</span>
+                </div>
+            </div>
+        );
+    }
+    
+    return (
+        <div className="p-4 md:p-8 min-h-[70vh] bg-gray-50 information-layout">
+            <Joyride
+                steps={informationTourSteps}
+                run={runTour}
+                continuous
+                showSkipButton
+                locale={informationTourLocale}
+                styles={informationTourStyles}
+                callback={(data) => {
+                    if (data.status === 'finished' || data.status === 'skipped') {
+                        setRunTour(false);
+                        localStorage.setItem(tourKey, 'true');
+                    }
+                }}
+            />
+            <div className="max-w-6xl mx-auto bg-white rounded-3xl p-4 md:p-8 shadow-2xl">
+                
+                {/* Encabezado */}
+                <div className="mb-8 information-header">
+                    <h1 className="text-3xl font-extrabold text-gray-900 mb-1">Gestión de Evaluaciones</h1>
+                    <p className="text-gray-500">Revisa y optimiza los permisos de evaluación de las experiencias.</p>
+                </div>
+                
+                {/* Tarjetas Resumen (Responsive) */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-8 information-summary-cards">
+                    <SummaryCard
+                        title="Inicial "
+                        count={initialCount}
+                        active={active === 'inicial'}
+                        onClick={() => fetchFilteredEvaluations('inicial')}
+                    />
+                    <SummaryCard
+                        title="Final "
+                        count={finalCount}
+                        active={active === 'final'}
+                        onClick={() => fetchFilteredEvaluations('final')}
+                    />
+                    <SummaryCard
+                        title="Sin Evaluación"
+                        count={sinCount}
+                        active={active === 'sin'}
+                        onClick={() => fetchFilteredEvaluations('sin')}
+                    />
+                </div>
+                
+                {/* Barra de búsqueda y filtro (Responsive) */}
+                <div className="flex flex-col md:flex-row items-center gap-4 mb-8 information-search-bar">
+                    <div className="relative flex-1 w-full">
+                        <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                            className="w-full pl-11 pr-4 py-3 rounded-full border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 shadow-sm"
+                            placeholder="Buscar por nombre de experiencia..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                    </div>
+                </div>
+                
+                {/* Tabla/Cards */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden information-table">
+                    {/* Encabezado de la Tabla (Solo visible en Desktop) */}
+                    <div className="hidden md:grid grid-cols-5 gap-6 items-center bg-gray-100 px-4 py-3 font-semibold text-xs uppercase text-gray-600">
+                        <div className="text-left">Nombre de experiencia</div>
+                        <div className="text-left">Rol de acompañamiento</div>
+                        <div className="text-left">Tipo de Evaluación</div>
+                        <div className="text-center">Documento PDF</div>
+                        <div className="text-center">Estado </div>
+                    </div>
+
+                    {/* Cuerpo de la Tabla/Cards */}
+                    <div className="divide-y divide-gray-100">
+                        {loading ? (
+                            <div className="p-10 text-center text-gray-500">Cargando evaluaciones...</div>
+                        ) : error ? (
+                            <div className="p-10 text-center text-red-600"> {error}</div>
+                        ) : paginated.length === 0 ? (
+                            <div className="p-10 text-center text-gray-500">No hay evaluaciones disponibles para este filtro o búsqueda.</div>
+                        ) : (
+                            paginated.map((ev, idx) => (
+                                <EvaluationRow ev={ev} idx={idx} key={ev.id ?? ev.evaluationId ?? idx} />
+                            ))
+                        )}
+                    </div>
+                </div>
+                
+                {/* Paginación */}
+                {totalItems > 0 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between mt-6 px-2 text-sm text-gray-600 information-pagination">
+                        <div className="mb-3 sm:mb-0">Mostrando {paginated.length} de {totalItems} evaluaciones</div>
+                        <div className="flex items-center gap-1">
+                            <button
+                                className={`flex items-center px-3 py-2 rounded-full font-medium transition ${page === 1 ? 'text-gray-400 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                            >
+                                <FiChevronLeft className="mr-1" /> Anterior
+                            </button>
+                            
+                            <span className="px-3 py-2 rounded-full bg-sky-600 text-white font-bold text-sm">
+                                {page} de {totalPages}
+                            </span>
+                            
+                            <button
+                                className={`flex items-center px-3 py-2 rounded-full font-medium transition ${page === totalPages ? 'text-gray-400 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                            >
+                                Siguiente <FiChevronRight className="ml-1" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }
 
 export default Information;
