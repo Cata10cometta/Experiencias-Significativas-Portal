@@ -347,28 +347,28 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
     if (open) {
       fetchNotifications();
       if (!signalRStarted.current) {
-        startNotificationsHub((notification: any) => {
-          // Normalizar la notificación recibida y agregarla al principio de la lista
-          setNotifications((prev) => [
-            {
-              id: notification.id ?? notification.notificationId ?? notification.requestId ?? null,
-              experienceId:
-                notification.experienceId ??
-                notification.ExperienceId ??
-                notification.experience?.id ??
-                notification.experienceID ??
-                notification.request?.experienceId ??
-                notification.request?.ExperienceId ??
-                null,
-              experienceName: notification.experienceName ?? notification.nameExperiences ?? notification.title ?? notification.experience?.name ?? `Solicitud edición #${notification.id ?? ''}`,
-              userName: notification.userName ?? notification.user?.name ?? notification.requestUser ?? notification.requestedBy ?? notification.username ?? notification.solicitante ?? (notification.request?.userName) ?? '',
-              state: notification.status ?? notification.state ?? notification.requestState ?? notification.estado ?? notification.stateName ?? notification.state?.name ?? 'Pendiente',
-              createdAt: notification.createdAt ?? notification.createdDate ?? notification.date ?? notification.requestedAt ?? null,
+        startNotificationsHub((notification, eventName) => {
+          // Normalizar la notificación recibida y agregarla a la lista solo si es relevante
+          let normalized: NormalizedNotification | null = null;
+          if (eventName === 'ReceiveNotification' || eventName === 'ReceiveExperienceCreated' || eventName === 'ExperienceCreated') {
+            // Notificación de experiencia creada
+            normalized = {
+              id: notification.id ?? notification.notificationId ?? null,
+              experienceId: notification.experienceId ?? notification.ExperienceId ?? null,
+              experienceName: notification.ExperienceName ?? notification.experienceName ?? notification.NameExperiences ?? notification.nameExperiences ?? notification.title ?? '',
+              userName: notification.CreatedBy ?? notification.createdBy ?? notification.userName ?? notification.user?.name ?? '',
+              state: 'Creada',
+              createdAt: notification.Date ?? notification.createdAt ?? new Date().toISOString(),
               raw: notification,
-            },
-            ...prev,
-          ]);
-          if (onCountChange) onCountChange(notifications.length + 1);
+              type: eventName,
+            };
+          } else if (eventName === 'ReceiveExperienceNotification') {
+            normalized = normalizeNotification(notification, eventName);
+          }
+          if (normalized) {
+            setNotifications((prev) => [normalized!, ...prev]);
+            if (onCountChange) onCountChange(notifications.length + 1);
+          }
         });
         signalRStarted.current = true;
       }

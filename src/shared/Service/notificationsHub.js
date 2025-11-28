@@ -11,7 +11,7 @@ const hubUrl = `${apiBase.replace(/\/$/, '')}/notificationsHub`;
 
 let connection = null;
 
- function startNotificationsHub(onNotification) {
+function startNotificationsHub(onNotification) {
   connection = new signalR.HubConnectionBuilder()
     .withUrl(hubUrl, {
       accessTokenFactory: () => localStorage.getItem("token"), // Si usas JWT
@@ -19,10 +19,15 @@ let connection = null;
     .withAutomaticReconnect()
     .build();
 
+  // Permitir compatibilidad con callbacks de uno o dos argumentos
   const forwardNotification = (payload, eventName) => {
     if (typeof onNotification === 'function') {
       try {
-        onNotification(payload, eventName);
+        if (onNotification.length >= 2) {
+          onNotification(payload, eventName);
+        } else {
+          onNotification(payload);
+        }
       } catch (callbackError) {
         console.error('startNotificationsHub callback error', callbackError);
       }
