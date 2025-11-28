@@ -126,9 +126,15 @@ export function buildExperiencePayload({
   // Construir el objeto anidado bajo 'request' con TODOS los campos requeridos SIEMPRE presentes
   // Alternar entre PascalCase y camelCase para los campos requeridos
   // Forzar camelCase y nunca undefined en campos requeridos
+  // Permitir id o experienceId
+  const experienceId = typeof initialData?.id === 'number' && Number.isFinite(initialData.id)
+    ? initialData.id
+    : (typeof initialData?.experienceId === 'number' && Number.isFinite(initialData.experienceId)
+      ? initialData.experienceId
+      : 0);
   return {
     request: {
-      experienceId: typeof initialData?.id === 'number' && Number.isFinite(initialData.id) ? initialData.id : 0,
+      experienceId,
       nameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
       code: initialData?.code || '',
       thematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
@@ -154,6 +160,16 @@ export function buildExperiencePayload({
 }
 import React, { useState, useEffect } from "react";
 import Swal from 'sweetalert2';
+import {
+  handlePatchInstitutional,
+  handlePatchLeaders,
+  handlePatchIdentification,
+  handlePatchThematic,
+  handlePatchComponents,
+  handlePatchFollowUp,
+  handlePatchSupportInfo,
+  handlePatchDocuments
+} from '../services/patchExperience';
 import { getToken } from "../../../Api/Services/Auth";
 import { UpdateExperienceRequest } from '../types/updateExperience';
 import LeadersForm from "./LeadersForm";
@@ -184,8 +200,18 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
         const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
         const endpoint = `${API_BASE}/api/Experience/patch`;
         const token = localStorage.getItem('token') || getToken?.();
-        if (!initialData?.id) {
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        let experienceId = 0;
+        if (typeof initialData?.id === 'number' && Number.isFinite(initialData.id)) {
+          experienceId = initialData.id;
+        } else if (typeof initialData?.experienceId === 'number' && Number.isFinite(initialData.experienceId)) {
+          experienceId = initialData.experienceId;
+        } else if (typeof initialData?.experienceId === 'string' && initialData.experienceId !== '' && !isNaN(Number(initialData.experienceId))) {
+          experienceId = Number(initialData.experienceId);
+        } else if (typeof initialData?.id === 'string' && initialData.id !== '' && !isNaN(Number(initialData.id))) {
+          experienceId = Number(initialData.id);
+        }
+        if (!experienceId) {
+          Swal.fire({ icon: 'error', title: 'Error', text: `No se encontró el ID de la experiencia. initialData: ${JSON.stringify(initialData)}` });
           return;
         }
         const userId = getUserId(token);
@@ -204,14 +230,13 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
         // Mostrar en consola el endpoint y el payload
         console.log('[PATCH experiencia] Endpoint:', endpoint);
         console.log('[PATCH experiencia] Payload:', payload);
-        const USE_WRAPPER = true;
         const res = await fetch(endpoint, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: USE_WRAPPER ? JSON.stringify(payload) : JSON.stringify(payload.request),
+          body: JSON.stringify(payload.request),
         });
         if (!res.ok) {
           const text = await res.text().catch(() => '');
@@ -229,351 +254,117 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
   const [editSection, setEditSection] = useState<number | null>(null);
 
   // Handlers para guardar cambios por sección (stubs, implementar PATCH luego)
-  const handlePatchInstitutional = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      // Alternar entre objeto plano y anidado bajo 'request'
-      const USE_WRAPPER = true; // Cambia a false para probar el objeto plano
-      if (USE_WRAPPER) {
-        console.log('Payload (anidado bajo request):', JSON.stringify(payload, null, 2));
-      } else {
-        console.log('Payload (plano):', JSON.stringify(payload.request, null, 2));
-      }
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: USE_WRAPPER ? JSON.stringify(payload) : JSON.stringify(payload.request),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
+  const onPatchInstitutional = async () => {
+    await handlePatchInstitutional({
+      initialData,
+      identificacionForm,
+      identificacionInstitucional,
+      lideres,
+      nivelesForm,
+      tematicaForm,
+      seguimientoEvaluacion,
+      informacionApoyo,
+      pdfFile
+    });
+    setEditSection(null);
   };
-  const handlePatchLeaders = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
+  const onPatchLeaders = async () => {
+    await handlePatchLeaders({
+      initialData,
+      identificacionForm,
+      identificacionInstitucional,
+      lideres,
+      nivelesForm,
+      tematicaForm,
+      seguimientoEvaluacion,
+      informacionApoyo,
+      pdfFile
+    });
+    setEditSection(null);
   };
-  const handlePatchIdentification = () => {
-    // PATCH para Identificación de la Experiencia usando el payload genérico
-    (async () => {
-      try {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-        const endpoint = `${API_BASE}/api/Experience/patch`;
-        const token = localStorage.getItem('token') || getToken?.();
-        if (!initialData?.id) {
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-          return;
-        }
-        const userId = getUserId(token);
-        const payload = buildExperiencePayload({
-          initialData,
-          identificacionForm,
-          identificacionInstitucional,
-          lideres,
-          nivelesForm,
-          tematicaForm,
-          seguimientoEvaluacion,
-          informacionApoyo,
-          pdfFile,
-          userId
-        });
-        const res = await fetch(endpoint, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          const text = await res.text().catch(() => '');
-          Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-          return;
-        }
-        Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-        setEditSection(null);
-      } catch (err: any) {
-        const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-        Swal.fire({ icon: 'error', title: 'Error', text: msg });
-      }
-    })();
+  const onPatchIdentification = async () => {
+    await handlePatchIdentification({
+      initialData,
+      identificacionForm,
+      identificacionInstitucional,
+      lideres,
+      nivelesForm,
+      tematicaForm,
+      seguimientoEvaluacion,
+      informacionApoyo,
+      pdfFile
+    });
+    setEditSection(null);
   };
-  const handlePatchThematic = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
+  const onPatchThematic = async () => {
+    await handlePatchThematic({
+      initialData,
+      identificacionForm,
+      identificacionInstitucional,
+      lideres,
+      nivelesForm,
+      tematicaForm,
+      seguimientoEvaluacion,
+      informacionApoyo,
+      pdfFile
+    });
+    setEditSection(null);
   };
-  const handlePatchComponents = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token ?? undefined);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
+  const onPatchComponents = async () => {
+    await handlePatchComponents({
+      initialData,
+      identificacionForm,
+      identificacionInstitucional,
+      lideres,
+      nivelesForm,
+      tematicaForm,
+      seguimientoEvaluacion,
+      informacionApoyo,
+      pdfFile
+    });
+    setEditSection(null);
   };
-  const handlePatchFollowUp = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
+  const onPatchFollowUp = async () => {
+    await handlePatchFollowUp({
+      initialData,
+      identificacionForm,
+      identificacionInstitucional,
+      lideres,
+      nivelesForm,
+      tematicaForm,
+      seguimientoEvaluacion,
+      informacionApoyo,
+      pdfFile
+    });
+    setEditSection(null);
   };
-  const handlePatchSupportInfo = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
+  const onPatchSupportInfo = async () => {
+    await handlePatchSupportInfo({
+      initialData,
+      identificacionForm,
+      identificacionInstitucional,
+      lideres,
+      nivelesForm,
+      tematicaForm,
+      seguimientoEvaluacion,
+      informacionApoyo,
+      pdfFile
+    });
+    setEditSection(null);
   };
-  const handlePatchDocuments = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
+  const onPatchDocuments = async () => {
+    await handlePatchDocuments({
+      initialData,
+      identificacionForm,
+      identificacionInstitucional,
+      lideres,
+      nivelesForm,
+      tematicaForm,
+      seguimientoEvaluacion,
+      informacionApoyo,
+      pdfFile
+    });
+    setEditSection(null);
   };
   const [errorMessage, setErrorMessage] = useState("");
   const [currentStep, setCurrentStep] = useState<number>(0);
