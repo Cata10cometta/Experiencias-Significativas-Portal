@@ -7,6 +7,12 @@ interface SupportInformationFormProps {
 }
 
 const SupportInformationForm: React.FC<SupportInformationFormProps> = ({ value, onChange }) => {
+  // Validación de campos obligatorios
+  const requiredFields = [value.monitoringEvaluation, value.sustainability];
+  const isFieldEmpty = (field: any) => {
+    return field === undefined || field === null || String(field).trim() === "";
+  };
+  const hasErrors = requiredFields.some(isFieldEmpty);
 
   return (
     <div className=" mb-6">
@@ -26,7 +32,7 @@ const SupportInformationForm: React.FC<SupportInformationFormProps> = ({ value, 
                 value={opt.id}
                 checked={String(value.monitoringEvaluation || "") === opt.id}
                 onChange={() => onChange({ ...value, monitoringEvaluation: opt.id })}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty(value.monitoringEvaluation) ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>
@@ -48,7 +54,7 @@ const SupportInformationForm: React.FC<SupportInformationFormProps> = ({ value, 
                 value={opt.id}
                 checked={String(value.sustainability || "") === opt.id}
                 onChange={() => onChange({ ...value, sustainability: opt.id })}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty(value.sustainability) ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>

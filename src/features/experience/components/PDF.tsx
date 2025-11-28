@@ -75,6 +75,13 @@ const PDFUploader: React.FC<{
     else fileInputRef2.current?.click();
   };
 
+  // Validación de campos obligatorios
+  const requiredFields = [value.urlPdfExperience, value.urlPdf, value.urlLink];
+  const isFieldEmpty = (field: any) => {
+    return field === undefined || field === null || String(field).trim() === "";
+  };
+  const hasErrors = requiredFields.some(isFieldEmpty);
+
   return (
     <div>
       {errorMessage && (
@@ -89,7 +96,7 @@ const PDFUploader: React.FC<{
 
         {/* Primer PDF: Proyecto Experiencia Significativa */}
         <div
-          className="bg-gray-50 border rounded-xl flex flex-col justify-center items-center h-56 cursor-pointer relative"
+          className={`bg-gray-50 border rounded-xl flex flex-col justify-center items-center h-56 cursor-pointer relative ${isFieldEmpty(value.urlPdfExperience) ? "border-red-500" : ""}`}
           onClick={() => handleClick(1)}
           onDrop={(e) => handleDrop(e, 1)}
           onDragOver={(e) => e.preventDefault()}
@@ -131,7 +138,7 @@ const PDFUploader: React.FC<{
 
         {/* Segundo PDF: Oficio de presentación */}
         <div
-          className="bg-gray-50 border rounded-xl flex flex-col justify-center items-center h-56 cursor-pointer relative"
+          className={`bg-gray-50 border rounded-xl flex flex-col justify-center items-center h-56 cursor-pointer relative ${isFieldEmpty(value.urlPdf) ? "border-red-500" : ""}`}
           onClick={() => handleClick(2)}
           onDrop={(e) => handleDrop(e, 2)}
           onDragOver={(e) => e.preventDefault()}
@@ -179,7 +186,7 @@ const PDFUploader: React.FC<{
           Registre los enlaces públicos donde se encuentre alojada la experiencia significativa (videos, blogs, página web).
         </p>
         <textarea
-          className="w-full border rounded p-2"
+          className={`w-full border rounded p-2 ${isFieldEmpty(value.urlLink) ? "border-red-500" : ""}`}
           rows={2}
           value={value?.urlLink ?? ""}
           onChange={(e) => {

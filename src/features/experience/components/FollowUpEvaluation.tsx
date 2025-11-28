@@ -15,7 +15,17 @@ const FollowUpEvaluation: React.FC<FollowUpEvaluationProps> = ({ value, onChange
     return text.length >= max ? "text-green-500" : "text-red-500";
   };
 
-  // (antes se usaban como textareas; ahora son radios 'si'/'no')
+  // Validación de campos obligatorios
+  const requiredFields = [
+    (value as any).summary?.[0]?.monitoringEvaluation,
+    value.metaphoricalPhrase,
+    value.testimony,
+    value.followEvaluation
+  ];
+  const isFieldEmpty = (field: any) => {
+    return field === undefined || field === null || String(field).trim() === "";
+  };
+  const hasErrors = requiredFields.some(isFieldEmpty);
 
   return (
     <div className=" mb-6">
@@ -42,7 +52,7 @@ const FollowUpEvaluation: React.FC<FollowUpEvaluationProps> = ({ value, onChange
                   };
                   onChange({ ...value, summary: [newSummary] } as unknown as SupportInformation);
                 }}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty((value as any).summary?.[0]?.monitoringEvaluation) ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>
@@ -67,7 +77,7 @@ const FollowUpEvaluation: React.FC<FollowUpEvaluationProps> = ({ value, onChange
                 onChange={() => {
                   onChange({ ...value, metaphoricalPhrase: opt.id } as SupportInformation);
                 }}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty(value.metaphoricalPhrase) ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>
@@ -92,7 +102,7 @@ const FollowUpEvaluation: React.FC<FollowUpEvaluationProps> = ({ value, onChange
                 onChange={() => {
                   onChange({ ...value, testimony: opt.id } as SupportInformation);
                 }}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty(value.testimony) ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>
@@ -117,7 +127,7 @@ const FollowUpEvaluation: React.FC<FollowUpEvaluationProps> = ({ value, onChange
                 onChange={() => {
                   onChange({ ...value, followEvaluation: opt.id } as SupportInformation);
                 }}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty(value.followEvaluation) ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>

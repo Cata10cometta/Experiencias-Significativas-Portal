@@ -28,19 +28,14 @@ const LoginPage: React.FC = () => {
     localStorage.removeItem("role");
   }, []);
 
-  useEffect(() => {
-    if (!localStorage.getItem("loginPageTourDone")) {
-      const timer = window.setTimeout(() => setRunTour(true), 600);
-      return () => window.clearTimeout(timer);
-    }
-  }, []);
+  // Eliminar el efecto que muestra la guía automáticamente al cargar la página
 
   const onSubmit = async (data: FormData) => {
     try {
       const response = await login(data.username, data.password);
       // Si el backend devolvió una respuesta con status=false, mostrar el mensaje
       if (response?.data && response.data.status === false) {
-        const serverMsg = response.data.message || "Error en el servidor";
+        const serverMsg = response.data.message || "Usuario o contraseña incorrectos";
         Swal.fire({ title: "Error", text: serverMsg, icon: "error" });
         return;
       }
@@ -100,9 +95,47 @@ const LoginPage: React.FC = () => {
           navigate("/dashboard");
         });
     } catch (err: any) {
-      // Preferir el mensaje enviado por el servidor si existe
-      const serverMessage = err?.response?.data?.message || err?.response?.data || err?.message || "Error desconocido";
-      Swal.fire({ title: "Error", text: typeof serverMessage === 'string' ? serverMessage : JSON.stringify(serverMessage), icon: "error" });
+      // Si el error es de referencia nula o similar, mostrar mensaje claro en español
+      const msg = (err?.response?.data?.message || err?.response?.data || err?.message || "").toString();
+      if (
+        msg.includes("Object reference not set to an instance of an object") ||
+        msg.toLowerCase().includes("not set to an instance") ||
+        msg.toLowerCase().includes("nullreferenceexception")
+      ) {
+        Swal.fire({
+          title: "Usuario no registrado",
+          text: "El usuario no existe en el sistema. Por favor regístrate para crear una cuenta.",
+          icon: "error",
+          confirmButtonText: "Registrarme",
+          showCancelButton: true,
+          cancelButtonText: "Cerrar",
+          customClass: {
+            confirmButton: 'rounded-full px-6 py-2',
+            cancelButton: 'rounded-full px-6 py-2'
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate('/register');
+          }
+        });
+      } else {
+        Swal.fire({
+          title: "Usuario no registrado",
+          text: msg || "El usuario no existe en el sistema. Por favor regístrate para crear una cuenta.",
+          icon: "error",
+          confirmButtonText: "Registrarme",
+          showCancelButton: true,
+          cancelButtonText: "Cerrar",
+          customClass: {
+            confirmButton: 'rounded-full px-6 py-2',
+            cancelButton: 'rounded-full px-6 py-2'
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate('/register');
+          }
+        });
+      }
     }
   };
 

@@ -51,7 +51,7 @@ const LeadersForm: React.FC<LeadersFormProps> = ({ value, onChange, index, error
               <div className="relative">
                 <input
                   placeholder="Nombre(s) y apellido(s)"
-                  className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+                  className={`w-full bg-white border ${(!lider?.nameLeaders || lider?.nameLeaders.trim() === "") ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
                   value={lider?.nameLeaders || ""}
                   maxLength={MAX_CHARACTERS.nameLeaders}
                   onChange={(e) => {
@@ -59,9 +59,6 @@ const LeadersForm: React.FC<LeadersFormProps> = ({ value, onChange, index, error
                     handleChange(actualIndex, "nameLeaders", val);
                   }}
                 />
-                {(errors?.leaderName || errors?.nameLeaders) && (
-                  <p className="text-red-600 text-sm mt-1">{errors.leaderName || errors.nameLeaders}</p>
-                )}
                 <span className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(lider?.nameLeaders || "", MAX_CHARACTERS.nameLeaders)}`}>
                   {lider?.nameLeaders?.length || 0}/{MAX_CHARACTERS.nameLeaders}
                 </span>
@@ -74,16 +71,22 @@ const LeadersForm: React.FC<LeadersFormProps> = ({ value, onChange, index, error
                 <label className="block font-medium">Documentos de identidad <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{8,10}"
                     placeholder="Documento de identidad"
-                    className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+                    className={`w-full bg-white border ${(!lider?.identityDocument || lider?.identityDocument.trim() === "" || lider?.identityDocument.length < 8 || lider?.identityDocument.length > 10) ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
                     value={lider?.identityDocument || ""}
-                    maxLength={MAX_CHARACTERS.identityDocument}
+                    minLength={8}
+                    maxLength={10}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
                       handleChange(actualIndex, "identityDocument", val);
                     }}
                   />
-                  <span className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(lider?.identityDocument || "", MAX_CHARACTERS.identityDocument)}`}>
+                  <span
+                    className={`absolute bottom-2 right-2 text-xs ${lider?.identityDocument && lider.identityDocument.length >= 8 ? "text-green-500" : "text-red-500"}`}
+                  >
                     {lider?.identityDocument?.length || 0}/{MAX_CHARACTERS.identityDocument}
                   </span>
                 </div>
@@ -92,14 +95,14 @@ const LeadersForm: React.FC<LeadersFormProps> = ({ value, onChange, index, error
               <div>
                 <label className="block font-medium">Correo electrónico <span className="text-red-500">*</span></label>
                 <input
+                  type="email"
                   placeholder="Correo electrónico"
-                  className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+                  className={`w-full bg-white border ${(!lider?.email || lider?.email.trim() === "") ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
                   value={lider?.email || ""}
                   onChange={(e) => handleChange(actualIndex, "email", e.target.value)}
+                  pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+                  autoComplete="email"
                 />
-                {(errors?.leaderEmail || errors?.email) && (
-                  <p className="text-red-600 text-sm mt-1">{errors.leaderEmail || errors.email}</p>
-                )}
               </div>
             </div>
 
@@ -110,7 +113,7 @@ const LeadersForm: React.FC<LeadersFormProps> = ({ value, onChange, index, error
                 <div className="relative">
                   <input
                     placeholder="Cargo"
-                    className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+                    className={`w-full bg-white border ${(!lider?.position || lider?.position.trim() === "") ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
                     value={lider?.position || ""}
                     maxLength={MAX_CHARACTERS.position}
                     onChange={(e) => {
@@ -127,17 +130,19 @@ const LeadersForm: React.FC<LeadersFormProps> = ({ value, onChange, index, error
               <div>
                 <label className="block font-medium">Teléfonos de contacto</label>
                 <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Teléfono"
-                  className="w-full bg-white border border-gray-200 rounded-md p-2 mt-1 text-sm"
+                  className={`w-full bg-white border ${(!lider?.phone || lider?.phone.toString().trim() === "" || lider?.phone === 0) ? "border-red-500" : "border-gray-200"} rounded-md p-2 mt-1 text-sm`}
                   value={lider?.phone?.toString() || ""}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "");
+                    const val = e.target.value.replace(/[^0-9]/g, "");
                     handleChange(actualIndex, "phone", val);
                   }}
+                  maxLength={MAX_CHARACTERS.phone}
+                  autoComplete="tel"
                 />
-                {(errors?.leaderPhone || errors?.phone) && (
-                  <p className="text-red-600 text-sm mt-1">{errors.leaderPhone || errors.phone}</p>
-                )}
               </div>
             </div>
           </div>

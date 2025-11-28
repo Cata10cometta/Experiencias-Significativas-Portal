@@ -21,6 +21,21 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
     return text.length >= max ? "text-green-500" : "text-red-500";
   };
 
+  // Validación de campos obligatorios
+  const requiredFields = [
+    "descriptionProblem",
+    "objectiveExperience",
+    "enfoqueExperience",
+    "methodologias",
+    "pmi",
+    "nnaj",
+    "innovationExperience"
+  ];
+  const isFieldEmpty = (field: keyof Objective) => {
+    return value[field] === undefined || value[field] === null || String(value[field]).trim() === "";
+  };
+  const hasErrors = requiredFields.some(field => isFieldEmpty(field as keyof Objective));
+
   return (
     <div className="mb-6">
       <h2 className="text-lg font-semibold mb-4">COMPONENTES</h2>
@@ -35,10 +50,10 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
         </p>
         <textarea
           rows={4}
-          className="w-full border rounded p-2"
+          className={`w-full border rounded p-2 ${isFieldEmpty("descriptionProblem") ? "border-red-500" : ""}`}
           value={value.descriptionProblem || ""}
           onChange={(e) => onChange({ ...value, descriptionProblem: e.target.value })}
-          maxLength={MAX_CHARACTERS.descriptionProblem} // Restricción de caracteres
+          maxLength={MAX_CHARACTERS.descriptionProblem}
         />
         <span
           className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(
@@ -58,10 +73,10 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
         </p>
         <textarea
           rows={3}
-          className="w-full border rounded p-2"
+          className={`w-full border rounded p-2 ${isFieldEmpty("objectiveExperience") ? "border-red-500" : ""}`}
           value={value.objectiveExperience || ""}
           onChange={(e) => onChange({ ...value, objectiveExperience: e.target.value })}
-          maxLength={MAX_CHARACTERS.objectiveExperience} // Restricción de caracteres
+          maxLength={MAX_CHARACTERS.objectiveExperience}
         />
         <span
           className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(
@@ -81,10 +96,10 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
         </p>
         <textarea
           rows={3}
-          className="w-full border rounded p-2"
+          className={`w-full border rounded p-2 ${isFieldEmpty("enfoqueExperience") ? "border-red-500" : ""}`}
           value={value.enfoqueExperience || ""}
           onChange={(e) => onChange({ ...value, enfoqueExperience: e.target.value })}
-          maxLength={MAX_CHARACTERS.enfoqueExperience} // Restricción de caracteres
+          maxLength={MAX_CHARACTERS.enfoqueExperience}
         />
         <span
           className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(
@@ -104,10 +119,10 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
         </p>
         <textarea
           rows={4}
-          className="w-full border rounded p-2"
+          className={`w-full border rounded p-2 ${isFieldEmpty("methodologias") ? "border-red-500" : ""}`}
           value={value.methodologias || ""}
           onChange={(e) => onChange({ ...value, methodologias: e.target.value })}
-          maxLength={MAX_CHARACTERS.methodologias} // Restricción de caracteres
+          maxLength={MAX_CHARACTERS.methodologias}
         />
         <span
           className={`absolute bottom-2 right-2 text-xs ${getCharacterCountStyle(
@@ -134,7 +149,7 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
                 value={opt.id}
                 checked={String(value.pmi || '') === opt.id}
                 onChange={() => onChange({ ...value, pmi: opt.id })}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty("pmi") ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>
@@ -157,7 +172,7 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
                 value={opt.id}
                 checked={String(value.nnaj || '') === opt.id}
                 onChange={() => onChange({ ...value, nnaj: opt.id })}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty("nnaj") ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>
@@ -180,7 +195,7 @@ const Components: React.FC<Props> = ({ value, onChange }) => {
                 value={opt.id}
                 checked={String(value.innovationExperience || '') === opt.id}
                 onChange={() => onChange({ ...value, innovationExperience: opt.id })}
-                className="h-5 w-5 accent-green-600"
+                className={`h-5 w-5 accent-green-600 ${isFieldEmpty("innovationExperience") ? "border-red-500" : ""}`}
               />
               <span className="leading-tight">{opt.label}</span>
             </label>

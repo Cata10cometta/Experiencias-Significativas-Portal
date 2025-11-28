@@ -1212,6 +1212,13 @@ Population: Array.isArray(tematicaForm.Population)
       if (!inst.nameRector || String(inst.nameRector).trim() === "") errors.nameRector = "Nombre del rector es obligatorio";
       if (!inst.departament || String(inst.departament).trim() === "") errors.departament = "Departamento es obligatorio";
       if (!inst.municipality || String(inst.municipality).trim() === "") errors.municipality = "Municipio es obligatorio";
+      if (!inst.eZone || String(inst.eZone).trim() === "") errors.eZone = "Zona del EE es obligatoria";
+      if (!inst.address || String(inst.address).trim() === "") errors.address = "Dirección es obligatoria";
+      if (!inst.phone || String(inst.phone).trim() === "") errors.phone = "Teléfonos de contacto es obligatorio";
+      if (!inst.emailInstitucional || String(inst.emailInstitucional).trim() === "") errors.emailInstitucional = "Correo institucional es obligatorio";
+      if (!inst.caracteristic || String(inst.caracteristic).trim() === "") errors.caracteristic = "Características del EE es obligatorio";
+      if (!inst.territorialEntity || String(inst.territorialEntity).trim() === "") errors.territorialEntity = "Entidad Territorial Certificada (ETC) es obligatoria";
+      if (!inst.testsKnow || String(inst.testsKnow).trim() === "") errors.testsKnow = "Debe seleccionar si participará en el evento Compartir de Saberes";
 
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
@@ -1226,7 +1233,10 @@ Population: Array.isArray(tematicaForm.Population)
       const leader = (lideres && lideres[0]) || {};
       const errors: Record<string, string> = {};
       if (!leader.nameLeaders || String(leader.nameLeaders).trim() === "") errors.leaderName = "Nombre del líder es obligatorio";
+      if (!leader.identityDocument || String(leader.identityDocument).trim() === "") errors.identityDocument = "Documento de identidad es obligatorio";
       if (!leader.email || String(leader.email).trim() === "") errors.leaderEmail = "Correo del líder es obligatorio";
+      if (!leader.position || String(leader.position).trim() === "") errors.position = "Cargo es obligatorio";
+      if (!leader.phone || leader.phone === 0 || String(leader.phone).trim() === "") errors.phone = "Teléfono es obligatorio";
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         return false;
@@ -1255,6 +1265,88 @@ Population: Array.isArray(tematicaForm.Population)
       return true;
     }
 
+    // Step 3: Thematic required fields
+    if (currentStep === 3) {
+      const thematic = tematicaForm || {};
+      const errors: Record<string, string> = {};
+      if (!thematic.thematicLocation || !thematic.thematicLineIds || !Array.isArray(thematic.thematicLineIds) || thematic.thematicLineIds.length === 0) errors.thematicLocation = "Debe seleccionar un área principal";
+      if (!thematic.Population || !Array.isArray(thematic.Population) || thematic.Population.length === 0) errors.Population = "Debe seleccionar al menos un modelo educativo";
+      if (!thematic.CrossCuttingProject || !Array.isArray(thematic.CrossCuttingProject) || thematic.CrossCuttingProject.length === 0) errors.CrossCuttingProject = "Debe seleccionar al menos una técnica SENA";
+      if (!thematic.grades || !Array.isArray(thematic.grades) || thematic.grades.length === 0) errors.grades = "Debe seleccionar al menos un grado";
+      if (!thematic.populationGradeIds || !Array.isArray(thematic.populationGradeIds) || thematic.populationGradeIds.length === 0) errors.populationGradeIds = "Debe seleccionar al menos un grupo poblacional";
+      if (!thematic.PedagogicalStrategies || !Array.isArray(thematic.PedagogicalStrategies) || thematic.PedagogicalStrategies.length === 0) errors.PedagogicalStrategies = "Debe seleccionar al menos un apoyo recibido";
+      if (!thematic.Coverage || typeof thematic.Coverage !== "string" || thematic.Coverage.trim() === "") errors.Coverage = "Debe seleccionar una opción de PEI";
+      if (!thematic.recognition || typeof thematic.recognition !== "string" || thematic.recognition.trim() === "") errors.recognition = "Debe seleccionar una opción de reconocimiento";
+      if (!thematic.socialization || !Array.isArray(thematic.socialization) || thematic.socialization.length === 0) errors.socialization = "Debe seleccionar al menos un soporte";
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+    // Step 4: Components required fields
+    if (currentStep === 4) {
+      const obj = objectiveExperience || {};
+      const errors: Record<string, string> = {};
+      if (!obj.descriptionProblem || String(obj.descriptionProblem).trim() === "") errors.descriptionProblem = "Descripción del problema es obligatoria";
+      if (!obj.objectiveExperience || String(obj.objectiveExperience).trim() === "") errors.objectiveExperience = "Objetivo propuesto es obligatorio";
+      if (!obj.enfoqueExperience || String(obj.enfoqueExperience).trim() === "") errors.enfoqueExperience = "Logros obtenidos es obligatorio";
+      if (!obj.methodologias || String(obj.methodologias).trim() === "") errors.methodologias = "Productos generados es obligatorio";
+      if (!obj.pmi || String(obj.pmi).trim() === "") errors.pmi = "Articulación PEI/PMI es obligatoria";
+      if (!obj.nnaj || String(obj.nnaj).trim() === "") errors.nnaj = "Coherencia con contexto es obligatoria";
+      if (!obj.innovationExperience || String(obj.innovationExperience).trim() === "") errors.innovationExperience = "Resultados/impacto es obligatorio";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+    // Step 5: FollowUpEvaluation required fields
+    if (currentStep === 5) {
+      const follow = seguimientoEvaluacion || {};
+      const errors: Record<string, string> = {};
+      const monitoringEvaluation = (follow.summary && follow.summary[0] && follow.summary[0].monitoringEvaluation) || "";
+      if (!monitoringEvaluation || String(monitoringEvaluation).trim() === "") errors.monitoringEvaluation = "Reorganización/actualización es obligatoria";
+      if (!follow.metaphoricalPhrase || String(follow.metaphoricalPhrase).trim() === "") errors.metaphoricalPhrase = "Empoderamiento es obligatorio";
+      if (!follow.testimony || String(follow.testimony).trim() === "") errors.testimony = "Acciones/recursos es obligatorio";
+      if (!follow.followEvaluation || String(follow.followEvaluation).trim() === "") errors.followEvaluation = "Transferencia es obligatoria";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+    // Step 6: SupportInformationForm required fields
+    if (currentStep === 6) {
+      const support = informacionApoyo || {};
+      const errors: Record<string, string> = {};
+      if (!support.monitoringEvaluation || String(support.monitoringEvaluation).trim() === "") errors.monitoringEvaluation = "Referencia para replicar es obligatoria";
+      if (!support.sustainability || String(support.sustainability).trim() === "") errors.sustainability = "Seguimiento/evaluación es obligatoria";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+    // Step 7: PDFUploader required fields
+    if (currentStep === 7) {
+      const pdf = pdfFile || {};
+      const errors: Record<string, string> = {};
+      if (!pdf.urlPdfExperience || String(pdf.urlPdfExperience).trim() === "") errors.urlPdfExperience = "PDF de experiencia es obligatorio";
+      if (!pdf.urlPdf || String(pdf.urlPdf).trim() === "") errors.urlPdf = "PDF de oficio es obligatorio";
+      if (!pdf.urlLink || String(pdf.urlLink).trim() === "") errors.urlLink = "Enlace de divulgación es obligatorio";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
     // Other steps: no mandatory validation by default (can be extended)
     return true;
   };
@@ -1269,12 +1361,22 @@ Population: Array.isArray(tematicaForm.Population)
       if (!inst.nameRector || String(inst.nameRector).trim() === "") return false;
       if (!inst.departament || String(inst.departament).trim() === "") return false;
       if (!inst.municipality || String(inst.municipality).trim() === "") return false;
+      if (!inst.eZone || String(inst.eZone).trim() === "") return false;
+      if (!inst.address || String(inst.address).trim() === "") return false;
+      if (!inst.phone || String(inst.phone).trim() === "") return false;
+      if (!inst.emailInstitucional || String(inst.emailInstitucional).trim() === "") return false;
+      if (!inst.caracteristic || String(inst.caracteristic).trim() === "") return false;
+      if (!inst.territorialEntity || String(inst.territorialEntity).trim() === "") return false;
+      if (!inst.testsKnow || String(inst.testsKnow).trim() === "") return false;
       return true;
     }
     if (currentStep === 1) {
       const leader = (lideres && lideres[0]) || {};
       if (!leader.nameLeaders || String(leader.nameLeaders).trim() === "") return false;
+      if (!leader.identityDocument || String(leader.identityDocument).trim() === "") return false;
       if (!leader.email || String(leader.email).trim() === "") return false;
+      if (!leader.position || String(leader.position).trim() === "") return false;
+      if (!leader.phone || leader.phone === 0 || String(leader.phone).trim() === "") return false;
       return true;
     }
     if (currentStep === 2) {
@@ -1287,6 +1389,52 @@ Population: Array.isArray(tematicaForm.Population)
         (v) => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(Number(v))
       );
       if (!hasDev) return false;
+      return true;
+    }
+    if (currentStep === 3) {
+      const thematic = tematicaForm || {};
+      if (!thematic.thematicLocation || !thematic.thematicLineIds || !Array.isArray(thematic.thematicLineIds) || thematic.thematicLineIds.length === 0) return false;
+      if (!thematic.Population || !Array.isArray(thematic.Population) || thematic.Population.length === 0) return false;
+      if (!thematic.CrossCuttingProject || !Array.isArray(thematic.CrossCuttingProject) || thematic.CrossCuttingProject.length === 0) return false;
+      if (!thematic.grades || !Array.isArray(thematic.grades) || thematic.grades.length === 0) return false;
+      if (!thematic.populationGradeIds || !Array.isArray(thematic.populationGradeIds) || thematic.populationGradeIds.length === 0) return false;
+      if (!thematic.PedagogicalStrategies || !Array.isArray(thematic.PedagogicalStrategies) || thematic.PedagogicalStrategies.length === 0) return false;
+      if (!thematic.Coverage || typeof thematic.Coverage !== "string" || thematic.Coverage.trim() === "") return false;
+      if (!thematic.recognition || typeof thematic.recognition !== "string" || thematic.recognition.trim() === "") return false;
+      if (!thematic.socialization || !Array.isArray(thematic.socialization) || thematic.socialization.length === 0) return false;
+      return true;
+    }
+    if (currentStep === 4) {
+      const obj = objectiveExperience || {};
+      if (!obj.descriptionProblem || String(obj.descriptionProblem).trim() === "") return false;
+      if (!obj.objectiveExperience || String(obj.objectiveExperience).trim() === "") return false;
+      if (!obj.enfoqueExperience || String(obj.enfoqueExperience).trim() === "") return false;
+      if (!obj.methodologias || String(obj.methodologias).trim() === "") return false;
+      if (!obj.pmi || String(obj.pmi).trim() === "") return false;
+      if (!obj.nnaj || String(obj.nnaj).trim() === "") return false;
+      if (!obj.innovationExperience || String(obj.innovationExperience).trim() === "") return false;
+      return true;
+    }
+    if (currentStep === 5) {
+      const follow = seguimientoEvaluacion || {};
+      const monitoringEvaluation = (follow.summary && follow.summary[0] && follow.summary[0].monitoringEvaluation) || "";
+      if (!monitoringEvaluation || String(monitoringEvaluation).trim() === "") return false;
+      if (!follow.metaphoricalPhrase || String(follow.metaphoricalPhrase).trim() === "") return false;
+      if (!follow.testimony || String(follow.testimony).trim() === "") return false;
+      if (!follow.followEvaluation || String(follow.followEvaluation).trim() === "") return false;
+      return true;
+    }
+    if (currentStep === 6) {
+      const support = informacionApoyo || {};
+      if (!support.monitoringEvaluation || String(support.monitoringEvaluation).trim() === "") return false;
+      if (!support.sustainability || String(support.sustainability).trim() === "") return false;
+      return true;
+    }
+    if (currentStep === 7) {
+      const pdf = pdfFile || {};
+      if (!pdf.urlPdfExperience || String(pdf.urlPdfExperience).trim() === "") return false;
+      if (!pdf.urlPdf || String(pdf.urlPdf).trim() === "") return false;
+      if (!pdf.urlLink || String(pdf.urlLink).trim() === "") return false;
       return true;
     }
     return true;
@@ -1542,4 +1690,3 @@ Population: Array.isArray(tematicaForm.Population)
 };
 
 export default AddExperience;
-
