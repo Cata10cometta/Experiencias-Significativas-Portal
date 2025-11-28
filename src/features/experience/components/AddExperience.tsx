@@ -1,3 +1,19 @@
+import React, { useState, useEffect } from "react";
+import Swal from 'sweetalert2';
+import { getToken } from "../../../Api/Services/Auth";
+import { UpdateExperienceRequest } from '../types/updateExperience';
+import LeadersForm from "./LeadersForm";
+import IdentificationForm from "./IdentificationForm";
+import ThematicForm from "./ThematicForm";
+import InstitutionalIdentification from "./InstitutionalIdentification";
+import FormSection from "./ui/FormSection";
+import Components from "./Components";
+import FollowUpEvaluation from "./FollowUpEvaluation";
+import SupportInformationForm from "./SupportInformationForm";
+import PDFUploader from "./PDF";
+
+import type { Grade } from "../types/experienceTypes";
+
 // Emitir notificación tras crear experiencia
 async function notifyExperienceCreated(experienceId: number | null | undefined) {
   if (!experienceId || !Number.isFinite(experienceId)) {
@@ -26,9 +42,10 @@ async function notifyExperienceCreated(experienceId: number | null | undefined) 
     console.error('notifyExperienceCreated exception', err);
   }
 }
+
 // Utilidad para obtener el userId del token o localStorage
 function getUserId(token?: string | null) {
-  let userId = null;
+  let userId: any = null;
   const parseJwt = (token: string): any => {
     try {
       const base64Url = token.split('.')[1];
@@ -57,7 +74,103 @@ function getUserId(token?: string | null) {
   return typeof userId === 'string' ? Number(userId) : userId;
 }
 
-// Función para construir el payload genérico con todos los campos requeridos
+/**
+ * Funciones de normalización para soportes / monitoreos
+ * (adaptadas para el UPDATE: terminan en ...Update según Swagger)
+ */
+function normalizeSupportInformationForUpdate(info: any) {
+  const empty = { summary: "", metaphoricalPhrase: "", testimony: "", followEvaluation: "" };
+  if (!info) return empty;
+
+  const coerceToString = (v: any): string => {
+    if (v === undefined || v === null) return "";
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if (Array.isArray(v)) {
+      return v
+        .map((x) =>
+          typeof x === 'string'
+            ? x
+            : (x && typeof x === 'object'
+              ? (x.summary ?? x.monitoringEvaluation ?? x.text ?? "")
+              : String(x)
+            )
+        )
+        .filter(Boolean)
+        .join("\n");
+    }
+    if (typeof v === 'object') {
+      return String(v.summary ?? v.monitoringEvaluation ?? v.text ?? "");
+    }
+    return String(v);
+  };
+
+  const rawSummary = (() => {
+    if (Array.isArray(info.summary) && info.summary.length > 0) return info.summary;
+    if (info.summary !== undefined) return info.summary;
+    if (info.summaryText) return info.summaryText;
+    if (info.monitoringEvaluation) return info.monitoringEvaluation;
+    return undefined;
+  })();
+
+  return {
+    summary: coerceToString(rawSummary),
+    metaphoricalPhrase: coerceToString(
+      info.metaphoricalPhrase ??
+      info.metaphoricalPhraseText ??
+      info.metaphoricalPhraseValue
+    ),
+    testimony: coerceToString(info.testimony ?? info.testimonyText),
+    followEvaluation: coerceToString(info.followEvaluation ?? info.followEvaluationText),
+  };
+}
+
+function normalizeMonitoringForUpdate(mon: any, fallbackSustainability: string | undefined) {
+  if (!mon) {
+    return { monitoringEvaluation: "", result: "", sustainability: fallbackSustainability || "", tranfer: "" };
+  }
+
+if (Array.isArray(mon.summary) && mon.summary.length > 0 && typeof mon.summary[0] === 'object') {
+  const first = mon.summary[0];
+
+  return {
+    monitoringEvaluation:
+      first.monitoringEvaluation ??
+      mon.monitoringEvaluation ??
+      "",
+
+    result:
+      first.result ??
+      mon.result ??
+      mon.resulsExperience ??
+      "",
+
+    sustainability:
+      first.sustainability ??
+      mon.sustainability ??
+      mon.sustainabilityExperience ??
+      (fallbackSustainability || ""),
+
+    tranfer:
+      first.tranfer ??
+      mon.tranfer ??
+      "",
+  };
+}
+
+  return {
+    monitoringEvaluation: mon.monitoringEvaluation || "",
+    result: mon.result || mon.resulsExperience || "",
+    sustainability: mon.sustainability || mon.sustainabilityExperience || fallbackSustainability || "",
+    tranfer: mon.tranfer || "",
+  };
+}
+
+/**
+ * 🔧 Función para construir el payload de UPDATE
+ *  - Shape plano (NO envuelto en request)
+ *  - Coincide con Swagger ExperienceUpdateRequest
+ */
 function buildExperiencePayload({
   initialData,
   identificacionForm,
@@ -69,132 +182,244 @@ function buildExperiencePayload({
   informacionApoyo,
   pdfFile,
   userId
-}: any) {
-  // Mapear leaders (siempre array, aunque vacío)
+}: any): UpdateExperienceRequest {
+
+  // --- LEADERS ---
   const leaders = Array.isArray(lideres)
     ? lideres.map((l: any) => ({
-        nameLeaders: l.nameLeaders || l.name || '',
-        identityDocument: l.identityDocument || '',
-        email: l.email || '',
-        position: l.position || '',
-        phone: l.phone || 0,
-      }))
+      nameLeaders: l.nameLeaders || l.name || '',
+      identityDocument: l.identityDocument || '',
+      email: l.email || '',
+      position: l.position || '',
+      phone: Number(l.phone) || 0
+    }))
     : [];
-  // Mapear grados seleccionados a array de objetos { id, code, name, description } (siempre array)
-  const nivelesArray = Object.values(nivelesForm?.niveles || {});
-  const gradesUpdate = Array.isArray(nivelesArray)
-    ? nivelesArray
-        .flatMap((nivel: any) => nivel.grados)
-        .filter((g: any) => g && typeof g.gradeId === 'number')
-        .map((g: any) => ({
-          id: g.gradeId,
-          code: g.code || '',
-          name: g.name || '',
-          description: g.description || ''
-        }))
-    : [];
-  // Formatear developmenttime a string ISO 8601 o null
-  let devTime = initialData?.developmenttime || '';
-  if (devTime) {
-    if (typeof devTime === 'string') {
-      const parsed = new Date(devTime);
-      devTime = isNaN(parsed.getTime()) ? null : parsed.toISOString();
-    } else if (devTime instanceof Date) {
-      devTime = isNaN(devTime.getTime()) ? null : devTime.toISOString();
-    } else {
-      devTime = null;
-    }
-  } else {
-    devTime = null;
-  }
-  // InstitutionUpdate: siempre objeto (aunque vacío)
-  const institutionUpdate = (identificacionInstitucional && typeof identificacionInstitucional === 'object') ? identificacionInstitucional : {};
-  // DevelopmentsUpdate: siempre array
-  const developmentsUpdate = Array.isArray(tematicaForm?.developments) ? tematicaForm.developments : [];
-  // DocumentsUpdate: siempre array
-  const documentsUpdate = Array.isArray(initialData?.documents) ? initialData.documents : [];
-  // ObjectivesUpdate: siempre array
-  const objectivesUpdate = Array.isArray(initialData?.objectives) ? initialData.objectives : [];
-  // ThematicLineIds: siempre array
-  const thematicLineIds = Array.isArray(tematicaForm?.thematicLineIds) ? tematicaForm.thematicLineIds : [];
-  // PopulationGradeIds: siempre array
-  const populationGradeIds = Array.isArray(tematicaForm?.populationGradeIds) ? tematicaForm.populationGradeIds : [];
-  // HistoryExperiencesUpdate: siempre array
-  const historyExperiencesUpdate = Array.isArray(initialData?.historyExperiences) ? initialData.historyExperiences : [];
-  // Refuerzo: si algún campo es undefined/null, forzar array vacío u objeto vacío
-  const safe = (v: any, fallback: any) => (v === undefined || v === null ? fallback : v);
-  // Construir el objeto anidado bajo 'request' con TODOS los campos requeridos SIEMPRE presentes
-  // Alternar entre PascalCase y camelCase para los campos requeridos
-  const USE_CAMEL = true; // Cambia a false para probar PascalCase
-  if (USE_CAMEL) {
-    return {
-      request: {
-        experienceId: initialData?.id ?? 0,
-        nameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
-        code: initialData?.code || '',
-        thematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
-        developmenttime: devTime,
-        recognition: initialData?.recognition || '',
-        socialization: initialData?.socialization || '',
-        stateExperienceId: initialData?.stateExperienceId || 0,
-        userId: userId ?? 0,
-        leaders: safe(leaders, []),
-        institutionUpdate: safe(institutionUpdate, {}),
-        gradesUpdate: safe(gradesUpdate, []),
-        documentsUpdate: safe(documentsUpdate, []),
-        thematicLineIds: safe(thematicLineIds, []),
-        objectivesUpdate: safe(objectivesUpdate, []),
-        developmentsUpdate: safe(developmentsUpdate, []),
-        populationGradeIds: safe(populationGradeIds, []),
-        historyExperiencesUpdate: safe(historyExperiencesUpdate, []),
-        followUpUpdate: safe(seguimientoEvaluacion, {}),
-        supportInfoUpdate: safe(informacionApoyo, {}),
-        componentsUpdate: [],
-      }
-    };
-  } else {
-    return {
-      request: {
-        ExperienceId: initialData?.id ?? 0,
-        NameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
-        Code: initialData?.code || '',
-        ThematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
-        Developmenttime: devTime,
-        Recognition: initialData?.recognition || '',
-        Socialization: initialData?.socialization || '',
-        StateExperienceId: initialData?.stateExperienceId || 0,
-        UserId: userId ?? 0,
-        Leaders: safe(leaders, []),
-        InstitutionUpdate: safe(institutionUpdate, {}),
-        GradesUpdate: safe(gradesUpdate, []),
-        DocumentsUpdate: safe(documentsUpdate, []),
-        ThematicLineIds: safe(thematicLineIds, []),
-        ObjectivesUpdate: safe(objectivesUpdate, []),
-        DevelopmentsUpdate: safe(developmentsUpdate, []),
-        PopulationGradeIds: safe(populationGradeIds, []),
-        HistoryExperiencesUpdate: safe(historyExperiencesUpdate, []),
-        FollowUpUpdate: safe(seguimientoEvaluacion, {}),
-        SupportInfoUpdate: safe(informacionApoyo, {}),
-        ComponentsUpdate: [],
-      }
-    };
-  }
-}
-import React, { useState, useEffect } from "react";
-import Swal from 'sweetalert2';
-import { getToken } from "../../../Api/Services/Auth";
-import { UpdateExperienceRequest } from '../types/updateExperience';
-import LeadersForm from "./LeadersForm";
-import IdentificationForm from "./IdentificationForm";
-import ThematicForm from "./ThematicForm";
-import InstitutionalIdentification from "./InstitutionalIdentification";
-import FormSection from "./ui/FormSection";
-import Components from "./Components";
-import FollowUpEvaluation from "./FollowUpEvaluation";
-import SupportInformationForm from "./SupportInformationForm";
-import PDFUploader from "./PDF";
 
-import type { Grade } from "../types/experienceTypes";
+  // --- GRADES UPDATE ---
+  const nivelesArray = Object.values(nivelesForm?.niveles || {});
+  const gradesUpdate = nivelesArray
+    .flatMap((n: any) => n.grados)
+    .filter((g: any) => g && typeof g.gradeId === 'number')
+    .map((g: any) => ({
+      id: g.gradeId,
+      code: g.code || '',
+      name: g.name || '',
+      description: g.description || ''
+    }));
+
+  // --- DEVELOPMENT TIME ---
+  // El backend espera un DateTime, en JSON va como string ISO
+  let devTime = initialData?.developmenttime;
+  if (!devTime) {
+    devTime = new Date().toISOString();
+  } else {
+    const parsed = new Date(devTime);
+    devTime = isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+  }
+
+  // --- INSTITUTION UPDATE ---
+  const institutionUpdate = {
+    name: identificacionInstitucional?.name || initialData?.institution?.name || "",
+    address: identificacionInstitucional?.address || initialData?.institution?.address || "",
+    phone: Number(identificacionInstitucional?.phone || initialData?.institution?.phone || 0),
+    codeDane: identificacionInstitucional?.codeDane || initialData?.institution?.codeDane || "",
+    emailInstitucional: identificacionInstitucional?.emailInstitucional || initialData?.institution?.emailInstitucional || "",
+    nameRector: identificacionInstitucional?.nameRector || initialData?.institution?.nameRector || "",
+    caracteristic: identificacionInstitucional?.caracteristic || initialData?.institution?.caracteristic || "",
+    territorialEntity: identificacionInstitucional?.territorialEntity || initialData?.institution?.territorialEntity || "",
+    testsKnow: identificacionInstitucional?.testsKnow || initialData?.institution?.testsKnow || "",
+    addressInfoRequests: Array.isArray(identificacionInstitucional?.addressInfoRequests)
+      ? identificacionInstitucional.addressInfoRequests
+      : [],
+    communes: Array.isArray(identificacionInstitucional?.communes)
+      ? identificacionInstitucional.communes
+      : [],
+    departaments: Array.isArray(identificacionInstitucional?.departaments)
+      ? identificacionInstitucional.departaments
+      : [],
+    eeZones: Array.isArray(identificacionInstitucional?.eeZones)
+      ? identificacionInstitucional.eeZones
+      : [],
+    municipalities: Array.isArray(identificacionInstitucional?.municipalities)
+      ? identificacionInstitucional.municipalities
+      : [],
+    // En Swagger aparece como string:
+    departamentes: identificacionInstitucional?.departamentes ||
+      identificacionInstitucional?.departament ||
+      initialData?.institution?.departamentes ||
+      ""
+  };
+
+  // --- DOCUMENTS UPDATE ---
+  // Si hay pdfFile en el estado, se usa; si no, se toman los documentos del initialData
+  let documentsUpdate: any[] = [];
+
+  if (pdfFile && (pdfFile.urlPdf || pdfFile.urlPdfExperience || pdfFile.urlLink)) {
+    const stripDataPrefix = (s: any) => {
+      if (!s || typeof s !== 'string') return '';
+      const idx = s.indexOf(',');
+      if (s.startsWith('data:') && idx > -1) return s.substring(idx + 1);
+      return s;
+    };
+    documentsUpdate = [
+      {
+        name: pdfFile.name || pdfFile.name2 || "Documento PDF",
+        urlLink: pdfFile.urlLink || "",
+        urlPdf: stripDataPrefix(pdfFile.urlPdf) || "",
+        urlPdfExperience: stripDataPrefix(pdfFile.urlPdfExperience || pdfFile.urlPdf2) || ""
+      }
+    ];
+  } else if (Array.isArray(initialData?.documentsUpdate || initialData?.documents)) {
+    const sourceDocs = initialData.documentsUpdate || initialData.documents;
+    documentsUpdate = sourceDocs.map((d: any) => ({
+      name: d.name || "",
+      urlLink: d.urlLink || "",
+      urlPdf: d.urlPdf || "",
+      urlPdfExperience: d.urlPdfExperience || ""
+    }));
+  }
+
+  // --- OBJECTIVES UPDATE ---
+  // Normalizamos soporte y monitoreo tal como en el create, pero usando los campos *Update*
+  const supportSource = (seguimientoEvaluacion && (seguimientoEvaluacion.summary || seguimientoEvaluacion.followEvaluation || seguimientoEvaluacion.testimony))
+    ? seguimientoEvaluacion
+    : informacionApoyo;
+
+  const supportInfoNormalized = normalizeSupportInformationForUpdate(supportSource);
+  const monitoringNormalized = normalizeMonitoringForUpdate(seguimientoEvaluacion, informacionApoyo?.sustainability);
+
+  const objectivesUpdate = [
+    {
+      descriptionProblem: (initialData?.objectivesUpdate?.[0]?.descriptionProblem) ||
+        (initialData?.objectives?.[0]?.descriptionProblem) ||
+        (initialData?.descriptionProblem) ||
+        (informacionApoyo?.descriptionProblem) ||
+        "",
+      objectiveExperience: (initialData?.objectivesUpdate?.[0]?.objectiveExperience) ||
+        (initialData?.objectives?.[0]?.objectiveExperience) ||
+        (informacionApoyo?.objectiveExperience) ||
+        "",
+      enfoqueExperience: (initialData?.objectivesUpdate?.[0]?.enfoqueExperience) ||
+        (initialData?.objectives?.[0]?.enfoqueExperience) ||
+        (informacionApoyo?.enfoqueExperience) ||
+        "",
+      methodologias: (initialData?.objectivesUpdate?.[0]?.methodologias) ||
+        (initialData?.objectives?.[0]?.methodologias) ||
+        (informacionApoyo?.methodologias) ||
+        "",
+      innovationExperience: (initialData?.objectivesUpdate?.[0]?.innovationExperience) ||
+        (initialData?.objectives?.[0]?.innovationExperience) ||
+        (informacionApoyo?.innovationExperience) ||
+        "",
+      pmi: (initialData?.objectivesUpdate?.[0]?.pmi) ||
+        (initialData?.objectives?.[0]?.pmi) ||
+        (informacionApoyo?.pmi) ||
+        "",
+      nnaj: (initialData?.objectivesUpdate?.[0]?.nnaj) ||
+        (initialData?.objectives?.[0]?.nnaj) ||
+        (informacionApoyo?.nnaj) ||
+        "",
+      supportInformationsUpdate: [
+        {
+          summary: supportInfoNormalized.summary || "",
+          metaphoricalPhrase: supportInfoNormalized.metaphoricalPhrase || "",
+          testimony: supportInfoNormalized.testimony || "",
+          followEvaluation: supportInfoNormalized.followEvaluation || ""
+        }
+      ],
+      monitoringsUpdate: [
+        {
+          monitoringEvaluation: monitoringNormalized.monitoringEvaluation || "",
+          result: monitoringNormalized.result || "",
+          sustainability: monitoringNormalized.sustainability || "",
+          tranfer: monitoringNormalized.tranfer || ""
+        }
+      ]
+    }
+  ];
+
+  // --- DEVELOPMENTS UPDATE ---
+  const developmentsUpdate = [
+    {
+      crossCuttingProject: Array.isArray(tematicaForm?.CrossCuttingProject)
+        ? tematicaForm.CrossCuttingProject.join(', ')
+        : (tematicaForm?.CrossCuttingProject || initialData?.developmentsUpdate?.[0]?.crossCuttingProject || ""),
+      population: Array.isArray(tematicaForm?.Population)
+        ? tematicaForm.Population.join(', ')
+        : (tematicaForm?.Population || initialData?.developmentsUpdate?.[0]?.population || ""),
+      pedagogicalStrategies: Array.isArray(tematicaForm?.PedagogicalStrategies)
+        ? tematicaForm.PedagogicalStrategies.join(', ')
+        : (tematicaForm?.PedagogicalStrategies || initialData?.developmentsUpdate?.[0]?.pedagogicalStrategies || ""),
+      coverage: Array.isArray(tematicaForm?.Coverage)
+        ? tematicaForm.Coverage.join(', ')
+        : (tematicaForm?.Coverage || initialData?.developmentsUpdate?.[0]?.coverage || ""),
+      covidPandemic: tematicaForm?.experiencesCovidPandemic ||
+        initialData?.developmentsUpdate?.[0]?.covidPandemic ||
+        ""
+    }
+  ];
+
+  // --- POPULATION GRADE IDS (NUMÉRICOS) ---
+  const populationGradeIds = Array.isArray(tematicaForm?.populationGradeIds)
+    ? tematicaForm.populationGradeIds
+      .map((x: any) => {
+        const n = Number(x);
+        return Number.isNaN(n) ? null : n;
+      })
+      .filter((x: any) => x !== null)
+    : Array.isArray(initialData?.populationGradeIds)
+      ? initialData.populationGradeIds
+      : [];
+
+  // --- THEMATIC LINE IDS (NUMÉRICOS) ---
+  const thematicLineIds = Array.isArray(tematicaForm?.thematicLineIds)
+    ? tematicaForm.thematicLineIds
+      .map((x: any) => {
+        const n = Number(x);
+        return Number.isNaN(n) ? null : n;
+      })
+      .filter((x: any) => x !== null)
+    : Array.isArray(initialData?.thematicLineIds)
+      ? initialData.thematicLineIds
+      : [];
+
+  // --- HISTORY EXPERIENCES UPDATE ---
+  const historyExperiencesUpdate = [
+    {
+      action: "Actualización",
+      tableName: "Experience",
+      userId: Number(userId) || Number(initialData?.userId) || 0
+    }
+  ];
+
+  // ===========================
+  //  🚀 PAYLOAD FINAL UPDATE
+  // ===========================
+  const payload: UpdateExperienceRequest = {
+    experienceId: initialData?.id ?? initialData?.experienceId ?? 0,
+    nameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || "",
+    code: identificacionForm?.code || initialData?.code || "",
+    thematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || "",
+    developmenttime: devTime,
+    recognition: initialData?.recognition || "",
+    socialization: initialData?.socialization || "",
+    stateExperienceId: Number(initialData?.stateExperienceId) || Number(identificacionForm?.stateExperienceId) || 1,
+    userId: Number(userId) || Number(initialData?.userId) || 0,
+
+    leaders,
+    institutionUpdate,
+    documentsUpdate,
+    objectivesUpdate,
+    developmentsUpdate,
+    gradesUpdate,
+    populationGradeIds: populationGradeIds as number[],
+    thematicLineIds: thematicLineIds as number[],
+    historyExperiencesUpdate
+  };
+
+  console.log("Payload UPDATE a enviar:", payload);
+  return payload;
+}
 
 interface AddExperienceProps {
   onVolver?: () => void;
@@ -204,357 +429,15 @@ interface AddExperienceProps {
   showBackButton?: boolean;
 }
 
-const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = null, readOnly = false, disableValidation = false, showBackButton = true }) => {
+const AddExperience: React.FC<AddExperienceProps> = ({
+  onVolver,
+  initialData = null,
+  readOnly = false,
+  disableValidation = false,
+  showBackButton = true
+}) => {
   // Estado para saber qué sección está en modo edición
   const [editSection, setEditSection] = useState<number | null>(null);
-
-  // Handlers para guardar cambios por sección (stubs, implementar PATCH luego)
-  const handlePatchInstitutional = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      // Alternar entre objeto plano y anidado bajo 'request'
-      const USE_WRAPPER = true; // Cambia a false para probar el objeto plano
-      if (USE_WRAPPER) {
-        console.log('Payload (anidado bajo request):', JSON.stringify(payload, null, 2));
-      } else {
-        console.log('Payload (plano):', JSON.stringify(payload.request, null, 2));
-      }
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: USE_WRAPPER ? JSON.stringify(payload) : JSON.stringify(payload.request),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
-  };
-  const handlePatchLeaders = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
-  };
-  const handlePatchIdentification = () => {
-    // PATCH para Identificación de la Experiencia usando el payload genérico
-    (async () => {
-      try {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-        const endpoint = `${API_BASE}/api/Experience/patch`;
-        const token = localStorage.getItem('token') || getToken?.();
-        if (!initialData?.id) {
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-          return;
-        }
-        const userId = getUserId(token);
-        const payload = buildExperiencePayload({
-          initialData,
-          identificacionForm,
-          identificacionInstitucional,
-          lideres,
-          nivelesForm,
-          tematicaForm,
-          seguimientoEvaluacion,
-          informacionApoyo,
-          pdfFile,
-          userId
-        });
-        const res = await fetch(endpoint, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          const text = await res.text().catch(() => '');
-          Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-          return;
-        }
-        Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-        setEditSection(null);
-      } catch (err: any) {
-        const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-        Swal.fire({ icon: 'error', title: 'Error', text: msg });
-      }
-    })();
-  };
-  const handlePatchThematic = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
-  };
-  const handlePatchComponents = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token ?? undefined);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
-  };
-  const handlePatchFollowUp = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
-  };
-  const handlePatchSupportInfo = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
-  };
-  const handlePatchDocuments = async () => {
-    try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
-      const endpoint = `${API_BASE}/api/Experience/patch`;
-      const token = localStorage.getItem('token') || getToken?.();
-      if (!initialData?.id) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
-        return;
-      }
-      const userId = getUserId(token);
-      const payload = buildExperiencePayload({
-        initialData,
-        identificacionForm,
-        identificacionInstitucional,
-        lideres,
-        nivelesForm,
-        tematicaForm,
-        seguimientoEvaluacion,
-        informacionApoyo,
-        pdfFile,
-        userId
-      });
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
-        return;
-      }
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
-      setEditSection(null);
-    } catch (err: any) {
-      const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
-      Swal.fire({ icon: 'error', title: 'Error', text: msg });
-    }
-  };
   const [errorMessage, setErrorMessage] = useState("");
   const [currentStep, setCurrentStep] = useState<number>(0);
 
@@ -584,9 +467,6 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     historyExperiences: [] as any[],
   });
 
-  
-
-
   // Estados de subformularios
   const [lideres, setLideres] = useState<any[]>([{}]); // Solo 1 líder
   const [identificacionForm, setIdentificacionForm] = useState<any>({
@@ -614,13 +494,6 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     },
   });
   const [grupoPoblacional, setGrupoPoblacional] = useState<number[]>([]);
-
-  // Sincroniza grupoPoblacional con populationGradeIds de tematicaForm
-  useEffect(() => {
-    if (Array.isArray(tematicaForm.populationGradeIds)) {
-      setGrupoPoblacional(tematicaForm.populationGradeIds);
-    }
-  }, [tematicaForm.populationGradeIds]);
   const [tiempo, setTiempo] = useState<any>({});
   const [objectiveExperience, setObjectiveExperience] = useState<any>({});
   const [seguimientoEvaluacion, setSeguimientoEvaluacion] = useState<any>({});
@@ -643,14 +516,22 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       if (initialData.informacionApoyo) setInformacionApoyo(initialData.informacionApoyo);
       if (initialData.identificacionInstitucional) setIdentificacionInstitucional(initialData.identificacionInstitucional);
       if (initialData.pdfFile) setPdfFile(initialData.pdfFile);
-      if (initialData.documents && Array.isArray(initialData.documents) && initialData.documents.length > 0) setPdfFile(initialData.documents[0]);
+      if (initialData.documents && Array.isArray(initialData.documents) && initialData.documents.length > 0) {
+        setPdfFile(initialData.documents[0]);
+      }
     } catch (err) {
       console.warn('AddExperience hydrate initialData failed', err);
     }
   }, [initialData]);
 
-  // Asegurar que el campo `thematicFocus` (id) esté también disponible en `identificacionForm`
-  // porque el componente IdentificationForm lo espera en `value.thematicFocus`.
+  // Sincroniza grupoPoblacional con populationGradeIds de tematicaForm
+  useEffect(() => {
+    if (Array.isArray(tematicaForm.populationGradeIds)) {
+      setGrupoPoblacional(tematicaForm.populationGradeIds);
+    }
+  }, [tematicaForm.populationGradeIds]);
+
+  // Asegurar que el campo `thematicFocus` esté disponible en identificacionForm
   useEffect(() => {
     if (!initialData) return;
     try {
@@ -658,7 +539,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       if (tf !== undefined && tf !== null) {
         setIdentificacionForm((prev: any) => ({ ...(prev || {}), thematicFocus: tf }));
       }
-    } catch (e) {
+    } catch {
       // noop
     }
   }, [initialData]);
@@ -674,11 +555,185 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
     "Documentos",
   ];
 
+  // ============================
+  // PATCH helpers (UPDATE)
+  // ============================
+  const doPatch = async (sectionName: string) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+      const endpoint = `${API_BASE}/api/Experience/patch`;
+      const token = localStorage.getItem('token') || getToken?.();
+      if (!initialData?.id && !initialData?.experienceId) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+        return;
+      }
+      const userId = getUserId(token);
+      const payload = buildExperiencePayload({
+        initialData,
+        identificacionForm,
+        identificacionInstitucional,
+        lideres,
+        nivelesForm,
+        tematicaForm,
+        seguimientoEvaluacion,
+        informacionApoyo,
+        pdfFile,
+        userId
+      });
+
+      console.log(`PATCH [${sectionName}] payload:`, JSON.stringify(payload, null, 2));
+
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+        return;
+      }
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+      setEditSection(null);
+    } catch (err: any) {
+      const msg = err?.message ??
+        (typeof err === 'string'
+          ? err
+          : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
+  };
+
+  const handlePatchInstitutional = async () => {
+    await doPatch("Institutional");
+  };
+  const handlePatchLeaders = async () => {
+    await doPatch("Leaders");
+  };
+  const handlePatchIdentification = async () => {
+    await doPatch("Identification");
+  };
+  const handlePatchThematic = async () => {
+    await doPatch("Thematic");
+  };
+  const handlePatchComponents = async () => {
+    await doPatch("Components");
+  };
+  const handlePatchFollowUp = async () => {
+    await doPatch("FollowUp");
+  };
+  const handlePatchSupportInfo = async () => {
+    await doPatch("SupportInfo");
+  };
+  const handlePatchDocuments = async () => {
+    await doPatch("Documents");
+  };
+
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateCurrentStep = (): boolean => {
+    if (disableValidation) return true;
+    setFieldErrors({});
+    // Step 0: InstitutionalIdentification required fields
+    if (currentStep === 0) {
+      const inst = identificacionInstitucional || {};
+      const errors: Record<string, string> = {};
+      if (!inst.codeDane || String(inst.codeDane).trim() === "") errors.codeDane = "Código DANE es obligatorio";
+      if (!inst.name || String(inst.name).trim() === "") errors.name = "Nombre del establecimiento es obligatorio";
+      if (!inst.nameRector || String(inst.nameRector).trim() === "") errors.nameRector = "Nombre del rector es obligatorio";
+      if (!inst.departament || String(inst.departament).trim() === "") errors.departament = "Departamento es obligatorio";
+      if (!inst.municipality || String(inst.municipality).trim() === "") errors.municipality = "Municipio es obligatorio";
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+
+    // Step 1: Leader required fields
+    if (currentStep === 1) {
+      const leader = (lideres && lideres[0]) || {};
+      const errors: Record<string, string> = {};
+      if (!leader.nameLeaders || String(leader.nameLeaders).trim() === "") errors.leaderName = "Nombre del líder es obligatorio";
+      if (!leader.email || String(leader.email).trim() === "") errors.leaderEmail = "Correo del líder es obligatorio";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+
+    // Step 2: Identification required fields
+    if (currentStep === 2) {
+      const ident = identificacionForm || {};
+      const errors: Record<string, string> = {};
+      if (!ident.nameExperience || String(ident.nameExperience).trim() === "") errors.nameExperience = "Nombre de la experiencia es obligatorio";
+      if (!ident.thematicFocus || String(ident.thematicFocus).trim() === "") errors.thematicFocus = "Enfoque temático es obligatorio";
+      const dev = ident.development || {};
+      const hasDev = [dev.days, dev.months, dev.years].some(
+        (v) => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(Number(v))
+      );
+      if (!hasDev) errors.development = "Seleccione el tiempo de desarrollo";
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return false;
+      }
+      setFieldErrors({});
+      return true;
+    }
+
+    return true;
+  };
+
+  const isCurrentStepValidSync = (): boolean => {
+    if (disableValidation) return true;
+    if (currentStep === 0) {
+      const inst = identificacionInstitucional || {};
+      if (!inst.codeDane || String(inst.codeDane).trim() === "") return false;
+      if (!inst.name || String(inst.name).trim() === "") return false;
+      if (!inst.nameRector || String(inst.nameRector).trim() === "") return false;
+      if (!inst.departament || String(inst.departament).trim() === "") return false;
+      if (!inst.municipality || String(inst.municipality).trim() === "") return false;
+      return true;
+    }
+    if (currentStep === 1) {
+      const leader = (lideres && lideres[0]) || {};
+      if (!leader.nameLeaders || String(leader.nameLeaders).trim() === "") return false;
+      if (!leader.email || String(leader.email).trim() === "") return false;
+      return true;
+    }
+    if (currentStep === 2) {
+      const ident = identificacionForm || {};
+      if (!ident.nameExperience || String(ident.nameExperience).trim() === "") return false;
+      if (!ident.thematicFocus || String(ident.thematicFocus).trim() === "") return false;
+      const dev = ident.development || {};
+      const hasDev = [dev.days, dev.months, dev.years].some(
+        (v) => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(Number(v))
+      );
+      if (!hasDev) return false;
+      return true;
+    }
+    return true;
+  };
+
+  const isLastStep = () => currentStep === steps.length - 1;
+  const nextStep = () => setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
+  const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
+
+  // ============================
+  // CREATE (register) – sin cambios
+  // ============================
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e && typeof e.preventDefault === "function") e.preventDefault();
 
-
-    // 2) GRADES -> convertimos nivelesForm a array y filtramos solo los grados válidos
+    // GRADES -> convertimos nivelesForm a array y filtramos solo los grados válidos
     const nivelesArray: any[] = Object.values(nivelesForm.niveles);
 
     const grades: { gradeId: number; description: string }[] = nivelesArray
@@ -689,19 +744,17 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
         description: g.description || "",
       }));
 
-    // 3) POPULATION GRADE IDS
-    // Prefer explicit `grupoPoblacional` state; fallback to any array provided by `tematicaForm.populationGradeIds` / `populationGrades` / `tematicaForm.population`
+    // POPULATION GRADE IDS
     const populationGradeIds = Array.isArray(grupoPoblacional)
       ? grupoPoblacional
       : Array.isArray(tematicaForm?.populationGradeIds)
-      ? tematicaForm.populationGradeIds
-      : Array.isArray(tematicaForm?.populationGrades)
-      ? tematicaForm.populationGrades
-      : Array.isArray(tematicaForm?.population)
-      ? tematicaForm.population
-      : [];
+        ? tematicaForm.populationGradeIds
+        : Array.isArray(tematicaForm?.populationGrades)
+          ? tematicaForm.populationGrades
+          : Array.isArray(tematicaForm?.population)
+            ? tematicaForm.population
+            : [];
 
-    // Try to convert common slug names to numeric ids the backend expects.
     const populationSlugToId: Record<string, number> = {
       negritudes: 1,
       afrodescendiente: 2,
@@ -718,35 +771,42 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
 
     const numericPopulationGradeIds = Array.isArray(populationGradeIds)
       ? populationGradeIds
-          .map((v: any) => {
-            if (v === null || v === undefined) return null;
-            if (typeof v === 'number') return Number.isFinite(v) ? Math.trunc(v) : null;
-            if (typeof v === 'string' && v.trim() !== '') {
-              const s = v.trim();
-              const n = Number(s);
-              if (!Number.isNaN(n) && Number.isFinite(n)) return Math.trunc(n);
-              const normalized = s.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        .map((v: any) => {
+          if (v === null || v === undefined) return null;
+          if (typeof v === 'number') return Number.isFinite(v) ? Math.trunc(v) : null;
+          if (typeof v === 'string' && v.trim() !== '') {
+            const s = v.trim();
+            const n = Number(s);
+            if (!Number.isNaN(n) && Number.isFinite(n)) return Math.trunc(n);
+            const normalized = s.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            return populationSlugToId[normalized] ?? null;
+          }
+          if (typeof v === 'object') {
+            if (v.id) return Number.isFinite(Number(v.id)) ? Math.trunc(Number(v.id)) : null;
+            if (v.name) {
+              const normalized = String(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
               return populationSlugToId[normalized] ?? null;
             }
-            if (typeof v === 'object') {
-              if (v.id) return Number.isFinite(Number(v.id)) ? Math.trunc(Number(v.id)) : null;
-              if (v.name) {
-                const normalized = String(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
-                return populationSlugToId[normalized] ?? null;
-              }
-            }
-            return null;
-          })
-          .filter((x: any) => x !== null)
+          }
+          return null;
+        })
+        .filter((x: any) => x !== null)
       : [];
 
     const stringPopulationGrades = Array.isArray(populationGradeIds)
       ? populationGradeIds
-          .map((v: any) => (v === null || v === undefined ? '' : (typeof v === 'string' ? v : (typeof v === 'number' ? String(v) : (v?.name ?? v?.label ?? '')))))
-          .filter((s: string) => s && s.length > 0)
+        .map((v: any) =>
+          v === null || v === undefined
+            ? ''
+            : (typeof v === 'string'
+              ? v
+              : (typeof v === 'number'
+                ? String(v)
+                : (v?.name ?? v?.label ?? ''))))
+        .filter((s: string) => s && s.length > 0)
       : [];
 
-    // 4) OBJECTIVES
+    // OBJECTIVES (para create)
     const objectives = [
       {
         descriptionProblem: objectiveExperience.descriptionProblem || "",
@@ -764,7 +824,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       },
     ];
 
-    // 5) DOCUMENTS
+    // DOCUMENTS (para create)
     const documents = pdfFile
       ? [
         {
@@ -775,19 +835,13 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       ]
       : [];
 
-    // 6) HISTORY EXPERIENCES
     const historyExperiences = [
-        {
-          action: "Creación",
-          tableName: "Experience",
-          // userId intentionally omitted: backend should derive creator from the auth token
-        },
+      {
+        action: "Creación",
+        tableName: "Experience",
+      },
     ];
 
-    // 7) PAYLOAD FINAL (match Swagger JSON structure)
-    // Build documents[] from pdfFile: single document that contains two PDFs
-    // - `urlPdf`: first PDF (pdfFile.urlPdf)
-    // - `urlPdfExperience`: second PDF (pdfFile.urlPdf2)
     const documentsSwagger: any[] = [];
     if (pdfFile) {
       const stripDataPrefix = (s: any) => {
@@ -804,19 +858,13 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
         urlLink: pdfFile.urlLink || "",
         urlPdf: stripDataPrefix(rawPdf) || "",
         urlPdfExperience: stripDataPrefix(rawPdfExperience) || "",
-        // Enviar base64 puro (sin prefijo) para ambos PDFs
         fileBase64: stripDataPrefix(rawPdf) || undefined,
         fileBase64Experience: stripDataPrefix(rawPdfExperience) || undefined,
       };
       documentsSwagger.push(doc);
     }
 
-    // Debug: log follow-up / support states to inspect shapes
-    try { console.log("seguimientoEvaluacion (state):", JSON.stringify(seguimientoEvaluacion, null, 2)); } catch (e) { console.log("seguimientoEvaluacion (raw)", seguimientoEvaluacion); }
-    try { console.log("informacionApoyo (state):", JSON.stringify(informacionApoyo, null, 2)); } catch (e) { console.log("informacionApoyo (raw)", informacionApoyo); }
-
-    // Build objectives array matching Swagger: supportInformations[] and monitorings[] inside each objective
-    // Normalize inputs because some subcomponents store values as arrays (e.g., summary: [{...}]) while backend expects objects/strings
+    // Normalización soporte / monitoreo (create)
     const normalizeSupportInformation = (info: any) => {
       const empty = { summary: "", metaphoricalPhrase: "", testimony: "", followEvaluation: "" };
       if (!info) return empty;
@@ -827,7 +875,14 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
         if (typeof v === 'number' || typeof v === 'boolean') return String(v);
         if (Array.isArray(v)) {
           return v
-            .map((x) => (typeof x === 'string' ? x : (x && typeof x === 'object' ? (x.summary ?? x.monitoringEvaluation ?? x.text ?? "") : String(x))))
+            .map((x) =>
+              typeof x === 'string'
+                ? x
+                : (x && typeof x === 'object'
+                  ? (x.summary ?? x.monitoringEvaluation ?? x.text ?? "")
+                  : String(x)
+                )
+            )
             .filter(Boolean)
             .join("\n");
         }
@@ -872,12 +927,10 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
       };
     };
 
-    // Prefer FollowUpEvaluation (`seguimientoEvaluacion`) when it contains data, otherwise use `informacionApoyo`.
     const supportSource = (seguimientoEvaluacion && (seguimientoEvaluacion.summary || seguimientoEvaluacion.followEvaluation || seguimientoEvaluacion.testimony))
       ? seguimientoEvaluacion
       : informacionApoyo;
     const supportInfoNormalized = normalizeSupportInformation(supportSource);
-    // Ensure sustainability is always set in monitorings, preferring seguimientoEvaluacion, but falling back to informacionApoyo
     let monitoringNormalized = normalizeMonitoring(seguimientoEvaluacion);
     if (!monitoringNormalized.sustainability && informacionApoyo.sustainability) {
       monitoringNormalized = {
@@ -907,53 +960,43 @@ const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = n
           {
             monitoringEvaluation: monitoringNormalized.monitoringEvaluation || "",
             result: monitoringNormalized.result || "",
-         sustainability: monitoringNormalized.sustainability ?? "",
-
+            sustainability: monitoringNormalized.sustainability ?? "",
             tranfer: monitoringNormalized.tranfer || "",
           },
         ],
       },
     ];
 
-    try { console.log("objectivesSwagger (mapeado):", JSON.stringify(objectivesSwagger, null, 2)); } catch (e) { console.log("objectivesSwagger (raw)", objectivesSwagger); }
-
-    // Build leaders array (map existing lideres state)
     const leadersSwagger = Array.isArray(lideres)
       ? lideres.map((l: any) => ({
-          nameLeaders: l.nameLeaders || l.name || "",
-          identityDocument: l.identityDocument || l.firstIdentityDocument || "",
-          email: l.email || l.firdtEmail || "",
-          position: l.position || l.firstPosition || "",
-          phone: l.phone || l.firstPhone || 0,
-        }))
+        nameLeaders: l.nameLeaders || l.name || "",
+        identityDocument: l.identityDocument || l.firstIdentityDocument || "",
+        email: l.email || l.firdtEmail || "",
+        position: l.position || l.firstPosition || "",
+        phone: l.phone || l.firstPhone || 0,
+      }))
       : [];
 
-    // Build developments array from tematicaForm
     const developmentsSwagger = [
       {
-   crossCuttingProject: Array.isArray(tematicaForm.CrossCuttingProject)
-  ? tematicaForm.CrossCuttingProject.join(', ')
-  : tematicaForm.CrossCuttingProject || "",
-        // population: prefer tematicaForm.population (string or array) but if it's an array, join to a comma list for the backend text field
-population: Array.isArray(tematicaForm.Population)
-  ? tematicaForm.Population.join(', ')
-  : (tematicaForm.Population || ""),
-
-Population: Array.isArray(tematicaForm.Population)
-  ? tematicaForm.Population.join(', ')
-  : (tematicaForm.Population || ""),
-
+        crossCuttingProject: Array.isArray(tematicaForm.CrossCuttingProject)
+          ? tematicaForm.CrossCuttingProject.join(', ')
+          : tematicaForm.CrossCuttingProject || "",
+        population: Array.isArray(tematicaForm.Population)
+          ? tematicaForm.Population.join(', ')
+          : (tematicaForm.Population || ""),
+        Population: Array.isArray(tematicaForm.Population)
+          ? tematicaForm.Population.join(', ')
+          : (tematicaForm.Population || ""),
         pedagogicalStrategies: Array.isArray(tematicaForm.PedagogicalStrategies)
-  ? tematicaForm.PedagogicalStrategies.join(', ')
-  : tematicaForm.PedagogicalStrategies || "",
-        
-  coverage: Array.isArray(tematicaForm.Coverage)
-  ? tematicaForm.Coverage.join(', ')
-  : tematicaForm.Coverage || "",
+          ? tematicaForm.PedagogicalStrategies.join(', ')
+          : tematicaForm.PedagogicalStrategies || "",
+        coverage: Array.isArray(tematicaForm.Coverage)
+          ? tematicaForm.Coverage.join(', ')
+          : tematicaForm.Coverage || "",
       },
     ];
 
-    // Try to extract a numeric userId from the JWT token (if available)
     const jwtToken = getToken();
     const parseJwt = (t: string) => {
       try {
@@ -963,7 +1006,7 @@ Population: Array.isArray(tematicaForm.Population)
         const decoded = decodeURIComponent(
           atob(payload)
             .split('')
-            .map(function(c) {
+            .map(function (c) {
               return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
             })
             .join('')
@@ -998,8 +1041,12 @@ Population: Array.isArray(tematicaForm.Population)
 
     const extractedUserId = tryExtractUserId(jwtToken);
 
-    // Determine stateExperienceId from any subform where the user may have set it
-    const stateCandidate = identificacionInstitucional?.stateExperienceId ?? identificacionForm?.stateExperienceId ?? identificacionForm?.estado ?? identificacionInstitucional?.estado;
+    const stateCandidate =
+      identificacionInstitucional?.stateExperienceId ??
+      identificacionForm?.stateExperienceId ??
+      identificacionForm?.estado ??
+      identificacionInstitucional?.estado;
+
     const parseStateId = (v: any): number | null => {
       if (v === undefined || v === null) return null;
       if (typeof v === 'number' && Number.isFinite(v) && v > 0) return Math.trunc(v);
@@ -1012,34 +1059,29 @@ Population: Array.isArray(tematicaForm.Population)
     const finalStateId = parseStateId(stateCandidate);
 
     const payload: any = {
-      // Prefer the experience name entered in the Identification step; fall back to any institution-provided helper
       nameExperiences: identificacionForm?.nameExperience || identificacionInstitucional.nameExperiences || identificacionInstitucional.name || "",
-      // Prefer code from identification subform or institutional identification (codeDane), fall back to legacy formData.code
       code: identificacionForm?.code || identificacionInstitucional?.code || identificacionInstitucional?.codeDane || formData.code || "",
       thematicLocation: tematicaForm.thematicLocation || "",
-      // Only include developmenttime when a value exists. If omitted, backend won't attempt to parse it.
       ...(tiempo && tiempo.developmenttime ? { developmenttime: tiempo.developmenttime } : {}),
-      // recognition: prefer value from tematicaForm (where ThematicForm stores it), fallback to tiempo
       recognition: tematicaForm?.recognitionText || tematicaForm?.recognition || tiempo.recognition || "",
-      // socialization: ThematicForm now stores an array of slugs/labels under `socialization`/`socializationLabels`.
-      // Backend expects a text field; send joined string and also provide an auxiliary array if needed.
       socialization: Array.isArray(tematicaForm?.socialization)
         ? tematicaForm.socialization.join(', ')
         : Array.isArray(tematicaForm?.socializationLabels)
-        ? tematicaForm.socializationLabels.join(', ')
-        : (typeof tematicaForm?.socialization === 'string' ? tematicaForm.socialization : (typeof tematicaForm?.socializationLabels === 'string' ? tematicaForm?.socializationLabels : (tiempo.socialization || ""))),
+          ? tematicaForm.socializationLabels.join(', ')
+          : (typeof tematicaForm?.socialization === 'string'
+            ? tematicaForm.socialization
+            : (typeof tematicaForm?.socializationLabels === 'string'
+              ? tematicaForm?.socializationLabels
+              : (tiempo.socialization || ""))),
       socializationLabels: Array.isArray(tematicaForm?.socialization)
         ? tematicaForm.socialization
         : Array.isArray(tematicaForm?.socializationLabels)
-        ? tematicaForm.socializationLabels
-        : undefined,
-      // CAMPOS CORREGIDOS: apoyo recibido y PEI
+          ? tematicaForm.socializationLabels
+          : undefined,
       pedagogicalStrategies: tematicaForm.PedagogicalStrategies || [],
       coverage: tematicaForm.Coverage || "",
       coverageText: tematicaForm.CoverageText || "",
-      // Sustainability (seguimiento y evaluación de la experiencia, SupportInformationForm)
       sustainability: informacionApoyo.sustainability || "",
-      // Include stateExperienceId when any subform provided a valid numeric id
       ...(finalStateId ? { stateExperienceId: finalStateId } : {}),
       institution: {
         name: identificacionInstitucional.name || "",
@@ -1051,9 +1093,7 @@ Population: Array.isArray(tematicaForm.Population)
         caracteristic: identificacionInstitucional.caracteristic || "",
         territorialEntity: identificacionInstitucional.territorialEntity || "",
         testsKnow: identificacionInstitucional.testsKnow || "",
-        // Build addresses as objects (AddressInfoRequest-like) instead of plain strings
         addresses: (() => {
-          // If the institutional form already provides an `addresses` array, normalize it
           const src = identificacionInstitucional.addresses ?? (identificacionInstitucional.address ? [identificacionInstitucional.address] : []);
           if (!Array.isArray(src) || src.length === 0) return [];
           return src.map((a: any) => {
@@ -1067,7 +1107,6 @@ Population: Array.isArray(tematicaForm.Population)
                 eZone: identificacionInstitucional.eZone || undefined,
               };
             }
-            // assume it's already an object with expected keys
             return {
               address: a.address || a.addressLine || a.street || identificacionInstitucional.address || "",
               municipality: a.municipality || a.city || identificacionInstitucional.municipality || undefined,
@@ -1077,51 +1116,44 @@ Population: Array.isArray(tematicaForm.Population)
             };
           }).filter((x: any) => x !== null);
         })(),
-        // Normalize other lists to arrays of { name } objects (NameItem[]), but accept already-structured values
         communes: Array.isArray(identificacionInstitucional.communes)
           ? identificacionInstitucional.communes.map((c: any) => (typeof c === 'string' ? { name: c } : c))
           : identificacionInstitucional.communes
-          ? [{ name: identificacionInstitucional.communes }]
-          : [],
+            ? [{ name: identificacionInstitucional.communes }]
+            : [],
         departamentes: identificacionInstitucional.departament
           ? [{ name: identificacionInstitucional.departament }]
           : Array.isArray(identificacionInstitucional.departamentes)
-          ? identificacionInstitucional.departamentes.map((d: any) => (typeof d === 'string' ? { name: d } : d))
-          : [],
+            ? identificacionInstitucional.departamentes.map((d: any) => (typeof d === 'string' ? { name: d } : d))
+            : [],
         eeZones: identificacionInstitucional.eZone
           ? [{ name: identificacionInstitucional.eZone }]
           : Array.isArray(identificacionInstitucional.eeZones)
-          ? identificacionInstitucional.eeZones.map((z: any) => (typeof z === 'string' ? { name: z } : z))
-          : [],
+            ? identificacionInstitucional.eeZones.map((z: any) => (typeof z === 'string' ? { name: z } : z))
+            : [],
         municipalities: identificacionInstitucional.municipality
           ? [{ name: identificacionInstitucional.municipality }]
           : Array.isArray(identificacionInstitucional.municipalities)
-          ? identificacionInstitucional.municipalities.map((m: any) => (typeof m === 'string' ? { name: m } : m))
-          : [],
+            ? identificacionInstitucional.municipalities.map((m: any) => (typeof m === 'string' ? { name: m } : m))
+            : [],
       },
       documents: documentsSwagger,
       objectives: objectivesSwagger,
       leaders: leadersSwagger,
       developments: developmentsSwagger,
-      // Send history entries; include userId only when we could extract it from the token
-      historyExperiences: historyExperiences.map(({ action, tableName }) => (
-        extractedUserId ? { action, tableName, userId: extractedUserId } : { action, tableName }
-      )),
-      // populationGradeIds: prefer numeric ids; include populationGrades (names) as fallback if needed
+      historyExperiences: historyExperiences,
       populationGradeIds: numericPopulationGradeIds,
       populationGrades: stringPopulationGrades.length ? stringPopulationGrades : undefined,
       thematicLineIds: formData.thematicLineIds?.length ? formData.thematicLineIds : tematicaForm.thematicLineIds || [],
       grades: (grades && grades.length > 0)
         ? grades
         : Array.isArray(tematicaForm?.grades)
-        ? tematicaForm.grades.map((g: any) => (typeof g === 'string' ? { gradeId: 0, description: g } : g))
-        : Array.isArray(tematicaForm?.gradeId)
-        ? tematicaForm.gradeId.map((g: any) => (typeof g === 'string' ? { gradeId: 0, description: g } : g))
-        : [],
+          ? tematicaForm.grades.map((g: any) => (typeof g === 'string' ? { gradeId: 0, description: g } : g))
+          : Array.isArray(tematicaForm?.gradeId)
+            ? tematicaForm.gradeId.map((g: any) => (typeof g === 'string' ? { gradeId: 0, description: g } : g))
+            : [],
     };
 
-    // Normalize userId usage: if we have an extractedUserId, ensure it's applied where appropriate.
-    // If we don't have a valid extractedUserId, remove any userId keys from the payload to avoid sending invalid ids.
     const normalizeOrRemoveUserId = (obj: any, userIdValue: number | null) => {
       if (!obj || typeof obj !== 'object') return;
       Object.keys(obj).forEach((k) => {
@@ -1140,53 +1172,25 @@ Population: Array.isArray(tematicaForm.Population)
           } else if (typeof v === 'object') {
             normalizeOrRemoveUserId(v, userIdValue);
           }
-        } catch {}
+        } catch { }
       });
     };
-    // If there's an extracted user id (from token) or a stored userId in localStorage, include it at top-level
+
     const storedUserId = Number(localStorage.getItem('userId')) || null;
     const finalUserId = extractedUserId ?? (storedUserId && Number.isFinite(storedUserId) && storedUserId > 0 ? storedUserId : null);
     if (finalUserId) {
       payload.userId = finalUserId;
     }
-
-    // Normalize/remove any nested userId keys according to whether we have a valid id
     normalizeOrRemoveUserId(payload, finalUserId ?? null);
 
-    // debug: log lideres state and mapped leaders before sending
-    try {
-      console.log("Estado 'lideres' antes de enviar:", JSON.stringify(lideres, null, 2));
-    } catch (e) {
-      console.log("Estado 'lideres' (no serializable)", lideres);
-    }
-    try {
-      console.log("leadersSwagger (mapeado):", JSON.stringify(leadersSwagger, null, 2));
-    } catch (e) {
-      console.log("leadersSwagger (no serializable)", leadersSwagger);
-    }
-    try {
-      console.log("pdfFile (raw):", JSON.stringify(pdfFile, null, 2));
-    } catch (e) {
-      console.log("pdfFile (no serializable)", pdfFile);
-    }
-    try {
-      console.log("documentsSwagger (mapeado):", JSON.stringify(documentsSwagger, null, 2));
-    } catch (e) {
-      console.log("documentsSwagger (no serializable)", documentsSwagger);
-    }
-
-    // log payload for debugging
-    console.log("Objeto enviado al backend:", JSON.stringify(payload, null, 2));
+    console.log("Objeto enviado al backend (CREATE):", JSON.stringify(payload, null, 2));
 
     try {
       setErrorMessage("");
       const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
       const endpoint = `${API_BASE}/api/Experience/register`;
 
-      // Use the normalized token value from getToken() for Authorization header
       const authToken = jwtToken ?? localStorage.getItem("token");
-      // Try primary endpoint; if network/protocol error occurs and we're targeting localhost via https,
-      // retry the call using http (useful for local dev where Kestrel may not serve HTTPS correctly).
       let res: Response | null = null;
       const doFetch = async (url: string) =>
         await fetch(url, {
@@ -1202,7 +1206,6 @@ Population: Array.isArray(tematicaForm.Population)
         res = await doFetch(endpoint);
       } catch (networkErr: any) {
         console.warn("Network error when calling Experience/register:", networkErr);
-        // Only attempt http fallback for localhost targets using https
         try {
           const u = new URL(endpoint);
           if ((u.hostname === 'localhost' || u.hostname === '127.0.0.1') && u.protocol === 'https:') {
@@ -1213,63 +1216,49 @@ Population: Array.isArray(tematicaForm.Population)
             throw networkErr;
           }
         } catch (innerErr) {
-          // rethrow the original network error if we couldn't recover
           console.error('Fallback attempt failed:', innerErr);
           throw networkErr;
         }
       }
 
       if (!res.ok) {
-        // Mejor manejo de error: mostrar siempre el mensaje del backend
         let errorText = `Error al registrar la experiencia (HTTP ${res.status})`;
         let backendMsg = "";
         try {
-          // Intenta parsear como JSON
           const errorData = await res.clone().json();
-          // If the backend returns structured validation errors, show them clearly
           if (errorData?.errors) {
             backendMsg = JSON.stringify(errorData.errors);
-            // also attach field errors to state for inline display when possible
             try {
               const fieldErrs: Record<string, string> = {};
               Object.entries(errorData.errors).forEach(([k, v]) => {
                 fieldErrs[k] = Array.isArray(v) ? (v as any[]).join(" ") : String(v);
               });
               setFieldErrors(fieldErrs);
-            } catch {}
+            } catch { }
           } else {
             backendMsg = errorData?.message || errorData?.error || JSON.stringify(errorData);
           }
         } catch {
           try {
-            // Si no es JSON, intenta como texto
             backendMsg = await res.clone().text();
-          } catch {}
+          } catch { }
         }
         if (backendMsg && backendMsg !== "") {
           errorText += `: ${backendMsg}`;
         }
         setErrorMessage(errorText);
-        // show styled alert like LoginPage
         try {
           Swal.fire({ title: 'Error', text: backendMsg || errorText, icon: 'error', confirmButtonText: 'Aceptar' });
-        } catch (e) {
-          // ignore if Swal not available for some reason
-        }
-        // También loguea el payload para depuración
+        } catch { }
         console.error("Payload enviado:", payload);
         return;
       }
 
-      // Try to parse created resource to obtain its id
       let created: any = null;
       try {
         created = await res.clone().json();
-      } catch (e) {
-        // response may be empty or non-json
-      }
+      } catch { }
 
-      // Determine id from response body or Location header
       const extractIdFromLocation = (loc: string | null) => {
         if (!loc) return null;
         const m = loc.match(/\/(\d+)(?:\/|$)/);
@@ -1333,9 +1322,7 @@ Population: Array.isArray(tematicaForm.Population)
             const parsed = new URL(location, window.location.origin);
             const fromQuery = parsed.searchParams.get('experienceId') || parsed.searchParams.get('id') || parsed.searchParams.get('experience');
             createdId = tryCoerceId(fromQuery);
-          } catch {
-            // ignore URL parsing errors
-          }
+          } catch { }
         }
       }
 
@@ -1343,9 +1330,7 @@ Population: Array.isArray(tematicaForm.Population)
         console.warn('Experience created but id could not be determined; notification may not be sent');
       }
 
-      // If we have an id, call the generate-pdf endpoint and download/open the PDF
       if (createdId && Number.isFinite(createdId) && createdId > 0) {
-        // Notificar por SignalR (el backend debe emitir la notificación)
         await notifyExperienceCreated(createdId);
         const pdfEndpoint = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/Experience/${createdId}/generate-pdf`;
         try {
@@ -1360,130 +1345,35 @@ Population: Array.isArray(tematicaForm.Population)
             const url = URL.createObjectURL(blob);
             setTimeout(() => URL.revokeObjectURL(url), 60000);
           } else {
-            console.warn('Fallo al generar PDF:', await pdfRes.text().catch(() => '')); 
-            try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. Falló la generación del PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
+            console.warn('Fallo al generar PDF:', await pdfRes.text().catch(() => ''));
+            try {
+              await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. Falló la generación del PDF.', icon: 'warning', confirmButtonText: 'Aceptar' });
+            } catch { }
             if (onVolver) onVolver();
             return;
           }
         } catch (pdfErr) {
           console.error('Error al descargar PDF:', pdfErr);
-          try { await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. No se pudo obtener el PDF.', icon: 'warning', confirmButtonText: 'Aceptar' }); } catch {}
+          try {
+            await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada. No se pudo obtener el PDF.', icon: 'warning', confirmButtonText: 'Aceptar' });
+          } catch { }
           if (onVolver) onVolver();
           return;
         }
       }
-      // Eliminado modal de PDF generado. Solo mostrar mensaje de éxito simple.
 
       try {
         await Swal.fire({ title: 'Éxito', text: 'Experiencia registrada correctamente', icon: 'success', confirmButtonText: 'Aceptar' });
-      } catch (e) {}
+      } catch { }
       if (onVolver) onVolver();
     } catch (err: any) {
       const msg = err?.message || "Error inesperado al registrar la experiencia";
       setErrorMessage(msg);
       try {
         Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'Aceptar' });
-      } catch (e) {}
+      } catch { }
     }
   };
-
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const validateCurrentStep = (): boolean => {
-    if (disableValidation) return true;
-    setFieldErrors({});
-    // Step 0: InstitutionalIdentification required fields (field-level errors)
-    if (currentStep === 0) {
-      const inst = identificacionInstitucional || {};
-      const errors: Record<string, string> = {};
-      if (!inst.codeDane || String(inst.codeDane).trim() === "") errors.codeDane = "Código DANE es obligatorio";
-      if (!inst.name || String(inst.name).trim() === "") errors.name = "Nombre del establecimiento es obligatorio";
-      if (!inst.nameRector || String(inst.nameRector).trim() === "") errors.nameRector = "Nombre del rector es obligatorio";
-      if (!inst.departament || String(inst.departament).trim() === "") errors.departament = "Departamento es obligatorio";
-      if (!inst.municipality || String(inst.municipality).trim() === "") errors.municipality = "Municipio es obligatorio";
-
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        return false;
-      }
-      setFieldErrors({});
-      return true;
-    }
-
-    // Step 1: Leader required fields
-    if (currentStep === 1) {
-      const leader = (lideres && lideres[0]) || {};
-      const errors: Record<string, string> = {};
-      if (!leader.nameLeaders || String(leader.nameLeaders).trim() === "") errors.leaderName = "Nombre del líder es obligatorio";
-      if (!leader.email || String(leader.email).trim() === "") errors.leaderEmail = "Correo del líder es obligatorio";
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        return false;
-      }
-      setFieldErrors({});
-      return true;
-    }
-
-    // Step 2: Identification required fields
-    if (currentStep === 2) {
-      const ident = identificacionForm || {};
-      const errors: Record<string, string> = {};
-      if (!ident.nameExperience || String(ident.nameExperience).trim() === "") errors.nameExperience = "Nombre de la experiencia es obligatorio";
-      if (!ident.thematicFocus || String(ident.thematicFocus).trim() === "") errors.thematicFocus = "Enfoque temático es obligatorio";
-      const dev = ident.development || {};
-      // Permitir 0 como valor válido para días, meses o años
-      const hasDev = [dev.days, dev.months, dev.years].some(
-        (v) => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(Number(v))
-      );
-      if (!hasDev) errors.development = "Seleccione el tiempo de desarrollo";
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        return false;
-      }
-      setFieldErrors({});
-      return true;
-    }
-
-    // Other steps: no mandatory validation by default (can be extended)
-    return true;
-  };
-
-  // Synchronous check used to enable/disable the Next button (no state changes)
-  const isCurrentStepValidSync = (): boolean => {
-    if (disableValidation) return true;
-    if (currentStep === 0) {
-      const inst = identificacionInstitucional || {};
-      if (!inst.codeDane || String(inst.codeDane).trim() === "") return false;
-      if (!inst.name || String(inst.name).trim() === "") return false;
-      if (!inst.nameRector || String(inst.nameRector).trim() === "") return false;
-      if (!inst.departament || String(inst.departament).trim() === "") return false;
-      if (!inst.municipality || String(inst.municipality).trim() === "") return false;
-      return true;
-    }
-    if (currentStep === 1) {
-      const leader = (lideres && lideres[0]) || {};
-      if (!leader.nameLeaders || String(leader.nameLeaders).trim() === "") return false;
-      if (!leader.email || String(leader.email).trim() === "") return false;
-      return true;
-    }
-    if (currentStep === 2) {
-      const ident = identificacionForm || {};
-      if (!ident.nameExperience || String(ident.nameExperience).trim() === "") return false;
-      if (!ident.thematicFocus || String(ident.thematicFocus).trim() === "") return false;
-      const dev = ident.development || {};
-      // Permitir 0 como valor válido para días, meses o años
-      const hasDev = [dev.days, dev.months, dev.years].some(
-        (v) => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(Number(v))
-      );
-      if (!hasDev) return false;
-      return true;
-    }
-    return true;
-  };
-
-  const isLastStep = () => currentStep === steps.length - 1;
-  const nextStep = () => setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
-  const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
 
   return (
     <div className="p-6 bg-white rounded-lg shadow max-h-[95vh] overflow-y-auto max-w-7xl mx-auto">
@@ -1505,9 +1395,7 @@ Population: Array.isArray(tematicaForm.Population)
           <h2 className="text-2xl font-semibold text-center mb-3">Registro de Experiencia</h2>
           <div className="w-full overflow-x-auto py-4">
             <div className="relative w-full px-4">
-              {/* connecting line */}
               <div className="absolute left-6 right-6 top-4 h-0.5 bg-gray-200" />
-
               <div className="flex items-start justify-between">
                 {steps.map((label, idx) => {
                   const isActive = idx === currentStep;
@@ -1515,9 +1403,12 @@ Population: Array.isArray(tematicaForm.Population)
                   return (
                     <div key={label} className="flex-1 flex flex-col items-center text-center min-w-[90px]">
                       <div
-                        className={`z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                          isCompleted ? "bg-sky-500 text-white" : isActive ? "bg-pink-300 text-white border-2 border-pink-200" : "bg-white border border-gray-200 text-gray-500"
-                        }`}
+                        className={`z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${isCompleted
+                          ? "bg-sky-500 text-white"
+                          : isActive
+                            ? "bg-pink-300 text-white border-2 border-pink-200"
+                            : "bg-white border border-gray-200 text-gray-500"
+                          }`}
                       >
                         {idx + 1}
                       </div>
@@ -1533,133 +1424,276 @@ Population: Array.isArray(tematicaForm.Population)
         </div>
 
         <form onSubmit={(e) => e.preventDefault()}>
-          {/* step-level alert removed — errors shown inline per field */}
           <div className="space-y-4">
-            {/* Estado de edición por sección */}
+            {/* Sección 0: Institucional */}
             {currentStep === 0 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
                   {readOnly && (
-                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(0)}>Editar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={() => setEditSection(0)}
+                    >
+                      Editar
+                    </button>
                   )}
                 </div>
-                <InstitutionalIdentification value={identificacionInstitucional} onChange={setIdentificacionInstitucional} errors={fieldErrors} {...(typeof readOnly !== 'undefined' && { readOnly: readOnly && editSection !== 0 })} />
+                <InstitutionalIdentification
+                  value={identificacionInstitucional}
+                  onChange={setIdentificacionInstitucional}
+                  errors={fieldErrors}
+                  {...(typeof readOnly !== 'undefined' && { readOnly: readOnly && editSection !== 0 })}
+                />
                 {editSection === 0 && (
                   <div className="flex justify-end mt-2 gap-2">
-                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
-                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchInstitutional}>Guardar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                      onClick={() => setEditSection(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={handlePatchInstitutional}
+                    >
+                      Guardar
+                    </button>
                   </div>
                 )}
               </FormSection>
             )}
 
+            {/* Sección 1: Líder */}
             {currentStep === 1 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
                   {readOnly && (
-                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(1)}>Editar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={() => setEditSection(1)}
+                    >
+                      Editar
+                    </button>
                   )}
                 </div>
                 <LeadersForm value={lideres} onChange={setLideres} index={0} />
                 {editSection === 1 && (
                   <div className="flex justify-end mt-2 gap-2">
-                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
-                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchLeaders}>Guardar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                      onClick={() => setEditSection(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={handlePatchLeaders}
+                    >
+                      Guardar
+                    </button>
                   </div>
                 )}
               </FormSection>
             )}
 
+            {/* Sección 2: Identificación Experiencia */}
             {currentStep === 2 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
                   {readOnly && (
-                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(2)}>Editar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={() => setEditSection(2)}
+                    >
+                      Editar
+                    </button>
                   )}
                 </div>
                 <IdentificationForm value={identificacionForm} onChange={setIdentificacionForm} />
                 {editSection === 2 && (
                   <div className="flex justify-end mt-2 gap-2">
-                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
-                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchIdentification}>Guardar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                      onClick={() => setEditSection(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={handlePatchIdentification}
+                    >
+                      Guardar
+                    </button>
                   </div>
                 )}
               </FormSection>
             )}
 
+            {/* Sección 3: Temática y Desarrollo */}
             {currentStep === 3 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
                   {readOnly && (
-                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(3)}>Editar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={() => setEditSection(3)}
+                    >
+                      Editar
+                    </button>
                   )}
                 </div>
                 <ThematicForm value={tematicaForm} onChange={setTematicaForm} />
                 {editSection === 3 && (
                   <div className="flex justify-end mt-2 gap-2">
-                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
-                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchThematic}>Guardar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                      onClick={() => setEditSection(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={handlePatchThematic}
+                    >
+                      Guardar
+                    </button>
                   </div>
                 )}
               </FormSection>
             )}
 
+            {/* Sección 4: Componentes (Objetivos) */}
             {currentStep === 4 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
                   {readOnly && (
-                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(4)}>Editar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={() => setEditSection(4)}
+                    >
+                      Editar
+                    </button>
                   )}
                 </div>
                 <Components value={objectiveExperience} onChange={setObjectiveExperience} />
                 {editSection === 4 && (
                   <div className="flex justify-end mt-2 gap-2">
-                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
-                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchComponents}>Guardar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                      onClick={() => setEditSection(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={handlePatchComponents}
+                    >
+                      Guardar
+                    </button>
                   </div>
                 )}
               </FormSection>
             )}
 
+            {/* Sección 5: Monitoreos / Seguimiento */}
             {currentStep === 5 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
                   {readOnly && (
-                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(5)}>Editar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={() => setEditSection(5)}
+                    >
+                      Editar
+                    </button>
                   )}
                 </div>
                 <FollowUpEvaluation value={seguimientoEvaluacion} onChange={setSeguimientoEvaluacion} />
                 {editSection === 5 && (
                   <div className="flex justify-end mt-2 gap-2">
-                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
-                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchFollowUp}>Guardar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                      onClick={() => setEditSection(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={handlePatchFollowUp}
+                    >
+                      Guardar
+                    </button>
                   </div>
                 )}
               </FormSection>
             )}
 
+            {/* Sección 6: Testimonios / Soportes */}
             {currentStep === 6 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
                   {readOnly && (
-                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(6)}>Editar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={() => setEditSection(6)}
+                    >
+                      Editar
+                    </button>
                   )}
                 </div>
                 <SupportInformationForm value={informacionApoyo} onChange={setInformacionApoyo} />
                 {editSection === 6 && (
                   <div className="flex justify-end mt-2 gap-2">
-                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
-                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchSupportInfo}>Guardar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                      onClick={() => setEditSection(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={handlePatchSupportInfo}
+                    >
+                      Guardar
+                    </button>
                   </div>
                 )}
               </FormSection>
             )}
 
+            {/* Sección 7: Documentos */}
             {currentStep === 7 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
                   {readOnly && (
-                    <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(7)}>Editar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={() => setEditSection(7)}
+                    >
+                      Editar
+                    </button>
                   )}
                 </div>
                 <div className="my-6">
@@ -1672,8 +1706,20 @@ Population: Array.isArray(tematicaForm.Population)
                 </div>
                 {editSection === 7 && (
                   <div className="flex justify-end mt-2 gap-2">
-                    <button type="button" className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400" onClick={() => setEditSection(null)}>Cancelar</button>
-                    <button type="button" className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700" onClick={handlePatchDocuments}>Guardar</button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400"
+                      onClick={() => setEditSection(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={handlePatchDocuments}
+                    >
+                      Guardar
+                    </button>
                   </div>
                 )}
               </FormSection>
@@ -1681,12 +1727,14 @@ Population: Array.isArray(tematicaForm.Population)
           </div>
 
           <div className="sticky bottom-0 z-20 bg-white/90 backdrop-blur-sm border-t border-gray-100 py-3 flex justify-between items-center mt-6">
-            {/* Navegación siempre habilitada, solo edición bloqueada */}
             <button
               type="button"
               disabled={currentStep === 0}
               onClick={prevStep}
-              className={`px-4 py-2 rounded ${currentStep === 0 ? "bg-slate-200 text-slate-400" : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+              className={`px-4 py-2 rounded ${currentStep === 0
+                ? "bg-slate-200 text-slate-400"
+                : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                }`}
             >
               Atrás
             </button>
@@ -1698,7 +1746,10 @@ Population: Array.isArray(tematicaForm.Population)
                   if (validateCurrentStep()) nextStep();
                 }}
                 disabled={!isCurrentStepValidSync()}
-                className={`px-4 py-2 rounded ${!isCurrentStepValidSync() ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-sky-500 text-white hover:bg-sky-600"}`}
+                className={`px-4 py-2 rounded ${!isCurrentStepValidSync()
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  : "bg-sky-500 text-white hover:bg-sky-600"
+                  }`}
               >
                 Siguiente
               </button>
@@ -1712,7 +1763,11 @@ Population: Array.isArray(tematicaForm.Population)
                   Cerrar
                 </button>
               ) : (
-                <button type="button" onClick={() => handleSubmit()} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
+                <button
+                  type="button"
+                  onClick={() => handleSubmit()}
+                  className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700"
+                >
                   Guardar Experiencia
                 </button>
               )
@@ -1725,5 +1780,3 @@ Population: Array.isArray(tematicaForm.Population)
 };
 
 export default AddExperience;
-
-
