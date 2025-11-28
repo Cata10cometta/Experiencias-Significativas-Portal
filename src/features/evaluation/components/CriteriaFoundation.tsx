@@ -47,6 +47,9 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
     } as any);
   };
 
+  // Character limit for descriptionContribution
+  const MAX_CHARACTERS = 50;
+
   return (
     <section className="w-full px-0 mt-4 min-h-[400px]">
       <div className="bg-[#e9ecef] rounded-t-xl px-8 py-6">
@@ -154,15 +157,24 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
             Aportes para el mejoramiento frente al criterio evaluado Fundamentación
             (Si no hay aportes favor escribir "NO APLICA")
           </label>
-          <textarea
-            className="w-full border rounded p-2 min-h-[60px] focus:ring-2 focus:ring-[#2196f3]"
-            placeholder="Tu respuesta"
-            value={criteria.descriptionContribution ?? ""}
-            onChange={(e) => updateDescription(e.target.value)}
-          />
+          <div className="relative">
+            <textarea
+              className="w-full border rounded p-2 min-h-[60px] focus:ring-2 focus:ring-[#2196f3] pr-14 pb-7"
+              placeholder="Tu respuesta"
+              value={criteria.descriptionContribution ?? ""}
+              maxLength={MAX_CHARACTERS}
+              onChange={(e) => updateDescription(e.target.value)}
+            />
+            <span
+              className="absolute bottom-2 right-3 text-xs text-gray-500 pointer-events-none bg-white px-1"
+              style={{ lineHeight: '1' }}
+            >
+              {criteria.descriptionContribution?.length || 0}/{MAX_CHARACTERS}
+            </span>
+          </div>
           {errors.descriptionContributionFoundation && (
-  <p className="text-red-500 text-sm mt-2">{errors.descriptionContributionFoundation}</p>
-)}
+            <p className="text-red-500 text-sm mt-2">{errors.descriptionContributionFoundation}</p>
+          )}
         </div>
       </div>
     </section>

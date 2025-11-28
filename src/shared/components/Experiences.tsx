@@ -865,7 +865,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 																} catch (err) {
 																	console.error('Error handling pencil click', err);
 																}
-															}}
+														}}
 														>
 															<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 inline" viewBox="0 0 20 20" fill="currentColor">
 																<path d="M17.414 2.586a2 2 0 010 2.828L8.828 14l-3.536.707.707-3.536L14.586 2.586a2 2 0 012.828 0z" />

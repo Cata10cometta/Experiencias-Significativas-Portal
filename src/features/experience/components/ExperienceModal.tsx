@@ -110,13 +110,13 @@ const [loading, setLoading] = useState(false);
 	const link = docs?.[0]?.urlLink || null;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-			<div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative">
-				<button onClick={onClose} className="absolute top-6 right-6 text-2xl text-gray-400 hover:text-gray-700">×</button>
-				<h2 className="text-3xl font-bold mb-10 text-gray-900">Información de la Experiencia</h2>
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-2 sm:px-4">
+			<div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl sm:max-w-3xl md:max-w-4xl p-4 sm:p-8 relative overflow-y-auto max-h-[95vh]">
+				<button onClick={onClose} className="absolute top-3 right-3 sm:top-6 sm:right-6 text-2xl text-gray-400 hover:text-gray-700">×</button>
+				<h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-10 text-gray-900 text-center">Información de la Experiencia</h2>
 
 				{/* Main info grid */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 mb-8">
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 sm:gap-x-10 gap-y-4 sm:gap-y-6 mb-6 sm:mb-8">
 					<InfoRow labelText="Título de la experiencia:" value={title} />
 					<InfoRow labelText="Líder de la experiencia:" value={leaderName} />
 					<InfoRow labelText="Fecha:" value={date} />
@@ -128,16 +128,16 @@ const [loading, setLoading] = useState(false);
 				</div>
 
 				{/* Document and link section (no divider) */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 mb-4">
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 sm:gap-x-10 gap-y-4 sm:gap-y-6 mb-2 sm:mb-4">
 					<InfoRow
 						labelText="Oficio de presentación por parte de la Institución Educativa (membrete de la IE y firma del Rector (a)):"
 						value={
 							pdf2 ? (
-								<div className="flex items-center gap-2">
+								<div className="flex items-center gap-2 flex-wrap">
 									<button
 										type="button"
 										onClick={() => openPdf(pdf2)}
-										className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded px-3 py-1 shadow-sm border border-red-200 transition"
+										className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded px-3 py-1 shadow-sm border border-red-200 transition text-sm sm:text-base"
 										title="Abrir PDF 2 en nueva pestaña"
 									>
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-red-600">
@@ -154,11 +154,11 @@ const [loading, setLoading] = useState(false);
 						labelText="Proyecto de Experiencia Significativa:"
 						value={
 							pdf ? (
-								<div className="flex items-center gap-2">
+								<div className="flex items-center gap-2 flex-wrap">
 									<button
 										type="button"
 										onClick={() => openPdf(pdf)}
-										className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded px-3 py-1 shadow-sm border border-red-200 transition"
+										className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded px-3 py-1 shadow-sm border border-red-200 transition text-sm sm:text-base"
 										title="Abrir PDF en nueva pestaña"
 									>
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-red-600">
@@ -175,7 +175,7 @@ const [loading, setLoading] = useState(false);
 						labelText="Enlace adicional:"
 						value={
 							link ? (
-								<a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">
+								<a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all text-sm sm:text-base">
 									{link}
 								</a>
 							) : null
@@ -183,8 +183,8 @@ const [loading, setLoading] = useState(false);
 					/>
 				</div>
 
-				<div className="flex justify-end mt-10">
-					<button onClick={onClose} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-lg shadow">
+				<div className="flex flex-col sm:flex-row justify-end items-center gap-4 mt-8 sm:mt-10">
+					<button onClick={onClose} className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-8 rounded-lg shadow text-base sm:text-lg transition">
 						Listo
 					</button>
 				</div>

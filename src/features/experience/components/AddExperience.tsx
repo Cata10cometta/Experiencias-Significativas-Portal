@@ -27,7 +27,7 @@ async function notifyExperienceCreated(experienceId: number | null | undefined) 
   }
 }
 // Utilidad para obtener el userId del token o localStorage
-function getUserId(token?: string | null) {
+export function getUserId(token?: string | null) {
   let userId = null;
   const parseJwt = (token: string): any => {
     try {
@@ -58,7 +58,7 @@ function getUserId(token?: string | null) {
 }
 
 // Función para construir el payload genérico con todos los campos requeridos
-function buildExperiencePayload({
+export function buildExperiencePayload({
   initialData,
   identificacionForm,
   identificacionInstitucional,
@@ -125,60 +125,32 @@ function buildExperiencePayload({
   const safe = (v: any, fallback: any) => (v === undefined || v === null ? fallback : v);
   // Construir el objeto anidado bajo 'request' con TODOS los campos requeridos SIEMPRE presentes
   // Alternar entre PascalCase y camelCase para los campos requeridos
-  const USE_CAMEL = true; // Cambia a false para probar PascalCase
-  if (USE_CAMEL) {
-    return {
-      request: {
-        experienceId: initialData?.id ?? 0,
-        nameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
-        code: initialData?.code || '',
-        thematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
-        developmenttime: devTime,
-        recognition: initialData?.recognition || '',
-        socialization: initialData?.socialization || '',
-        stateExperienceId: initialData?.stateExperienceId || 0,
-        userId: userId ?? 0,
-        leaders: safe(leaders, []),
-        institutionUpdate: safe(institutionUpdate, {}),
-        gradesUpdate: safe(gradesUpdate, []),
-        documentsUpdate: safe(documentsUpdate, []),
-        thematicLineIds: safe(thematicLineIds, []),
-        objectivesUpdate: safe(objectivesUpdate, []),
-        developmentsUpdate: safe(developmentsUpdate, []),
-        populationGradeIds: safe(populationGradeIds, []),
-        historyExperiencesUpdate: safe(historyExperiencesUpdate, []),
-        followUpUpdate: safe(seguimientoEvaluacion, {}),
-        supportInfoUpdate: safe(informacionApoyo, {}),
-        componentsUpdate: [],
-      }
-    };
-  } else {
-    return {
-      request: {
-        ExperienceId: initialData?.id ?? 0,
-        NameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
-        Code: initialData?.code || '',
-        ThematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
-        Developmenttime: devTime,
-        Recognition: initialData?.recognition || '',
-        Socialization: initialData?.socialization || '',
-        StateExperienceId: initialData?.stateExperienceId || 0,
-        UserId: userId ?? 0,
-        Leaders: safe(leaders, []),
-        InstitutionUpdate: safe(institutionUpdate, {}),
-        GradesUpdate: safe(gradesUpdate, []),
-        DocumentsUpdate: safe(documentsUpdate, []),
-        ThematicLineIds: safe(thematicLineIds, []),
-        ObjectivesUpdate: safe(objectivesUpdate, []),
-        DevelopmentsUpdate: safe(developmentsUpdate, []),
-        PopulationGradeIds: safe(populationGradeIds, []),
-        HistoryExperiencesUpdate: safe(historyExperiencesUpdate, []),
-        FollowUpUpdate: safe(seguimientoEvaluacion, {}),
-        SupportInfoUpdate: safe(informacionApoyo, {}),
-        ComponentsUpdate: [],
-      }
-    };
-  }
+  // Forzar camelCase y nunca undefined en campos requeridos
+  return {
+    request: {
+      experienceId: typeof initialData?.id === 'number' && Number.isFinite(initialData.id) ? initialData.id : 0,
+      nameExperiences: identificacionForm?.nameExperience || initialData?.nameExperiences || '',
+      code: initialData?.code || '',
+      thematicLocation: identificacionForm?.thematicLocation || initialData?.thematicLocation || '',
+      developmenttime: devTime ?? '',
+      recognition: initialData?.recognition || '',
+      socialization: initialData?.socialization || '',
+      stateExperienceId: typeof initialData?.stateExperienceId === 'number' && Number.isFinite(initialData.stateExperienceId) ? initialData.stateExperienceId : 0,
+      userId: typeof userId === 'number' && Number.isFinite(userId) ? userId : 0,
+      leaders: safe(leaders, []),
+      institutionUpdate: safe(institutionUpdate, {}),
+      gradesUpdate: safe(gradesUpdate, []),
+      documentsUpdate: safe(documentsUpdate, []),
+      thematicLineIds: safe(thematicLineIds, []),
+      objectivesUpdate: safe(objectivesUpdate, []),
+      developmentsUpdate: safe(developmentsUpdate, []),
+      populationGradeIds: safe(populationGradeIds, []),
+      historyExperiencesUpdate: safe(historyExperiencesUpdate, []),
+      followUpUpdate: safe(seguimientoEvaluacion, {}),
+      supportInfoUpdate: safe(informacionApoyo, {}),
+      componentsUpdate: [],
+    }
+  };
 }
 import React, { useState, useEffect } from "react";
 import Swal from 'sweetalert2';
@@ -202,9 +174,57 @@ interface AddExperienceProps {
   readOnly?: boolean;
   disableValidation?: boolean;
   showBackButton?: boolean;
+  editMode?: boolean;
 }
 
-const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = null, readOnly = false, disableValidation = false, showBackButton = true }) => {
+const AddExperience: React.FC<AddExperienceProps> = ({ onVolver, initialData = null, readOnly = false, disableValidation = false, showBackButton = true, editMode = false }) => {
+    // Guardar toda la experiencia en modo edición global
+    const handlePatchAll = async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+        const endpoint = `${API_BASE}/api/Experience/patch`;
+        const token = localStorage.getItem('token') || getToken?.();
+        if (!initialData?.id) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el ID de la experiencia.' });
+          return;
+        }
+        const userId = getUserId(token);
+        const payload = buildExperiencePayload({
+          initialData,
+          identificacionForm,
+          identificacionInstitucional,
+          lideres,
+          nivelesForm,
+          tematicaForm,
+          seguimientoEvaluacion,
+          informacionApoyo,
+          pdfFile,
+          userId
+        });
+        // Mostrar en consola el endpoint y el payload
+        console.log('[PATCH experiencia] Endpoint:', endpoint);
+        console.log('[PATCH experiencia] Payload:', payload);
+        const USE_WRAPPER = true;
+        const res = await fetch(endpoint, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: USE_WRAPPER ? JSON.stringify(payload) : JSON.stringify(payload.request),
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          Swal.fire({ icon: 'error', title: 'Error', text: text || 'No se pudo guardar los cambios.' });
+          return;
+        }
+        Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios guardados correctamente.' });
+        if (onVolver) onVolver();
+      } catch (err: any) {
+        const msg = err?.message ?? (typeof err === 'string' ? err : (err && typeof err.toString === 'function' ? err.toString() : 'Error al guardar.'));
+        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+      }
+    };
   // Estado para saber qué sección está en modo edición
   const [editSection, setEditSection] = useState<number | null>(null);
 
@@ -1658,7 +1678,7 @@ Population: Array.isArray(tematicaForm.Population)
             {currentStep === 7 && (
               <FormSection>
                 <div className="flex justify-end mb-2">
-                  {readOnly && (
+                  {readOnly && (!('editMode' in window) || !(window as any).editMode) && (
                     <button type="button" className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700" onClick={() => setEditSection(7)}>Editar</button>
                   )}
                 </div>
@@ -1712,9 +1732,15 @@ Population: Array.isArray(tematicaForm.Population)
                   Cerrar
                 </button>
               ) : (
-                <button type="button" onClick={() => handleSubmit()} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
-                  Guardar Experiencia
-                </button>
+                editMode ? (
+                  <button type="button" onClick={handlePatchAll} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
+                    Guardar Experiencia
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => handleSubmit()} className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">
+                    Guardar Experiencia
+                  </button>
+                )
               )
             )}
           </div>
@@ -1725,5 +1751,4 @@ Population: Array.isArray(tematicaForm.Population)
 };
 
 export default AddExperience;
-
 

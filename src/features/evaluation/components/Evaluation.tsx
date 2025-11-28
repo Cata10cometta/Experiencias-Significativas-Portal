@@ -738,7 +738,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
 
     return (
         <div
-            className="w-full max-w-3xl bg-white rounded-lg shadow-md p-8 mx-auto"
+            className="w-full max-w-3xl bg-white rounded-lg shadow-md p-8 mx-auto custom-scrollbar-transparent"
             style={{
                 maxHeight: '90vh',
                 overflowY: 'auto',
@@ -747,6 +747,8 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                 boxSizing: 'border-box',
             }}
         >
+            // Estilos para scrollbars transparentes
+            import "./scrollbarTransparent.css";
             {/* Botón X para cerrar el formulario principal */}
             {onClose && (
                 <button
@@ -824,23 +826,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             <Modal open={showModal} onClose={handleCloseModal}>
                 <Box
                     sx={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: 300,
-                        minHeight: 180,
-                        maxWidth: '90vw',
-                        maxHeight: '60vh',
-                        overflowY: 'auto',
-                        bgcolor: "background.paper",
-                        boxShadow: 24,
-                        p: 3,
-                        borderRadius: 2,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        
                     }}
                 >
                     {/* Botón X para cerrar */}

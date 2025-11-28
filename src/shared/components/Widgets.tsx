@@ -132,13 +132,11 @@ const Widgets: React.FC = () => {
           Top row: first VISIBLE_COUNT pills. Below: remaining pills hidden until expanded.
       */}
       <div className="w-full">
-        <div className="relative bg-indigo-600 rounded-full px-4 py-6 shadow-md">
-          {/* Carousel: horizontal scrollable list with left/right controls */}
+        <div className="relative bg-indigo-600 rounded-full px-2 py-4 sm:px-4 sm:py-6 shadow-md">
           <div className="relative">
-
             <div
               ref={carouselRef}
-              className="flex gap-3 items-center overflow-x-auto scrollbar-hide py-3 px-6 widgets-lineas"
+              className="flex gap-3 items-center overflow-x-auto scrollbar-hide py-2 sm:py-3 px-2 sm:px-6 widgets-lineas"
               style={{ scrollBehavior: 'smooth' }}
             >
               {ejes.map(eje => (
@@ -146,28 +144,27 @@ const Widgets: React.FC = () => {
                   key={eje.id}
                   onClick={() => setSelectedEje(eje.id)}
                   className={`inline-flex flex-shrink-0 items-center whitespace-nowrap px-4 py-2 rounded-full! text-sm font-medium transition-shadow duration-150 bg-white text-indigo-600 ${selectedEje === eje.id ? 'ring-2 ring-white/30 shadow-lg' : 'shadow-sm hover:shadow-md'}`}
+                  style={{ minWidth: 'max-content' }}
                 >
                   <span className="leading-none">{eje.label}</span>
                 </button>
               ))}
             </div>
-
-            {/* Arrow controls removed per request; users can swipe/scroll the carousel manually */}
           </div>
         </div>
       </div>
 
       {/* Featured orange card SIEMPRE visible abajo, mostrando la experiencia seleccionada o mensaje por defecto */}
       <div className="mt-12 flex items-center justify-center">
-        <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-8 flex items-center gap-8 widgets-feature-card">
-          <img src="/carts.svg" alt="icono experiencia" className="w-28 h-28" />
-          <div className="flex-1">
-            <h2 className="text-2xl font-extrabold text-[#1f2937]">
+        <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 flex flex-col md:flex-row items-center gap-4 md:gap-8 widgets-feature-card">
+          <img src="/carts.svg" alt="icono experiencia" className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 mb-4 md:mb-0" />
+          <div className="flex-1 text-center md:text-left">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#1f2937]">
               {selectedExperience
                 ? (selectedExperience.nameExperiences || selectedExperience.title || selectedExperience.name)
                 : 'Selecciona una experiencia'}
             </h2>
-            <p className="mt-2 text-lg text-[#1f2937]">
+            <p className="mt-2 text-base sm:text-lg text-[#1f2937]">
               {selectedExperience
                 ? (selectedExperience.thematicLocation || selectedExperience.ThematicLocation || selectedExperience.area || '')
                 : ''}
@@ -176,7 +173,7 @@ const Widgets: React.FC = () => {
           {selectedExperience && (
             <button
               onClick={() => setModalOpen(true)}
-              className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shadow-md"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 flex items-center justify-center shadow-md mt-4 md:mt-0"
               aria-label="Ver experiencia"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -242,7 +239,10 @@ const Widgets: React.FC = () => {
               <div className="text-red-500 py-8">{error}</div>
             ) : (selectedEje === null ? (
               <div className="relative">
-                <div ref={carouselRef} className="flex gap-4 overflow-x-auto scrollbar-hide py-6 px-2 pr-20">
+                <div
+                  ref={carouselRef}
+                  className="flex gap-4 overflow-x-auto scrollbar-hide py-6 px-2 pr-4 sm:pr-8 md:pr-12 lg:pr-20 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:overflow-x-visible"
+                >
                   {experiencias
                     .filter((exp: any) => {
                       if (!searchTerm.trim()) return true;
@@ -286,7 +286,10 @@ const Widgets: React.FC = () => {
               <div className="text-gray-500 py-8">No hay experiencias.</div>
             ) : (
               <div className="relative">
-                <div ref={carouselRef} className="flex gap-4 overflow-x-auto scrollbar-hide py-6 px-2 pr-20">
+                <div
+                  ref={carouselRef}
+                  className="flex gap-4 overflow-x-auto scrollbar-hide py-6 px-2 pr-4 sm:pr-8 md:pr-12 lg:pr-20 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:overflow-x-visible"
+                >
                   {lineaExperiencias
                     .filter((exp: any) => {
                       if (!searchTerm.trim()) return true;

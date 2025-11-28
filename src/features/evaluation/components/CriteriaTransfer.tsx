@@ -113,12 +113,21 @@ Solo podrá seleccionar un Estado y valorar de manera cuantitativa  de acuerd
           <label className="block font-semibold !text-[#2196f3] mb-2">
             Aportes para el mejoramiento (Si no hay aportes favor escribir "NO APLICA")
           </label>
-          <textarea
-            className="w-full border rounded p-2 min-h-[60px] focus:ring-2 focus:ring-[#2196f3]"
-            placeholder="Tu respuesta"
-            value={criteria.descriptionContribution ?? ""}
-            onChange={(e) => updateDescription(e.target.value)}
-          />
+          <div className="relative">
+            <textarea
+              className="w-full border rounded p-2 min-h-[60px] focus:ring-2 focus:ring-[#2196f3] pr-14 pb-7 resize-none"
+              placeholder="Tu respuesta"
+              value={criteria.descriptionContribution ?? ""}
+              maxLength={50}
+              onChange={(e) => updateDescription(e.target.value)}
+            />
+            <span
+              className="absolute bottom-2 right-3 text-xs text-gray-500 pointer-events-none bg-white px-1 z-10"
+              style={{ lineHeight: '1', borderRadius: '4px' }}
+            >
+              {criteria.descriptionContribution?.length || 0}/50
+            </span>
+          </div>
           {errors.descriptionContributionTransfer && (
             <p className="text-red-500 text-sm mt-2">{errors.descriptionContributionTransfer}</p>
           )}
