@@ -281,10 +281,10 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
         setNotifications(prev => prev.filter(n => {
           const nExpId = n.raw?.experienceId ?? n.raw?.experience?.id ?? n.raw?.request?.experienceId ?? null;
           const normalizedId = n.id ?? null;
-          return nExpId !== experienceId && normalizedId !== experienceId;
+          return String(nExpId) !== String(experienceId) && String(normalizedId) !== String(experienceId);
         }));
         // Remember this id locally so a subsequent fetch won't re-add it to the UI.
-        setRemovedIds(prev => prev.includes(experienceId) ? prev : [...prev, experienceId]);
+        setRemovedIds(prev => prev.includes(String(experienceId)) ? prev : [...prev, String(experienceId)]);
         try {
           const key = 'approvedExperienceIds';
           const raw = localStorage.getItem(key);
@@ -347,11 +347,19 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
     if (open) {
       fetchNotifications();
       if (!signalRStarted.current) {
-        startNotificationsHub((notification) => {
+        startNotificationsHub((notification: any) => {
           // Normalizar la notificación recibida y agregarla al principio de la lista
           setNotifications((prev) => [
             {
               id: notification.id ?? notification.notificationId ?? notification.requestId ?? null,
+              experienceId:
+                notification.experienceId ??
+                notification.ExperienceId ??
+                notification.experience?.id ??
+                notification.experienceID ??
+                notification.request?.experienceId ??
+                notification.request?.ExperienceId ??
+                null,
               experienceName: notification.experienceName ?? notification.nameExperiences ?? notification.title ?? notification.experience?.name ?? `Solicitud edición #${notification.id ?? ''}`,
               userName: notification.userName ?? notification.user?.name ?? notification.requestUser ?? notification.requestedBy ?? notification.username ?? notification.solicitante ?? (notification.request?.userName) ?? '',
               state: notification.status ?? notification.state ?? notification.requestState ?? notification.estado ?? notification.stateName ?? notification.state?.name ?? 'Pendiente',

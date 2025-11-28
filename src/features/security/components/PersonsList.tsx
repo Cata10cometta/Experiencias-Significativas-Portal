@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import Joyride from "react-joyride";
-import configApi from "../../../Api/Config/Config";
+import axios from "axios";
 import { getEnum } from "../../../Api/Services/Helper";
 import { DataSelectRequest } from "../../../shared/types/HelperTypes";
-import { securityPersonsTourSteps, securityTourLocale, securityTourStyles } from "../../onboarding/securityTour";
 import { Person } from "../types/Person";
 
 
@@ -23,10 +21,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
   const [emailInstitutional, setEmailInstitutional] = useState("");
   const [phone, setPhone] = useState("");
   const [codeDane, setCodeDane] = useState("");
-  const [documentType, setDocumentType] = useState("");
-  const [code, setCode] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [documentType, setDocumentType] = useState<number | string>("");
   const [documentTypes, setDocumentTypes] = useState<DataSelectRequest[]>([]);
   const [codigoDaneOptions, setCodigoDaneOptions] = useState<DataSelectRequest[]>([]);
   const [emailInstitucionalOptions, setEmailInstitucionalOptions] = useState<DataSelectRequest[]>([]);
@@ -54,39 +49,30 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    const token = localStorage.getItem("token");
     try {
-      await configApi.post(
-        "/Person/create",
+      await axios.post(
+        "/api/Person",
         {
-          documentType,
           identificationNumber,
           firstName,
           middleName,
           firstLastName,
           secondLastName,
-          codeDane,
-          emailInstitutional,
           email,
-          phone: phone ? parseInt(phone, 10) : 0,
-          code,
-          username,
-          password
-        }
+          emailInstitutional,
+          phone: phone ? parseInt(phone, 10) : undefined,
+          codeDane,
+          documentType: documentType || undefined,
+          state: true,
+          createdAt: new Date().toISOString(),
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       onAdded();
       onClose();
-    } catch (err: any) {
-      let msg = "Error al crear la persona. Por favor verifica los datos.";
-      if (err?.response?.data) {
-        if (typeof err.response.data === "string") {
-          msg = err.response.data;
-        } else if (typeof err.response.data === "object" && err.response.data.message) {
-          msg = err.response.data.message;
-        } else if (err.response.data.error) {
-          msg = err.response.data.error;
-        }
-      }
-      setError(msg);
+    } catch (err) {
+      setError("Error al crear la persona. Por favor verifica los datos.");
     } finally {
       setLoading(false);
     }
@@ -100,9 +86,9 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block mb-2 font-semibold">Tipo de Documento</label>
-            <select className="w-full p-2 border rounded" value={documentType} onChange={e => setDocumentType(e.target.value)} required>
+            <select className="w-full p-2 border rounded" value={String(documentType)} onChange={e => setDocumentType(e.target.value)} required>
               <option value="">Seleccione...</option>
-              {documentTypes.map(d => <option key={d.id} value={d.displayText}>{d.displayText}</option>)}
+              {documentTypes.map(d => <option key={d.id} value={d.id}>{d.displayText}</option>)}
             </select>
           </div>
           <div>
@@ -153,18 +139,6 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
               {codigoDaneOptions.map(c => <option key={c.id} value={c.id}>{c.id}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block mb-2 font-semibold">Código</label>
-            <input className="w-full p-2 border rounded" value={code} onChange={e => setCode(e.target.value)} />
-          </div>
-          <div>
-            <label className="block mb-2 font-semibold">Usuario</label>
-            <input className="w-full p-2 border rounded" value={username} onChange={e => setUsername(e.target.value)} />
-          </div>
-          <div>
-            <label className="block mb-2 font-semibold">Contraseña</label>
-            <input type="password" className="w-full p-2 border rounded" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
         </div>
         <div className="flex gap-4 justify-end mt-6">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">Cancelar</button>
@@ -176,7 +150,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
 };
 
 interface EditPersonFormProps {
-  person: Person & { id?: number };
+  person: Person;
   onClose: () => void;
   onUpdated: () => void;
 }
@@ -198,8 +172,8 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onClose, onUpda
 
     const token = localStorage.getItem("token");
     try {
-      await configApi.put(
-        `/Person`,
+      await axios.put(
+        `/api/Person`,
         {
           id: person.id,
           firstName,
@@ -208,6 +182,9 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onClose, onUpda
           secondLastName,
           email,
           phone: parseInt(phone, 10),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
       onUpdated(); // Refrescar la lista
@@ -308,8 +285,8 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onClose, onUpda
 };
 
 const PersonsList: React.FC = () => {
-  const [persons, setPersons] = useState<(Person & { id?: number; state?: boolean })[]>([]);
-  const [editPerson, setEditPerson] = useState<Person & { id?: number } | null>(null);
+  const [persons, setPersons] = useState<Person[]>([]);
+  const [editPerson, setEditPerson] = useState<Person | null>(null);
   const [addPersonOpen, setAddPersonOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -317,13 +294,13 @@ const PersonsList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 5;
-  const [runTour, setRunTour] = useState(false);
 
   const fetchPersons = () => {
     const token = localStorage.getItem("token");
-    configApi
-      .get("/Person/getAll", {
+    axios
+      .get("/api/Person/getAll", {
         params: { OnlyActive: onlyActive },
+        headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
         if (Array.isArray(res.data.data)) {
@@ -347,13 +324,6 @@ const PersonsList: React.FC = () => {
     fetchPersons();
   }, [onlyActive]); // Refrescar cuando cambie el filtro
 
-  useEffect(() => {
-    if (!loading && !runTour && !localStorage.getItem("securityPersonsTourDone")) {
-      const timer = window.setTimeout(() => setRunTour(true), 600);
-      return () => window.clearTimeout(timer);
-    }
-  }, [loading, runTour]);
-
   if (loading) return <div>Cargando personas...</div>;
   if (error) return <div>{error}</div>;
 
@@ -366,7 +336,9 @@ const PersonsList: React.FC = () => {
   const handleDeactivate = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await configApi.delete(`/Person/${id}`);
+      await axios.delete(`/api/Person/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       fetchPersons(); // Refrescar lista
     } catch (err) {
       console.error("Error al desactivar persona:", err);
@@ -376,7 +348,9 @@ const PersonsList: React.FC = () => {
   const handleActivate = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await configApi.patch(`/Person/restore/${id}`);
+      await axios.patch(`/api/Person/restore/${id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       fetchPersons(); // Refrescar lista
     } catch (err) {
       console.error("Error al activar persona:", err);
@@ -384,53 +358,26 @@ const PersonsList: React.FC = () => {
   };
 
   return (
-  <div className="w-full mx-0 mt-6 px-6 py-6 security-persons-layout">
-      <Joyride
-        steps={securityPersonsTourSteps}
-        run={runTour}
-        continuous
-        showSkipButton
-        locale={securityTourLocale}
-        styles={securityTourStyles}
-        callback={(data) => {
-          if (data.status === "finished" || data.status === "skipped") {
-            setRunTour(false);
-            localStorage.setItem("securityPersonsTourDone", "true");
-          }
-        }}
-      />
+  <div className="w-full mx-0 mt-6 px-6 py-6">
       {/* header moved into white card so the card 'grabs' the title and CTA too */}
 
-  <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-6 w-full security-persons-card">
-        <div className="flex items-start justify-between mb-4 security-persons-header">
-          <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 -mt-8">
-              <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <mask id="path-1-inside-1_2506_2260" fill="white">
-                  <path d="M0 16C0 7.16344 7.16344 0 16 0H32C40.8366 0 48 7.16344 48 16V32C48 40.8366 40.8366 48 32 48H16C7.16344 48 0 40.8366 0 32V16Z"/>
-                </mask>
-                <path d="M0 16C0 7.16344 7.16344 0 16 0H32C40.8366 0 48 7.16344 48 16V32C48 40.8366 40.8366 48 32 48H16C7.16344 48 0 40.8366 0 32V16Z" fill="#7CDDFE" fillOpacity="0.1"/>
-                <path d="M16 0V1H32V0V-1H16V0ZM48 16H47V32H48H49V16H48ZM32 48V47H16V48V49H32V48ZM0 32H1V16H0H-1V32H0ZM16 48V47C7.71573 47 1 40.2843 1 32H0H-1C-1 41.3888 6.61116 49 16 49V48ZM48 32H47C47 40.2843 40.2843 47 32 47V48V49C41.3888 49 49 41.3888 49 32H48ZM32 0V1C40.2843 1 47 7.71573 47 16H48H49C49 6.61116 41.3888 -1 32 -1V0ZM16 0V-1C6.61116 -1 -1 6.61116 -1 16H0H1C1 7.71573 7.71573 1 16 1V0Z" fill="#7CDDFE" fillOpacity="0.2" mask="url(#path-1-inside-1_2506_2260)"/>
-                <path d="M32 25C32 30 28.5 32.5 24.34 33.95C24.1222 34.0238 23.8855 34.0202 23.67 33.94C19.5 32.5 16 30 16 25V18C16 17.7347 16.1054 17.4804 16.2929 17.2929C16.4804 17.1053 16.7348 17 17 17C19 17 21.5 15.8 23.24 14.28C23.4519 14.099 23.7214 13.9995 24 13.9995C24.2786 13.9995 24.5481 14.099 24.76 14.28C26.51 15.81 29 17 31 17C31.2652 17 31.5196 17.1053 31.7071 17.2929C31.8946 17.4804 32 17.7347 32 18V25Z" stroke="#7CDDFE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-sky-700">Lista de Personas</h2>
-              <p className="text-sm text-gray-500 mt-1">Administra las personas registradas en el sistema</p>
-            </div>
+  <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-6 w-full">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-sky-700">Lista de Personas</h2>
+            <p className="text-sm text-gray-500 mt-1">Administra las personas registradas en el sistema</p>
           </div>
-          <div className="security-persons-create">
+          <div>
             <button
               onClick={() => setAddPersonOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl shadow hover:bg-sky-700"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
               Agregar Persona
             </button>
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4 security-persons-search">
+        <div className="mb-6 flex items-center gap-4">
           <div className="flex-1">
             <div className="relative">
               <input
@@ -444,9 +391,16 @@ const PersonsList: React.FC = () => {
               </div>
             </div>
           </div>
+          <div>
+            <button className="px-4 py-2 rounded bg-white border text-sm flex items-center gap-2">
+              {/* funnel icon */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-gray-600"><path d="M3 5h18v2L13 13v6l-2-1v-5L3 7V5z" fill="currentColor"/></svg>
+              <span>Filtrar</span>
+            </button>
+          </div>
         </div>
 
-        <div className="rounded-lg bg-white border border-gray-100 p-4 overflow-auto security-persons-table">
+        <div className="rounded-lg bg-white border border-gray-100 p-4 overflow-auto">
           <table className="min-w-full w-full rounded-lg overflow-hidden table-auto">
             <thead className="text-left text-sm text-gray-600 bg-gray-50">
               <tr>
@@ -499,17 +453,18 @@ const PersonsList: React.FC = () => {
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-4">
                         <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditPerson(person)} title="Editar">
-                          {/* Pencil icon */}
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
+                          {/* Nuevo ícono lápiz */}
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="#0ea5e9" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16.474 5.351a2.121 2.121 0 1 1 3 3l-9.193 9.193a2 2 0 0 1-.707.464l-3.326 1.108a.5.5 0 0 1-.634-.634l1.108-3.326a2 2 0 0 1 .464-.707l9.193-9.193Z"/></svg>
                         </button>
                         {person.state ? (
-                          <button className="text-red-400 hover:text-red-600" onClick={() => { if (person.id != null) handleDeactivate(person.id); }} title="Desactivar">
-                            {/* Trash icon */}
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
+                          <button className="text-red-500 hover:text-red-700" onClick={() => handleDeactivate(person.id)} title="Desactivar">
+                            {/* Nuevo ícono papelera */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="#ef4444" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12Z"/><path stroke="#ef4444" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 11v6m4-6v6"/></svg>
                           </button>
                         ) : (
-                          <button className="text-emerald-500 hover:text-emerald-600" onClick={() => { if (person.id != null) handleActivate(person.id); }} title="Activar">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
+                          <button className="text-emerald-500 hover:text-emerald-700" onClick={() => handleActivate(person.id)} title="Activar">
+                            {/* Nuevo ícono papelera (verde) para activar */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="#10b981" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12Z"/><path stroke="#10b981" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 11v6m4-6v6"/></svg>
                           </button>
                         )}
                       </div>
@@ -521,7 +476,7 @@ const PersonsList: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <div className="mt-6 flex items-center justify-between security-persons-pagination">
+        <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-gray-500">
             {filteredPersons.length === 0 ? (
               <>Mostrando 0 personas</>

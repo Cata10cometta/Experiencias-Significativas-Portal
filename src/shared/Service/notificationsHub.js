@@ -11,7 +11,7 @@ const hubUrl = `${apiBase.replace(/\/$/, '')}/notificationsHub`;
 
 let connection = null;
 
-export function startNotificationsHub(onNotification) {
+ function startNotificationsHub(onNotification) {
   connection = new signalR.HubConnectionBuilder()
     .withUrl(hubUrl, {
       accessTokenFactory: () => localStorage.getItem("token"), // Si usas JWT
@@ -40,7 +40,8 @@ export function startNotificationsHub(onNotification) {
 
   connection.start().catch(err => console.error("SignalR error:", err));
 }
-
-export function stopNotificationsHub() {
+ function stopNotificationsHub() {
   if (connection) connection.stop();
 }
+
+export { startNotificationsHub, stopNotificationsHub };

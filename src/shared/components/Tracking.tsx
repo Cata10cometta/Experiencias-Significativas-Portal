@@ -103,13 +103,27 @@ const Tracking = () => {
     shortName,
     color,
     value,
-    percent: total > 0 ? Math.round((value / total) * 100) : 0,
   }));
 
-  const maxBarValue = Math.max(100, ...barData.map((item) => item.percent || 0));
+  // El máximo valor de cantidad para el eje Y
+  const maxBarValue = Math.max(100, ...barData.map((item) => item.value || 0));
 
   // Etiqueta personalizada para mostrar porcentaje respecto al total general
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, index }) => {
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    index,
+  }: {
+    cx: number;
+    cy: number;
+    midAngle: number;
+    innerRadius: number;
+    outerRadius: number;
+    index: number;
+  }) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.7;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -234,23 +248,24 @@ const Tracking = () => {
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={(value) => `${value}%`}
+                tickFormatter={(value) => `${value}`}
                 tick={{ fill: '#6B7280', fontSize: 12 }}
                 width={40}
                 domain={[0, maxBarValue]}
                 axisLine={false}
                 tickLine={false}
+                allowDecimals={false}
               />
               <Tooltip
-                formatter={(value: number, _name: string, item: any) => [`${value}%`, `${item?.payload?.value ?? 0} experiencias`]}
+                formatter={(value: number, _name: string, item: any) => [`${value}`, `${item?.payload?.name ?? ''}`]}
                 labelFormatter={(label, payload) => payload?.[0]?.payload?.name ?? label}
                 cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
               />
-              <Bar dataKey="percent" radius={[12, 12, 0, 0]}>
+              <Bar dataKey="value" radius={[12, 12, 0, 0]}>
                 {barData.map((entry, index) => (
                   <Cell key={`bar-${index}`} fill={entry.color} />
                 ))}
-                <LabelList dataKey="percent" position="top" formatter={(value: number) => `${value}%`} fill="#374151" fontSize={14} />
+                <LabelList dataKey="value" position="top" fill="#374151" fontSize={14} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -280,7 +295,7 @@ const Tracking = () => {
                 cy="50%"
                 innerRadius={70}
                 outerRadius={120}
-                label={renderCustomizedLabel}
+                label={renderCustomizedLabel as any}
                 labelLine={false}
                 isAnimationActive={true}
               >

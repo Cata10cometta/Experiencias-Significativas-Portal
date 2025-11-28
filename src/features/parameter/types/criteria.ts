@@ -1,5 +1,6 @@
 export interface Criteria {
   id: number;
+  code: string;
   name: string;
   descriptionContribution: string;
   descruotionType: string;
@@ -7,4 +8,4 @@ export interface Criteria {
   state?: boolean | number | string;
   createdAt?: string;
 }
-}
+

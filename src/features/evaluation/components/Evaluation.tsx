@@ -273,9 +273,68 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             console.debug('savePdfUrlToExperience error', e);
         }
     };
-    // Permitir siempre crear una nueva evaluación para la experiencia (no buscar ni editar existente)
+    // Buscar si ya existe una evaluación para este usuario y experiencia
     useEffect(() => {
-        setIsEditing(false);
+        const fetchExistingEvaluation = async () => {
+            if (!experienceId) return;
+            const token = localStorage.getItem("token");
+            const userId = Number(localStorage.getItem("userId")) || 0;
+            try {
+                const urlsToTry = [
+                    `/api/Evaluation/getByExperience/${experienceId}`,
+                    `/api/Evaluation/by-experience/${experienceId}`,
+                    `/api/Evaluation/${experienceId}`,
+                    `/api/Evaluation/List`,
+                    `/api/Evaluation`
+                ];
+
+                let resp = null;
+                for (const url of urlsToTry) {
+                    try {
+                        resp = await axios.get(url, {
+                            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                        });
+                        if (resp && resp.status === 200 && resp.data) break;
+                    } catch (e) {
+                        resp = null;
+                    }
+                }
+
+                if (resp && resp.data) {
+                    let existing = resp.data;
+                    if (Array.isArray(existing)) {
+                        existing = existing.find((e) => {
+                            return (
+                                (e.experienceId === experienceId || e.ExperienceId === experienceId || e.experienceID === experienceId || e.ExperienceID === experienceId)
+                                && (e.userId === userId || e.UserId === userId)
+                            );
+                        }) || null;
+                    } else if (existing && (existing.experienceId !== experienceId && existing.ExperienceId !== experienceId)) {
+                        existing = null;
+                    }
+
+                    if (existing) {
+                        setForm(prev => ({
+                            ...prev,
+                            ...existing,
+                            criteriaEvaluations: Array.isArray(existing.criteriaEvaluations)
+                                ? existing.criteriaEvaluations
+                                : (Array.isArray(existing.CriteriaEvaluations) ? existing.CriteriaEvaluations : []),
+                            experienceId: existing.experienceId ?? existing.ExperienceId ?? prev.experienceId,
+                            userId: existing.userId ?? existing.UserId ?? prev.userId,
+                        }));
+                        setIsEditing(true);
+                    } else {
+                        setIsEditing(false);
+                    }
+                } else {
+                    setIsEditing(false);
+                }
+            } catch (err) {
+                setIsEditing(false);
+            }
+        };
+        fetchExistingEvaluation();
     }, [experienceId]);
 
     const validateStep = (): boolean => {
@@ -425,10 +484,18 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         // Log de depuración para ver exactamente lo que se envía
         console.log("Formulario a enviar:", JSON.stringify(formToSend, null, 2));
         try {
-            // Siempre crear una nueva evaluación
-            const response = await axios.post("/api/Evaluation/create", formToSend, {
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            });
+            let response;
+            if (isEditing && form.evaluationId && form.evaluationId > 0) {
+                // Actualizar evaluación existente
+                response = await axios.put(`/api/Evaluation/update/${form.evaluationId}`, formToSend, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
+            } else {
+                // Crear nueva evaluación
+                response = await axios.post("/api/Evaluation/create", formToSend, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
+            }
 
             // si el backend retorna el id creado, actualizar el estado para permitir posteriores updates
             if (response?.data?.evaluationId) {
@@ -436,7 +503,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                 setIsEditing(true);
             }
 
-            const result = response?.data?.evaluationResult ?? response?.data?.message ?? "Creado correctamente";
+            const result = response?.data?.evaluationResult ?? response?.data?.message ?? (isEditing ? "Actualizado correctamente" : "Creado correctamente");
             setEvaluationResult(result);
             setShowModal(true);
 
@@ -447,24 +514,19 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             const locationHeader = response?.headers?.location || response?.headers?.Location;
             if ((!createdId || createdId === 0) && locationHeader) {
                 try {
-                    console.debug('Location header presente en la respuesta:', locationHeader);
                     const match = String(locationHeader).match(/\/(\d+)(?:\/?$|\D.*$)/);
                     if (match && match[1]) {
                         const parsed = Number(match[1]);
                         if (!isNaN(parsed) && parsed > 0) {
                             createdId = parsed;
-                            console.debug('Id obtenido desde Location header:', createdId);
                         }
                     }
-                } catch (e) {
-                    console.debug('No se pudo parsear Location header', e);
-                }
+                } catch (e) {}
             }
 
             // Si aún no hay id, intentar localizar la evaluación creada por experienceId
             if ((!createdId || createdId === 0) && form.experienceId) {
                 try {
-                    // pasar una huella (userId + campos clave) para mejorar el match
                     const match = {
                         userId: form.userId || userId,
                         comments: form.comments,
@@ -473,22 +535,17 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                     };
                     const foundId = await locateCreatedEvaluationId(form.experienceId, match);
                     if (foundId && foundId > 0) createdId = foundId;
-                } catch (e) {
-                    console.debug('Error buscando evaluación por experienceId', e);
-                }
+                } catch (e) {}
             }
 
             if (createdId && createdId !== 0) {
-                // asegurar que el form tenga el id
                 setForm(prev => ({ ...prev, evaluationId: createdId }));
                 setIsEditing(true);
                 await fetchEvaluationUrl(createdId);
             } else {
-                console.warn('No se pudo determinar el id de la evaluación creada. Response:', response?.data);
                 setLastGenerateMessage('Creado pero no se pudo obtener el id automáticamente. Reintenta generar el PDF.');
             }
         } catch (err) {
-            console.error("Error al guardar evaluación:", err);
             setError("Error al guardar la evaluación");
         } finally {
             setIsSaving(false);

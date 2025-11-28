@@ -212,7 +212,7 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onAdded }) => {
                 <option value="" disabled>Seleccione una persona</option>
                 {persons.map((person) => (
                   <option key={person.id} value={person.id}>
-                    {person.fullName} ({person.firstName} {person.firstLastName})
+                    {person.firstName} {person.firstLastName} {person.secondLastName ? person.secondLastName : ""} ({person.firstName} {person.firstLastName})
                   </option>
                 ))}
               </select>

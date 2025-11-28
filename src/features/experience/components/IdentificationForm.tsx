@@ -208,31 +208,69 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
       </div>
 
 
-      {/* Fechas de desarrollo */}
+      {/* Fechas de desarrollo (ahora sincronizadas con el objeto development) */}
       <div className="mb-4">
         <label className="block font-medium">Seleccione la fecha de inicio y fecha final de la Experiencia Significativa. <span className="text-red-500">*</span></label>
         <div className="flex items-center gap-4 mt-2">
           <div className="flex flex-col">
-            <span className="text-xs text-gray-500 mb-1">Fecha de inicio</span>
+            <span className="text-xs text-gray-500 mb-1">Fecha de inicio (días)</span>
             <input
               type="text"
-              placeholder="Ej: 01/01/2024 o Enero 2024"
+              placeholder="Días (ej: 1, 15, 30)"
               className="border border-gray-200 rounded-md p-2 text-sm"
-              value={value.developmenttime ?? ''}
-              onChange={e => onChange({ ...value, developmenttime: e.target.value })}
+              value={value.development?.days ?? ''}
+              onChange={e => {
+                const days = e.target.value;
+                onChange({
+                  ...value,
+                  development: {
+                    ...value.development,
+                    days
+                  }
+                });
+              }}
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-xs text-gray-500 mb-1">Fecha final</span>
+            <span className="text-xs text-gray-500 mb-1">Fecha final (meses)</span>
             <input
               type="text"
-              placeholder="Ej: 31/12/2024 o Diciembre 2024"
+              placeholder="Meses (ej: 1, 6, 12)"
               className="border border-gray-200 rounded-md p-2 text-sm"
-              value={value.developmenttime ?? ''}
-              onChange={e => onChange({ ...value, developmenttime: e.target.value })}
+              value={value.development?.months ?? ''}
+              onChange={e => {
+                const months = e.target.value;
+                onChange({
+                  ...value,
+                  development: {
+                    ...value.development,
+                    months
+                  }
+                });
+              }}
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500 mb-1">Años</span>
+            <input
+              type="text"
+              placeholder="Años (ej: 1, 2, 3)"
+              className="border border-gray-200 rounded-md p-2 text-sm"
+              value={value.development?.years ?? ''}
+              onChange={e => {
+                const years = e.target.value;
+                onChange({
+                  ...value,
+                  development: {
+                    ...value.development,
+                    years
+                  }
+                });
+              }}
             />
           </div>
         </div>
+        <span className="text-xs text-gray-400 mt-1 block">Puedes llenar solo uno de los campos (días, meses o años).</span>
       </div>
 
       {/* Enfoque temático */}
@@ -254,7 +292,7 @@ const IdentificationForm: React.FC<IdentificationFormProps> = ({ value, onChange
                   setShowOtro(false);
                   // guardamos el id numérico de la línea temática
                   const num = Number(val);
-                  onChange({ ...value, thematicFocus: Number.isNaN(num) ? val : num });
+                  onChange({ ...value, thematicFocus: Number.isNaN(num) ? val : String(num) });
                 }
               }}
             >

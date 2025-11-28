@@ -1431,7 +1431,11 @@ Population: Array.isArray(tematicaForm.Population)
       if (!ident.nameExperience || String(ident.nameExperience).trim() === "") errors.nameExperience = "Nombre de la experiencia es obligatorio";
       if (!ident.thematicFocus || String(ident.thematicFocus).trim() === "") errors.thematicFocus = "Enfoque temático es obligatorio";
       const dev = ident.development || {};
-      if (!(dev.days || dev.months || dev.years)) errors.development = "Seleccione el tiempo de desarrollo";
+      // Permitir 0 como valor válido para días, meses o años
+      const hasDev = [dev.days, dev.months, dev.years].some(
+        (v) => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(Number(v))
+      );
+      if (!hasDev) errors.development = "Seleccione el tiempo de desarrollo";
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         return false;
@@ -1467,7 +1471,11 @@ Population: Array.isArray(tematicaForm.Population)
       if (!ident.nameExperience || String(ident.nameExperience).trim() === "") return false;
       if (!ident.thematicFocus || String(ident.thematicFocus).trim() === "") return false;
       const dev = ident.development || {};
-      if (!(dev.days || dev.months || dev.years)) return false;
+      // Permitir 0 como valor válido para días, meses o años
+      const hasDev = [dev.days, dev.months, dev.years].some(
+        (v) => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(Number(v))
+      );
+      if (!hasDev) return false;
       return true;
     }
     return true;

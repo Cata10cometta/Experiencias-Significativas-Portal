@@ -14,7 +14,7 @@ export const securityTourStyles = {
 		arrowColor: "#ffffff",
 		backgroundColor: "#ffffff",
 		overlayColor: "rgba(11,16,51,0.55)",
-		primaryColor: "#0284c7",
+		primaryColor: "#fb923c",
 		textColor: "#0f172a",
 		width: 420,
 		borderRadius: 16,
@@ -22,7 +22,7 @@ export const securityTourStyles = {
 		boxShadow: "0 16px 40px rgba(15, 23, 42, 0.24)",
 	},
 	buttonNext: {
-		backgroundColor: "#0284c7",
+		backgroundColor: "#fb923c",
 		color: "#ffffff",
 		fontWeight: 700,
 		borderRadius: 8,
@@ -47,7 +47,7 @@ export const securityTourStyles = {
 		padding: "24px 28px",
 	},
 	tooltipTitle: {
-		color: "#0284c7",
+		color: "#fb923c",
 		fontWeight: 800,
 		fontSize: 22,
 		marginBottom: 8,
