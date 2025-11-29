@@ -747,8 +747,7 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                 boxSizing: 'border-box',
             }}
         >
-            // Estilos para scrollbars transparentes
-            import "./scrollbarTransparent.css";
+            
             {/* Botón X para cerrar el formulario principal */}
             {onClose && (
                 <button

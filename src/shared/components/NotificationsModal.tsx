@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { startNotificationsHub, stopNotificationsHub } from '../Service/notificationsHub';
+
 
 interface Props {
   open: boolean;
@@ -312,10 +312,8 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
   };
 
 
-  // SignalR: mantener referencia para evitar duplicados
-  const signalRStarted = useRef(false);
-  const removedIdsRef = useRef<string[]>([]);
 
+  const removedIdsRef = useRef<string[]>([]);
   useEffect(() => {
     removedIdsRef.current = removedIds;
   }, [removedIds]);
@@ -346,36 +344,8 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
   useEffect(() => {
     if (open) {
       fetchNotifications();
-      if (!signalRStarted.current) {
-        startNotificationsHub((notification, eventName) => {
-          // Normalizar la notificación recibida y agregarla a la lista solo si es relevante
-          let normalized: NormalizedNotification | null = null;
-          if (eventName === 'ReceiveNotification' || eventName === 'ReceiveExperienceCreated' || eventName === 'ExperienceCreated') {
-            // Notificación de experiencia creada
-            normalized = {
-              id: notification.id ?? notification.notificationId ?? null,
-              experienceId: notification.experienceId ?? notification.ExperienceId ?? null,
-              experienceName: notification.ExperienceName ?? notification.experienceName ?? notification.NameExperiences ?? notification.nameExperiences ?? notification.title ?? '',
-              userName: notification.CreatedBy ?? notification.createdBy ?? notification.userName ?? notification.user?.name ?? '',
-              state: 'Creada',
-              createdAt: notification.Date ?? notification.createdAt ?? new Date().toISOString(),
-              raw: notification,
-              type: eventName,
-            };
-          } else if (eventName === 'ReceiveExperienceNotification') {
-            normalized = normalizeNotification(notification, eventName);
-          }
-          if (normalized) {
-            setNotifications((prev) => [normalized!, ...prev]);
-            if (onCountChange) onCountChange(notifications.length + 1);
-          }
-        });
-        signalRStarted.current = true;
-      }
     } else {
       if (onCountChange) onCountChange(notifications.length);
-      stopNotificationsHub();
-      signalRStarted.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

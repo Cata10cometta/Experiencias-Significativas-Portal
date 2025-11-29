@@ -571,17 +571,27 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 	const handleContinueExistingEdit = async () => {
 		if (!existingEditRequest) return;
 		try {
-			if (existingEditRequest.experience) {
-				const { normalizeToInitial } = await import('../../features/experience/utils/normalizeExperience');
-				const initialData = normalizeToInitial(existingEditRequest.experience);
-				setViewData(initialData);
-				setShowViewModal(true);
-			} else {
-				await fetchAndShowDetail(existingEditRequest.experienceId);
-			}
+			// Forzar siempre la petición de detalle para garantizar que AddExperience reciba
+			// la información completa. Si la petición falla, caemos al fallback que usa
+			// el objeto local (más limitado) para no bloquear al usuario.
+			await fetchAndShowDetail(existingEditRequest.experienceId);
 		} catch (err) {
-			console.error('Error al continuar con la edición existente', err);
-			await Swal.fire({ title: 'Error', text: 'No se pudo abrir la experiencia. Intente nuevamente.', icon: 'error', confirmButtonText: 'Aceptar' });
+			console.error('Error al continuar con la edición existente (fetch detalle)', err);
+			// Fallback: si existía el objeto local, normalizamos y mostramos la vista
+			if (existingEditRequest.experience) {
+				try {
+					const { normalizeToInitial } = await import('../../features/experience/utils/normalizeExperience');
+					const initialData = normalizeToInitial(existingEditRequest.experience);
+					setViewData(initialData);
+					setShowViewModal(true);
+					await Swal.fire({ title: 'Advertencia', text: 'No se pudo obtener la versión detallada desde el servidor; se usará la versión local disponible.', icon: 'warning', confirmButtonText: 'Aceptar' });
+				} catch (innerErr) {
+					console.error('Fallback normalization failed', innerErr);
+					await Swal.fire({ title: 'Error', text: 'No se pudo abrir la experiencia. Intente nuevamente.', icon: 'error', confirmButtonText: 'Aceptar' });
+				}
+			} else {
+				await Swal.fire({ title: 'Error', text: 'No se pudo obtener el detalle de la experiencia. Intente nuevamente.', icon: 'error', confirmButtonText: 'Aceptar' });
+			}
 		} finally {
 			handleDismissExistingEditRequest();
 		}

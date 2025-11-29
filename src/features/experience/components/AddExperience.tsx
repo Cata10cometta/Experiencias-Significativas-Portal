@@ -435,7 +435,7 @@ const AddExperience: React.FC<AddExperienceProps> = ({
   initialData = null,
   readOnly = false,
   disableValidation = false,
-  showBackButton = true
+  showBackButton = true,
 }) => {
   // Estado para saber qué sección está en modo edición
   const [editSection, setEditSection] = useState<number | null>(null);
@@ -1376,6 +1376,9 @@ const AddExperience: React.FC<AddExperienceProps> = ({
     }
   };
 
+  // Define canEdit: allow editing if not readOnly
+  const canEdit = !readOnly;
+
   return (
     <div className="p-6 bg-white rounded-lg shadow max-h-[95vh] overflow-y-auto max-w-7xl mx-auto">
       {errorMessage && (
@@ -1686,15 +1689,92 @@ const AddExperience: React.FC<AddExperienceProps> = ({
             {/* Sección 7: Documentos */}
             {currentStep === 7 && (
               <FormSection>
-                <div className="flex justify-end mb-2">
+                <div className="flex justify-end mb-2 gap-2">
                   {readOnly && (
-                    <button
-                      type="button"
-                      className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
-                      onClick={() => setEditSection(7)}
-                    >
-                      Editar
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                        onClick={() => setEditSection(7)}
+                      >
+                        Editar
+                      </button>
+                      {initialData && initialData.id && (
+                        <button
+                          type="button"
+                          className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 ml-2"
+                          onClick={async () => {
+                            try {
+                              const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+                              const token = localStorage.getItem('token');
+                              const pdfEndpoint = `${API_BASE}/api/Experience/${initialData.id}/generate-pdf`;
+                              const res = await fetch(pdfEndpoint, {
+                                method: 'GET',
+                                headers: {
+                                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                },
+                              });
+                              if (res.ok) {
+                                // Intentar extraer mensaje y url del backend
+                                let backendMsg = 'PDF generado correctamente';
+                                let pdfUrl = '';
+                                try {
+                                  const contentType = res.headers.get('Content-Type') || '';
+                                  if (contentType.includes('application/json')) {
+                                    const data = await res.clone().json();
+                                    if (data && data.message) backendMsg = data.message;
+                                    if (data && data.pdfUrl) pdfUrl = data.pdfUrl;
+                                  }
+                                } catch {}
+                                // Si no hay pdfUrl, usar el blob como fallback
+                                if (!pdfUrl) {
+                                  const blob = await res.blob();
+                                  pdfUrl = URL.createObjectURL(blob);
+                                }
+                                // Mostrar modal personalizado
+                                const modal = document.createElement('div');
+                                modal.style.position = 'fixed';
+                                modal.style.top = '0';
+                                modal.style.left = '0';
+                                modal.style.width = '100vw';
+                                modal.style.height = '100vh';
+                                modal.style.background = 'rgba(0,0,0,0.4)';
+                                modal.style.zIndex = '9999';
+                                modal.style.display = 'flex';
+                                modal.style.alignItems = 'center';
+                                modal.style.justifyContent = 'center';
+                                modal.innerHTML = `
+                                  <div style="background: white; padding: 2rem 2.5rem; border-radius: 1rem; box-shadow: 0 2px 24px #0002; max-width: 95vw; text-align: center;">
+                                    <h2 style="font-size: 1.3rem; font-weight: bold; margin-bottom: 1rem;">${backendMsg}</h2>
+                                    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
+                                      <a id="abrir-pdf-btn" href="${pdfUrl}" target="_blank" rel="noopener noreferrer" style="background: #dc2626; color: white; padding: 0.5rem 1.2rem; border-radius: 0.5rem; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; text-decoration: none; display: inline-block;">Abrir PDF</a>
+                                      <button id="cerrar-modal-btn" style="background: #374151; color: white; padding: 0.5rem 1.2rem; border-radius: 0.5rem; border: none; font-weight: 600; font-size: 1rem; cursor: pointer;">Cerrar</button>
+                                    </div>
+                                  </div>
+                                `;
+                                document.body.appendChild(modal);
+                                // Cerrar modal y pestaña
+                                modal.querySelector('#cerrar-modal-btn')?.addEventListener('click', () => {
+                                  document.body.removeChild(modal);
+                                  window.close();
+                                });
+                                // Si se usó blob, liberar url después de 1 min
+                                if (pdfUrl.startsWith('blob:')) {
+                                  setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
+                                }
+                              } else {
+                                const msg = await res.text().catch(() => '');
+                                alert('No se pudo generar el PDF. ' + msg);
+                              }
+                            } catch (err) {
+                              alert('Error al generar el PDF.');
+                            }
+                          }}
+                        >
+                          Generar PDF
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
                 <div className="my-6">

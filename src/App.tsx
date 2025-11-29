@@ -6,24 +6,12 @@ import DashboardAdmin from "./pages/DashboardAdmin";
 import DashboardTeacher from "./pages/DashboardTeacher";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 import ResetPassword from "./pages/ResetPassword";
-import React, { useEffect } from "react";
-// @ts-ignore: missing type declarations for JS module
-import { startNotificationsHub, stopNotificationsHub } from "./shared/Service/notificationsHub";
 
-interface NotificationPayload {
-  Title: string;
-  ExperienceName: string;
-  CreatedBy: string;
-}
+
+
+
 
 const AppRoutes = () => {
-  useEffect(() => {
-    startNotificationsHub((notification: NotificationPayload) => {
-      alert(`${notification.Title}: ${notification.ExperienceName} por ${notification.CreatedBy}`);
-    });
-    return () => stopNotificationsHub();
-  }, []);
-
   return (
     <BrowserRouter>
       <Routes>
