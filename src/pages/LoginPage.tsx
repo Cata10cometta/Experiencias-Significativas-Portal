@@ -271,15 +271,15 @@ const LoginPage: React.FC = () => {
           </div>
         </aside>
 
-        {/* Línea blanca ondulada debajo del cohete - reemplazada por imagen SVG */}
-        <div className="absolute left-0 bottom-0 w-full pointer-events-none z-10 overflow-visible" aria-hidden style={{ transform: 'translateY(90%)' }}>
-              <img
-                src="/images/Smoke.svg"
-                alt="Línea blanca ondulada"
-                className="w-[180vw] max-w-none h-[260px] lg:h-[420px] block mx-auto -translate-x-[40vw]"
-                draggable="false"
-              />
-        </div>
+         {/* Línea blanca ondulada debajo del cohete */}
+          <div className="absolute left-0 bottom-0 w-full pointer-events-none z-10 overflow-visible" aria-hidden style={{ transform: 'translateY(90%)' }}>
+                  <svg viewBox="0 0 1440 320" className="w-full h-[260px] lg:h-[420px] block">
+                    <path
+                      fill="#ffffff"
+                      d="M0,1 C300,40 360,300 510,220 C400,200 600,330 1000,30 C1260,280 1320,180 1440,150 L1440,320 L0,320 Z"
+                    ></path>  
+                  </svg>
+                </div>
 
       </main>
     </div>
