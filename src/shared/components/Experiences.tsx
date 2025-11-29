@@ -42,11 +42,11 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			const parts = token.split('.');
 			if (parts.length < 2) return null;
 			const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-			const decoded = decodeURIComponent(atob(payload).split('').map(function(c) {
+			const decoded = decodeURIComponent(atob(payload).split('').map(function (c) {
 				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
 			}).join(''));
 			const parsed = JSON.parse(decoded) as any;
-			const candidates = ['sub','id','userId','user_id','nameid','http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+			const candidates = ['sub', 'id', 'userId', 'user_id', 'nameid', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
 			for (const k of candidates) {
 				const v = parsed[k];
 				if (v !== undefined && v !== null) {
@@ -65,7 +65,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 		try {
 			// isProfessor is declared later in this file
 			if ((isProfessor && typeof isProfessor === 'function') && isProfessor()) setViewMode('mine');
-		} catch {}
+		} catch { }
 	}, []);
 
 	useEffect(() => {
@@ -155,14 +155,14 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			fetch(endpoint, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
 				.then(r => r.ok ? r.json() : Promise.reject())
 				.then(d => { if (Array.isArray(d)) setList(d); })
-				.catch(() => {});
+				.catch(() => { });
 		}, 8000);
 		return () => clearInterval(id);
 	}, []);
 
-  
 
-  
+
+
 
 	const renderStatusBadge = (stateOrExp?: number | any) => {
 		// Accept multiple shapes returned by different endpoints:
@@ -225,7 +225,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 		return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(d);
 	};
 
-  
+
 
 	const openModal = (id?: number) => {
 		if (!id) return;
@@ -240,7 +240,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			const parts = t.split('.');
 			if (parts.length < 2) return null;
 			const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-			const decoded = decodeURIComponent(atob(payload).split('').map(function(c) {
+			const decoded = decodeURIComponent(atob(payload).split('').map(function (c) {
 				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
 			}).join(''));
 			return JSON.parse(decoded);
@@ -451,7 +451,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 							a.click();
 							a.remove();
 						} else {
-							try { opened.focus(); } catch {}
+							try { opened.focus(); } catch { }
 						}
 						setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
 						return;
@@ -479,11 +479,11 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 					confirmButtonText: 'Entendido'
 				});
 			} else {
-				try { opened.focus(); } catch {}
+				try { opened.focus(); } catch { }
 			}
 		} catch (err) {
 			console.error('Error al abrir PDF', err);
-			try { window.location.href = String(raw); } catch {}
+			try { window.location.href = String(raw); } catch { }
 		}
 	};
 
@@ -574,6 +574,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			// Forzar siempre la petición de detalle para garantizar que AddExperience reciba
 			// la información completa. Si la petición falla, caemos al fallback que usa
 			// el objeto local (más limitado) para no bloquear al usuario.
+			setModalEditable(true);
 			await fetchAndShowDetail(existingEditRequest.experienceId);
 		} catch (err) {
 			console.error('Error al continuar con la edición existente (fetch detalle)', err);
@@ -622,7 +623,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			document.body.style.right = '';
 			document.body.style.overflow = prevBodyOverflow || '';
 			document.documentElement.style.overflow = prevHtmlOverflow || '';
-			try { window.scrollTo(0, scrollY); } catch {}
+			try { window.scrollTo(0, scrollY); } catch { }
 		};
 
 		if (showViewModal || showAddModal || existingEditRequest) {
@@ -666,9 +667,12 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 		}
 	};
 
+	const [modalEditable, setModalEditable] = useState<boolean>(true);
+
 	const handleCloseModal = () => {
 		setShowModal(false);
 		setSelectedExperienceId(null);
+		setModalEditable(false);
 		// refresh list once when closing modal
 		const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 		const endpoint = `${API_BASE}/api/Experience/List`;
@@ -676,302 +680,298 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 		fetch(endpoint, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
 			.then(r => r.ok ? r.json() : Promise.reject())
 			.then(d => { if (Array.isArray(d)) setList(d); })
-			.catch(() => {});
+			.catch(() => { });
 	};
 
 	return (
 		<>
-		<div className="p-8 min-h-[80vh]">
-			<Joyride
-				steps={tourSteps}
-				run={runTour}
-				continuous
-				showSkipButton
-				locale={experiencesTourLocale}
-				styles={experiencesTourStyles}
-				callback={(data) => {
-					if (data.status === 'finished' || data.status === 'skipped') {
-						setRunTour(false);
-						markTourSeen(tourKey);
-					}
-				}}
-			/>
-			<div className="bg-gray-50 rounded-lg p-8 shadow experiences-card">
-				<div className="flex items-start justify-between mb-4 experiences-header">
-					<div className="flex items-center gap-4">
+			<div className="p-8 min-h-[80vh]">
+				<Joyride
+					steps={tourSteps}
+					run={runTour}
+					continuous
+					showSkipButton
+					locale={experiencesTourLocale}
+					styles={experiencesTourStyles}
+					callback={(data) => {
+						if (data.status === 'finished' || data.status === 'skipped') {
+							setRunTour(false);
+							markTourSeen(tourKey);
+						}
+					}}
+				/>
+				<div className="bg-gray-50 rounded-lg p-8 shadow experiences-card">
+					<div className="flex items-start justify-between mb-4 experiences-header">
+						<div className="flex items-center gap-4">
+							<div>
+								<h1 className="text-2xl font-semibold text-gray-800 mb-2">Gestion de Experiencias significativas</h1>
+								<p className="text-sm text-gray-500">Optimiza la eficiencia de la experiencias</p>
+							</div>
+						</div>
 						<div>
-							<h1 className="text-2xl font-semibold text-gray-800 mb-2">Gestion de Experiencias significativas</h1>
-							<p className="text-sm text-gray-500">Optimiza la eficiencia de la experiencias</p>
+							{/* Botón dentro del cuadro, esquina superior derecha */}
+							<button
+								onClick={() => { if (onAgregar) { onAgregar(); } else { setShowAddModal(true); } }}
+								title="Agregar experiencia nueva"
+								className="inline-flex items-center gap-2 px-5 py-2 rounded-lg! bg-sky-600 text-white font-semibold shadow hover:bg-sky-700 transition-all duration-200"
+								aria-label="Agregar experiencia nueva"
+							>
+								<span className="text-xl font-bold">+</span>
+								Agregar experiencia
+							</button>
 						</div>
 					</div>
-					<div>
-						{/* Botón dentro del cuadro, esquina superior derecha */}
-						<button
-							onClick={() => { if (onAgregar) { onAgregar(); } else { setShowAddModal(true); } }}
-							title="Agregar experiencia nueva"
-							className="inline-flex items-center gap-2 px-5 py-2 rounded-lg! bg-sky-600 text-white font-semibold shadow hover:bg-sky-700 transition-all duration-200"
-							aria-label="Agregar experiencia nueva"
-						>
-							<span className="text-xl font-bold">+</span>
-							Agregar experiencia 
-						</button>
-					</div>
-				</div>
-				{/* Mostrar AddExperience (formulario) en modo lectura para reutilizar diseño */}
-				{showViewModal && viewData && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-						<div className="w-[96%] max-w-6xl p-0 flex flex-col h-full">
-							<div className="p-4 flex-1">
-								<AddExperience
-									initialData={viewData}
-									readOnly={!isProfessor()}
-									disableValidation={true}
-									onVolver={() => { setShowViewModal(false); setViewData(null); }}
+					{/* Mostrar AddExperience (formulario) en modo lectura para reutilizar diseño */}
+					{showViewModal && viewData && (
+						<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+							<div className="w-[96%] max-w-6xl p-0 flex flex-col h-full">
+								<div className="p-4 flex-1">
+									<AddExperience
+										initialData={viewData}
+										readOnly={modalEditable || !isProfessor()}
+										disableValidation={true}
+										onVolver={() => { setShowViewModal(false); setViewData(null); setModalEditable(false); }}
+									/>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Search row */}
+					<div className="mb-6 flex items-center gap-4">
+						<div className="flex-1">
+							<div className="relative experiences-search">
+								<input
+									value={searchTerm}
+									onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+									placeholder="Buscar experiencias..."
+									className="pl-10 pr-3 py-2 border rounded-2xl w-full bg-gray-50"
 								/>
+								<div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+									<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" /></svg>
+								</div>
 							</div>
 						</div>
 					</div>
-				)}
 
-				{/* Search row */}
-				<div className="mb-6 flex items-center gap-4">
-					<div className="flex-1">
-						<div className="relative experiences-search">
-							<input
-								value={searchTerm}
-								onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-								placeholder="Buscar experiencias..."
-								className="pl-10 pr-3 py-2 border rounded-2xl w-full bg-gray-50"
-							/>
-							<div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-								<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
+					<div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 experiences-table">
+						<div className="text-left text-sm text-gray-600 bg-gray-50 rounded-t-md px-4 py-3 font-semibold">
+							<div className={`grid ${showEvaluationColumn ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center`}>
+								<div className="text-center font-semibold">Nombre de la experiencia</div>
+								<div className="text-center font-semibold">Área aplicada</div>
+								<div className="text-center font-semibold">Tiempo</div>
+								<div className="text-center font-semibold">PDF</div>
+								{showEvaluationColumn && <div className="text-center font-semibold experiences-evaluation">Aplicar Evaluación</div>}
+								<div className="text-center font-semibold">Edición</div>
+								<div className="text-center font-semibold experiences-status">Estado</div>
 							</div>
 						</div>
-					</div>
-				</div>
 
-				<div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 experiences-table">
-					<div className="text-left text-sm text-gray-600 bg-gray-50 rounded-t-md px-4 py-3 font-semibold">
-						<div className={`grid ${showEvaluationColumn ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center`}>
-							<div className="text-center font-semibold">Nombre de la experiencia</div>
-							<div className="text-center font-semibold">Área aplicada</div>
-							<div className="text-center font-semibold">Tiempo</div>
-							<div className="text-center font-semibold">PDF</div>
-							{showEvaluationColumn && <div className="text-center font-semibold experiences-evaluation">Aplicar Evaluación</div>}
-							<div className="text-center font-semibold">Edición</div>
-							<div className="text-center font-semibold experiences-status">Estado</div>
-						</div>
-					</div>
+						<div>
+							{loading ? (
+								<div className="p-6 text-gray-500">Cargando...</div>
+							) : error ? (
+								<div className="p-6 text-red-500">{error}</div>
+							) : (
+								(() => {
+									const q = searchTerm.trim().toLowerCase();
+									const filtered = q ? list.filter(exp => {
+										const name = String((exp as any).nameExperiences ?? (exp as any).name ?? '').toLowerCase();
+										const area = String((exp as any).areaApplied ?? (exp as any).thematicLocation ?? '').toLowerCase();
+										return name.includes(q) || area.includes(q);
+									}) : list;
+									const total = filtered.length;
+									const totalPages = Math.max(1, Math.ceil(total / pageSize));
+									const start = (currentPage - 1) * pageSize;
+									const paginated = filtered.slice(start, start + pageSize);
 
-					<div>
-						{loading ? (
-							<div className="p-6 text-gray-500">Cargando...</div>
-						) : error ? (
-							<div className="p-6 text-red-500">{error}</div>
-						) : (
-							(() => {
-								const q = searchTerm.trim().toLowerCase();
-								const filtered = q ? list.filter(exp => {
-									const name = String((exp as any).nameExperiences ?? (exp as any).name ?? '').toLowerCase();
-									const area = String((exp as any).areaApplied ?? (exp as any).thematicLocation ?? '').toLowerCase();
-									return name.includes(q) || area.includes(q);
-								}) : list;
-								const total = filtered.length;
-								const totalPages = Math.max(1, Math.ceil(total / pageSize));
-								const start = (currentPage - 1) * pageSize;
-								const paginated = filtered.slice(start, start + pageSize);
-
-								return (
-									<div className="divide-y">
-										{paginated.map((exp, idx) => (
-											<div className="px-6 py-4" key={exp.id ?? idx}>
-												<div className={`grid ${showEvaluationColumn ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center`}>
-													{/* Nombre de la experiencia */}
-													<div className="flex items-center gap-3 text-center">
-														<button onClick={() => openModal(exp.id)} className="text-sm font-medium text-gray-800 hover:underline">
-															{(exp as any).nameExperiences ?? (exp as any).name ?? 'Sin título'}
-														</button>
-													</div>
-													{/* Área aplicada */}
-													<div className="text-center text-sm text-gray-600">{(exp as any).areaApplied ?? (exp as any).thematicLocation ?? (exp as any).code ?? '-'}</div>
-													{/* Tiempo */}
-													<div className="text-center text-sm text-gray-600">
-														{formatDevelopmentTime((exp as any).developmenttime)}
-													</div>
-													{/* PDF */}
-													<div className="flex items-center justify-center">
-														{(() => {
-															const raw = evaluationPdfMap[exp.id] ?? getPdfUrlFromExp(exp as any);
-															if (raw) {
-																return (
-																	<button
-																		type="button"
-																		onClick={(e) => {
-																			e.stopPropagation();
-																			e.preventDefault();
-																			openPdfWithAuth(raw).catch(err => console.error('openPdfWithAuth error', err));
-																		}}
-																		aria-label="Ver PDF"
-																		title="Ver PDF"
-																		className="px-4 py-2 bg-red-600 text-white rounded-md! font-medium hover:bg-red-700 experiences-pdf"
-																	>
-																		Ver PDF
-																	</button>
-																);
-															}
-															return (
-																<div className="px-3 py-2 rounded-md! bg-gray-100 text-gray-400 text-sm experiences-pdf" title="Sin PDF">Sin PDF</div>
-															);
-														})()}
-													</div>
-													{/* Aplicar Evaluación: oculto para profesores */}
-													{showEvaluationColumn && (
-														<div className="text-center experiences-evaluation">
-															<button
-																className="px-4 py-2 bg-blue-600 text-white rounded-md! font-medium hover:bg-blue-700"
-																title="Evaluación"
-																onClick={() => {
-																	setEvalExpId(exp.id);
-																	setShowEvalModal(true);
-																}}
-															>
-																Evaluación
+									return (
+										<div className="divide-y">
+											{paginated.map((exp, idx) => (
+												<div className="px-6 py-4" key={exp.id ?? idx}>
+													<div className={`grid ${showEvaluationColumn ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center`}>
+														{/* Nombre de la experiencia */}
+														<div className="flex items-center gap-3 text-center">
+															<button onClick={() => openModal(exp.id)} className="text-sm font-medium text-gray-800 hover:underline">
+																{(exp as any).nameExperiences ?? (exp as any).name ?? 'Sin título'}
 															</button>
 														</div>
-													)}
-																{/* Modal de Evaluación (fuera del map) */}
-																{showEvalModal && evalExpId && (
-																	<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-																		<div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-auto relative">
-																			<button
-																				className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl font-bold"
-																				onClick={() => { setShowEvalModal(false); setEvalExpId(null); }}
-																				aria-label="Cerrar"
-																			>
-																				
-																			</button>
-																			<div className="p-6">
-																				<Evaluation experienceId={evalExpId} onClose={() => { setShowEvalModal(false); setEvalExpId(null); }} />
-																			</div>
-																		</div>
-																	</div>
-																)}
-													{/* Edición */}
-													<div className="text-center experiences-edit">
-														<button
-															className="text-gray-500 hover:text-gray-700"
-															title="Ver / Editar"
-															onClick={async (e) => {
-																e.stopPropagation();
-																e.preventDefault();
-																// Role-aware behavior: professors request edit, others open detail view
-																try {
-																	if (isProfessor && typeof isProfessor === 'function' && isProfessor()) {
-																		// pass the full experience object so we can open modal without refetching
-																		await requestEdit(exp as any);
-																	} else {
-																		await fetchAndShowDetail(exp.id as number);
-																	}
-																} catch (err) {
-																	console.error('Error handling pencil click', err);
+														{/* Área aplicada */}
+														<div className="text-center text-sm text-gray-600">{(exp as any).areaApplied ?? (exp as any).thematicLocation ?? (exp as any).code ?? '-'}</div>
+														{/* Tiempo */}
+														<div className="text-center text-sm text-gray-600">
+															{formatDevelopmentTime((exp as any).developmenttime)}
+														</div>
+														{/* PDF */}
+														<div className="flex items-center justify-center">
+															{(() => {
+																const raw = evaluationPdfMap[exp.id] ?? getPdfUrlFromExp(exp as any);
+																if (raw) {
+																	return (
+																		<button
+																			type="button"
+																			onClick={(e) => {
+																				e.stopPropagation();
+																				e.preventDefault();
+																				openPdfWithAuth(raw).catch(err => console.error('openPdfWithAuth error', err));
+																			}}
+																			aria-label="Ver PDF"
+																			title="Ver PDF"
+																			className="px-4 py-2 bg-red-600 text-white rounded-md! font-medium hover:bg-red-700 experiences-pdf"
+																		>
+																			Ver PDF
+																		</button>
+																	);
 																}
-														}}
-														>
-															<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 inline" viewBox="0 0 20 20" fill="currentColor">
-																<path d="M17.414 2.586a2 2 0 010 2.828L8.828 14l-3.536.707.707-3.536L14.586 2.586a2 2 0 012.828 0z" />
-															</svg>
-														</button>
-													</div>
-													{/* Estado */}
-													<div className="text-center">
-														{renderStatusBadge(exp)}
+																return (
+																	<div className="px-3 py-2 rounded-md! bg-gray-100 text-gray-400 text-sm experiences-pdf" title="Sin PDF">Sin PDF</div>
+																);
+															})()}
+														</div>
+														{/* Aplicar Evaluación: oculto para profesores */}
+														{showEvaluationColumn && (
+															<div className="text-center experiences-evaluation">
+																<button
+																	className="px-4 py-2 bg-blue-600 text-white rounded-md! font-medium hover:bg-blue-700"
+																	title="Evaluación"
+																	onClick={() => {
+																		setEvalExpId(exp.id);
+																		setShowEvalModal(true);
+																	}}
+																>
+																	Evaluación
+																</button>
+															</div>
+														)}
+														{/* Modal de Evaluación (fuera del map) */}
+														{showEvalModal && evalExpId && (
+															<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+																<div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-auto relative">
+																	<button
+																		className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+																		onClick={() => { setShowEvalModal(false); setEvalExpId(null); }}
+																		aria-label="Cerrar"
+																	>
+
+																	</button>
+																	<div className="p-6">
+																		<Evaluation experienceId={evalExpId} onClose={() => { setShowEvalModal(false); setEvalExpId(null); }} />
+																	</div>
+																</div>
+															</div>
+														)}
+														{/* Edición */}
+														<div className="text-center experiences-edit">
+															<button
+																className="text-gray-500 hover:text-gray-700"
+																title="Ver / Editar"
+																onClick={async (e) => {
+																	e.stopPropagation();
+																	e.preventDefault();
+																	// Role-aware behavior: professors request edit, others open detail view
+																	try {
+																		setModalEditable(true);
+																		await fetchAndShowDetail(exp.id as number);
+																	} catch (err) {
+																		console.error('Error handling pencil click', err);
+																	}
+																}}
+															>
+																<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 inline" viewBox="0 0 20 20" fill="currentColor">
+																	<path d="M17.414 2.586a2 2 0 010 2.828L8.828 14l-3.536.707.707-3.536L14.586 2.586a2 2 0 012.828 0z" />
+																</svg>
+															</button>
+														</div>
+														{/* Estado */}
+														<div className="text-center">
+															{renderStatusBadge(exp)}
+														</div>
 													</div>
 												</div>
-											</div>
 											))}
 
 											{/* Pagination footer */}
-										<div className="py-4 px-4 flex items-center justify-between">
-											<div className="text-sm text-gray-500">
-												{total === 0 ? (
-													<>Mostrando 0 experiencias</>
-												) : (
-													(() => {
-														const startIdx = Math.min(total, start + 1);
-														const endIdx = Math.min(total, start + paginated.length);
-														return <>Mostrando {startIdx}-{endIdx} de {total} experiencias</>;
-													})()
-												)}
-											</div>
-											<div className="flex items-center gap-2">
-												<button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>Anterior</button>
-												{(() => {
-													const pages: number[] = [];
-													let startPage = Math.max(1, currentPage - 2);
-													let endPage = Math.min(totalPages, startPage + 4);
-													if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
-													for (let i = startPage; i <= endPage; i++) pages.push(i);
-													return pages.map((p) => (
-														<button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
-													));
-												})()}
-												<button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>Siguiente</button>
+											<div className="py-4 px-4 flex items-center justify-between">
+												<div className="text-sm text-gray-500">
+													{total === 0 ? (
+														<>Mostrando 0 experiencias</>
+													) : (
+														(() => {
+															const startIdx = Math.min(total, start + 1);
+															const endIdx = Math.min(total, start + paginated.length);
+															return <>Mostrando {startIdx}-{endIdx} de {total} experiencias</>;
+														})()
+													)}
+												</div>
+												<div className="flex items-center gap-2">
+													<button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>Anterior</button>
+													{(() => {
+														const pages: number[] = [];
+														let startPage = Math.max(1, currentPage - 2);
+														let endPage = Math.min(totalPages, startPage + 4);
+														if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+														for (let i = startPage; i <= endPage; i++) pages.push(i);
+														return pages.map((p) => (
+															<button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
+														));
+													})()}
+													<button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>Siguiente</button>
+												</div>
 											</div>
 										</div>
-									</div>
-								);
-							})()
-						)}
+									);
+								})()
+							)}
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
 
-		{existingEditRequest && (
-			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm px-4 py-10">
-				<div className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-					<div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-sky-500 via-sky-400 to-sky-600" />
-					<button
-						type="button"
-						onClick={handleDismissExistingEditRequest}
-						className="absolute right-5 top-5 text-gray-400 transition hover:text-gray-600"
-						aria-label="Cerrar"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-							<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-						</svg>
-					</button>
-					<div className="flex flex-col items-center gap-2 px-8 pb-8 pt-10 text-center sm:px-14">
-						<div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-sky-50 text-sky-600 shadow-inner">
-							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-8 w-8">
-								<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" strokeWidth="1.4" />
-								<path d="M8.75 9.75h6.5M8.75 13.5h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+			{existingEditRequest && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm px-4 py-10">
+					<div className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+						<div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-sky-500 via-sky-400 to-sky-600" />
+						<button
+							type="button"
+							onClick={handleDismissExistingEditRequest}
+							className="absolute right-5 top-5 text-gray-400 transition hover:text-gray-600"
+							aria-label="Cerrar"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+								<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
 							</svg>
-						</div>
-						<h2 className="text-2xl font-semibold text-gray-800">Solicitud ya registrada</h2>
-						<p className="max-w-xl text-base leading-relaxed text-gray-600">
-							{existingEditRequest.message || 'Ya existe una solicitud de edición aprobada para esta experiencia.'}
-						</p>
-						<div className="mt-7 flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-center">
-							<button
-								type="button"
-								onClick={handleDismissExistingEditRequest}
-								className="w-full rounded-xl! border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 sm:w-40"
-							>
-								Cancelar
-							</button>
-							<button
-								type="button"
-								onClick={() => { void handleContinueExistingEdit(); }}
-								className="w-full rounded-xl! bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-700 sm:w-44"
-							>
-								Continuar con la edición
-							</button>
+						</button>
+						<div className="flex flex-col items-center gap-2 px-8 pb-8 pt-10 text-center sm:px-14">
+							<div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-sky-50 text-sky-600 shadow-inner">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-8 w-8">
+									<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" strokeWidth="1.4" />
+									<path d="M8.75 9.75h6.5M8.75 13.5h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+								</svg>
+							</div>
+							<h2 className="text-2xl font-semibold text-gray-800">Solicitud ya registrada</h2>
+							<p className="max-w-xl text-base leading-relaxed text-gray-600">
+								{existingEditRequest.message || 'Ya existe una solicitud de edición aprobada para esta experiencia.'}
+							</p>
+							<div className="mt-7 flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+								<button
+									type="button"
+									onClick={handleDismissExistingEditRequest}
+									className="w-full rounded-xl! border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 sm:w-40"
+								>
+									Cancelar
+								</button>
+								<button
+									type="button"
+									onClick={() => { void handleContinueExistingEdit(); }}
+									className="w-full rounded-xl! bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-700 sm:w-44"
+								>
+									Continuar con la edición
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-		)}
+			)}
 		</>
 	);
 };
