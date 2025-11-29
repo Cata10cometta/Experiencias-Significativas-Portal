@@ -370,7 +370,7 @@ const PersonsList: React.FC = () => {
           <div>
             <button
               onClick={() => setAddPersonOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl shadow hover:bg-sky-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
             >
               Agregar Persona
             </button>
@@ -392,11 +392,6 @@ const PersonsList: React.FC = () => {
             </div>
           </div>
           <div>
-            <button className="px-4 py-2 rounded bg-white border text-sm flex items-center gap-2">
-              {/* funnel icon */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-gray-600"><path d="M3 5h18v2L13 13v6l-2-1v-5L3 7V5z" fill="currentColor"/></svg>
-              <span>Filtrar</span>
-            </button>
           </div>
         </div>
 

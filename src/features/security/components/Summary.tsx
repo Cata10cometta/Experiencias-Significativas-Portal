@@ -139,7 +139,6 @@ const Summary: React.FC = () => {
             </div>
           </div>
           <div>
-            <button className="px-4 py-2 rounded bg-white border text-sm">Filtrar</button>
           </div>
         </div>
 
@@ -196,8 +195,8 @@ const Summary: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className={`px-3 py-1 rounded-full border ${currentPage === 1 ? 'text-gray-300 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}>Anterior</button>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>Anterior</button>
             {(() => {
               const pages: number[] = [];
               let start = Math.max(1, currentPage - 2);
@@ -205,10 +204,10 @@ const Summary: React.FC = () => {
               if (end - start < 4) start = Math.max(1, end - 4);
               for (let i = start; i <= end; i++) pages.push(i);
               return pages.map((p) => (
-                <button key={p} onClick={() => setCurrentPage(p)} aria-current={p === currentPage} className={`w-8 h-8 flex items-center justify-center rounded-full border text-sm ${p === currentPage ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{p}</button>
+                <button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
               ));
             })()}
-            <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className={`px-3 py-1 rounded-full border ${currentPage === totalPages ? 'text-gray-300 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}>Siguiente</button>
+            <button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>Siguiente</button>
           </div>
         </div>
       </div>

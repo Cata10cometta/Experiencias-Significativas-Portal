@@ -559,7 +559,11 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 			await Swal.fire({ title: 'Error', text: text || defaultError, icon: 'error', confirmButtonText: 'Aceptar' });
 		} catch (err: any) {
 			console.error('requestEdit error', err);
-			await Swal.fire({ title: 'Error', text: err?.message || 'Error desconocido al solicitar edición', icon: 'error', confirmButtonText: 'Aceptar' });
+			let msg = err?.message || 'Error desconocido al solicitar edición';
+			if (typeof msg === 'string' && msg.includes('No tienes permiso para editar esta experiencia')) {
+				msg = 'No tienes permiso para editar esta experiencia.';
+			}
+			await Swal.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'Aceptar' });
 		}
 	};
 

@@ -104,7 +104,7 @@ const starT: React.FC = () => {
   }, [experiencias, tourKey]);
 
   return (
-    <div className="w-full h-full rounded-3xl min-h-screen bg-cover bg-center relative">
+    <div className="p-4 md:p-6 lg:p-8">
       <Joyride
         steps={startTourSteps}
         run={runStartTour}
@@ -119,31 +119,36 @@ const starT: React.FC = () => {
           }
         }}
       />
-      {/* Barra de ejes temáticos eliminada */}
 
-      {/* Tarjeta destacada de experiencia seleccionada */}
-      <div className="mt-12 flex items-center justify-center">
-        <div className="w-full max-w-4xl bg-orange-400 rounded-2xl shadow-xl p-8 flex items-center gap-8 start-feature-card">
-          <img src="/carts.svg" alt="icono experiencia" className="w-28 h-28" />
-          <div className="flex-1">
-            <h2 className="text-2xl font-extrabold text-[#1f2937]">
+      {/* Tarjeta Destacada (Experiencia Seleccionada) */}
+      <div className="mt-12 mb-16 flex justify-center widgets-feature-card">
+        <div 
+          className="w-full max-w-4xl bg-amber-500 rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6 sm:gap-8 transition-transform duration-300 ease-in-out transform hover:scale-[1.01]"
+          style={{ boxShadow: '0 20px 25px -5px rgba(245, 158, 11, 0.4), 0 10px 10px -5px rgba(245, 158, 11, 0.2)' }}
+        >
+          <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center rounded-xl bg-white/30 p-2 flex-shrink-0">
+            <img src="/carts.svg" alt="icono experiencia" className="w-full h-full text-white" />
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-sm font-semibold uppercase text-amber-900/80">Experiencia Destacada</p>
+            <h2 className="text-2xl font-extrabold text-gray-900 mt-1 line-clamp-2">
               {selectedExperience
                 ? (selectedExperience.nameExperiences || selectedExperience.title || selectedExperience.name)
-                : 'Selecciona una experiencia'}
+                : 'Selecciona una experiencia para ver su resumen.'}
             </h2>
-            <p className="mt-2 text-lg text-[#1f2937]">
+            <p className="mt-1 text-base font-medium text-gray-800 line-clamp-1">
               {selectedExperience
-                ? (selectedExperience.thematicLocation || selectedExperience.ThematicLocation || selectedExperience.area || '')
-                : ''}
+                ? (selectedExperience.thematicLocation || selectedExperience.ThematicLocation || selectedExperience.area || 'Información de ubicación no disponible')
+                : '¡Explora el carrusel de abajo!'}
             </p>
           </div>
           {selectedExperience && (
             <button
               onClick={() => setModalOpen(true)}
-              className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shadow-md"
-              aria-label="Ver experiencia"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white text-amber-700 flex items-center justify-center shadow-lg hover:bg-gray-100 transition duration-200 flex-shrink-0"
+              aria-label="Ver detalle de la experiencia"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
@@ -152,64 +157,78 @@ const starT: React.FC = () => {
         </div>
       </div>
 
-      {/* Carrusel de tarjetas de experiencias */}
-      <div className="mt-16">
-        <div className="bg-white rounded-2xl p-6 shadow-lg relative">
-          {/* Buscador */}
-          <div className="absolute top-4 right-4 flex flex-col gap-3 z-20 start-action-icons">
-            {searchOpen ? (
-              <div className="flex items-center gap-2 bg-white rounded-full px-2 shadow-md">
-                <input
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="Buscar por experiencia..."
-                  className="outline-none px-3 py-1 w-64"
-                />
-                <button onClick={() => { setSearchOpen(false); setSearchTerm(''); }} className="p-2 text-gray-600">
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="w-10 h-10 bg-white rounded-full! shadow-md flex items-center justify-center border border-white/40"
-                aria-label="Buscar"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="#4343CD">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+      {/* Acciones (Buscador) */}
+      <div className="flex justify-end mb-4">
+        <div className="flex items-center gap-3 z-20 widgets-action-icons">
+          {searchOpen ? (
+            <div className="flex items-center gap-1 bg-gray-100 rounded-full pl-4 pr-1 shadow-inner border border-gray-200 transition-all duration-300 w-full sm:w-64">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+              </svg>
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar experiencia..."
+                className="outline-none bg-transparent px-2 py-2 w-full text-sm"
+              />
+              <button onClick={() => { setSearchOpen(false); setSearchTerm(''); }} className="p-2 text-gray-500 hover:text-gray-700 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            )}
-          </div>
-          <div className="mt-2">
+            </div>
+          ) : (
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full shadow-md flex items-center justify-center hover:bg-indigo-100 transition"
+              aria-label="Abrir búsqueda"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Carrusel de Experiencias */}
+      <div className="mt-10 widgets-carousel-container">
+        <div className="bg-white rounded-3xl p-4 md:p-6 shadow-xl relative">
+          <div className="pt-2">
             {loading ? (
-              <div className="py-8">Cargando experiencias...</div>
+              <div className="py-8 text-center text-gray-500">Cargando experiencias...</div>
             ) : error ? (
-              <div className="text-red-500 py-8">{error}</div>
+              <div className="text-red-600 py-8 text-center"> {error}</div>
             ) : experienciasFiltradas.length === 0 ? (
-              <div className="text-gray-500 py-8">No hay experiencias.</div>
+              <div className="text-gray-500 py-8 text-center">No hay experiencias.</div>
             ) : (
               <div className="relative">
-                <div ref={carouselRef} className="flex gap-4 overflow-x-auto scrollbar-hide py-6 px-2 pr-20 start-carousel">
+                <div ref={carouselRef} className="flex gap-6 overflow-x-auto scrollbar-hide py-4 px-2">
                   {experienciasFiltradas.map((exp: any) => (
                     <div
                       key={exp.id ?? exp.experienceId}
-                      className={`bg-white border rounded-2xl flex flex-col items-center justify-center shadow-sm hover:shadow-lg transition duration-200 relative
-                        min-w-[200px] max-w-[200px] h-[240px] p-2
+                      className={`bg-white border border-gray-100 rounded-3xl flex flex-col items-center justify-start shadow-lg transition duration-300 relative overflow-hidden transform hover:scale-[1.03]
+                        min-w-[200px] max-w-[200px] h-[240px] p-3
                         sm:min-w-[240px] sm:max-w-[240px] sm:h-[280px] sm:p-4
-                        md:min-w-[280px] md:max-w-[280px] md:h-[320px] md:p-6
-                        lg:min-w-[320px] lg:max-w-[320px] lg:h-[360px] lg:p-8
-                        cursor-pointer start-experience-card
-                        ${selectedExperienceId === (exp.id ?? exp.experienceId) ? 'ring-2 ring-orange-400' : ''}`}
+                        ${selectedExperienceId === (exp.id ?? exp.experienceId) ? 'ring-4 ring-indigo-500/80 shadow-2xl' : 'hover:shadow-xl'}`}
+                      style={{ cursor: 'pointer' }}
                       onClick={() => setSelectedExperienceId(exp.id ?? exp.experienceId)}
                     >
-                      <div className="flex flex-col items-center justify-center flex-grow w-full h-full">
-                        {/* Imagen centrada */}
-                        <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 lg:w-40 lg:h-40 flex items-center justify-center rounded-xl bg-[#fff7e6] overflow-hidden">
-                          <img src="/carts.svg" alt="icono experiencia" className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 object-contain" />
+                      <div className="flex flex-col items-center justify-start flex-grow w-full h-full text-center">
+                        <div className="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center rounded-2xl bg-indigo-50 overflow-hidden flex-shrink-0 mb-3 p-4">
+                          <img src="/carts.svg" alt="icono experiencia" className="w-full h-full object-contain text-indigo-500" />
                         </div>
-                        {/* Nombre de la experiencia */}
-                        <span className="text-xl sm:text-2xl md:text-3xl font-extrabold text-gray-800 text-center mt-4 mb-1 break-words w-full" title={exp.nameExperiences || exp.name || ''}>{exp.nameExperiences || exp.name || ''}</span>
+                        <span
+                          className="text-base sm:text-lg font-extrabold text-gray-800 line-clamp-2 w-full mt-2"
+                          title={exp.nameExperiences || exp.name || ''}
+                        >
+                          {exp.nameExperiences || exp.name || ''}
+                        </span>
+                        {selectedExperienceId === (exp.id ?? exp.experienceId) && (
+                          <div className="absolute top-2 left-2 bg-indigo-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
+                            Destacada
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
