@@ -1,22 +1,24 @@
-version: "3.8"
+version: "3.9"
 
 services:
-  # 🌐 API principal - PROD
-  exp-api-prod:
-    container_name: experiencia-api-prod
+  # Frontend GESCOMPH - Producción
+  experience-front-prod:
+    container_name: ${CONTAINER_NAME}
     build:
       context: ../..
-      dockerfile: API/Dockerfile
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME}:latest
     restart: always
+    ports:
+      - "4204:${PORT}"
     env_file:
       - .env.prod
-    ports:
-      - "5103:8080"
     networks:
       - network_experiencesig
     labels:
-      - com.experienciasig.environment=prod
+      -  com.experienciasig.environment=prod
 
+# Red externa compartida con backend
 networks:
   network_experiencesig:
     external: true
