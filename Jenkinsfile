@@ -15,7 +15,7 @@ pipeline {
             steps {
                 echo "📥 Clonando repositorio Experience-portal..."
                 checkout scm
-                sh 'ls -R experience || true'
+                sh 'ls -R Devops || true'
             }
         }
 
@@ -42,9 +42,9 @@ pipeline {
                         }
                     }
 
-                    env.ENV_DIR = "DevOps/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE = "${env.ENV_DIR}/docker-compose.yml"
-                    env.ENV_FILE = "${env.ENV_DIR}/.env"
+                    env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
+                    env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-compose.yml"
+                    env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
 
                     echo """
                      Rama detectada: ${env.BRANCH_NAME}
@@ -72,18 +72,17 @@ pipeline {
             }
         }
 
-      // ===============================
-// 4️⃣ CONSTRUIR IMAGEN DOCKER
-// ===============================
-stage('Construir imagen Docker') {
-    steps {
-        sh """
-            echo '🐳 Construyendo imagen Docker del Front (${ENVIRONMENT})...'
-            docker build -t experience-front-${ENVIRONMENT}:latest .
-        """
-    }
-}
-
+        // ===============================
+        // 4️⃣ CONSTRUIR IMAGEN DOCKER
+        // ===============================
+        stage('Construir imagen Docker') {
+            steps {
+                sh """
+                    echo '🐳 Construyendo imagen Docker del Front (${ENVIRONMENT})...'
+                    docker build -t experience-front-${ENVIRONMENT}:latest .
+                """
+            }
+        }
 
         // ===============================
         // 5️⃣ DESPLEGAR CON DOCKER COMPOSE
@@ -91,10 +90,10 @@ stage('Construir imagen Docker') {
         stage('Desplegar experience Front') {
             steps {
                 dir(env.PROJECT_DIR) {
-                    sh '''
-                        echo "🚀 Desplegando entorno Frontend: ${ENVIRONMENT}"
+                    sh """
+                        echo '🚀 Desplegando entorno Frontend: ${ENVIRONMENT}'
                         docker compose -f ${COMPOSE_FILE} --env-file ${ENV_FILE} up -d --build
-                    '''
+                    """
                 }
             }
         }
@@ -115,3 +114,4 @@ stage('Construir imagen Docker') {
         }
     }
 }
+
