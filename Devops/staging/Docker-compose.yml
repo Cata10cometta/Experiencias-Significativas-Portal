@@ -1,22 +1,23 @@
 version: "3.8"
 
 services:
-  # 🌐 API principal - STAGING
-  exp-api-staging:
-    container_name: experiencia-api-staging
+  # Frontend  - STAGING
+  experience-front-staging:
+    container_name: ${CONTAINER_NAME}
     build:
       context: ../..
-      dockerfile: API/Dockerfile
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME}:latest
+    ports:
+      - "4203:${PORT}"
     restart: always
     env_file:
       - .env.staging
-    ports:
-      - "5102:8080"
     networks:
-      - network_experiencesig
+      - network_staging
     labels:
-      - com.experienciasig.environment=staging
+      -  com.experienciasig.environment=staging
 
 networks:
-  network_experiencesig:
-    external: true
+  network_staging:
+    driver: bridge
