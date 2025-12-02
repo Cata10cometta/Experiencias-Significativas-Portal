@@ -1,26 +1,24 @@
-version: "3.8"
+version: "3.9"
 
 services:
-  # 🌐 API principal - DEVELOP
-  exp-api-develop:
+  # Frontend GESCOMPH - Desarrollo
+  experience-front-develop:
     container_name: ${CONTAINER_NAME}
-
-    image: ${IMAGE_NAME}:latest     # ⬅️ Imagen creada por Jenkins (ya NO usa build)
-
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME}:latest
     restart: always
-
     ports:
-      - "${PORT}:${PORT}"
-
+      - "4201:${PORT}"
     env_file:
       - .env.dev
-
     networks:
       - network_experiencesig
-
     labels:
-      - com.experienciasig.environment=develop
+      -  com.experienciasig.environment=develop
 
+# Red externa compartida con backend
 networks:
   network_experiencesig:
     external: true
