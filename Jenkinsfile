@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_DIR = 'Experience-Significativas'
+        PROJECT_DIR = '.'
         NETWORK_NAME = 'network_experiencesig'
     }
 
@@ -15,7 +15,7 @@ pipeline {
             steps {
                 echo "📥 Clonando repositorio Experience-portal..."
                 checkout scm
-                sh 'ls -R Experience || true'
+                sh 'ls -R Devops || true'
             }
         }
 
@@ -42,9 +42,9 @@ pipeline {
                         }
                     }
 
-                    env.ENV_DIR = "DevOps/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE = "${env.ENV_DIR}/docker-compose.yml"
-                    env.ENV_FILE = "${env.ENV_DIR}/.env"
+                    env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
+                    env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-compose.yml"
+                    env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
 
                     echo """
                      Rama detectada: ${env.BRANCH_NAME}
@@ -77,25 +77,23 @@ pipeline {
         // ===============================
         stage('Construir imagen Docker') {
             steps {
-                dir(env.PROJECT_DIR) {
-                    sh '''
-                        echo "🐳 Construyendo imagen Docker del Front (${ENVIRONMENT})..."
-                        docker build -t Experience-front-${ENVIRONMENT}:latest .
-                    '''
-                }
+                sh """
+                    echo '🐳 Construyendo imagen Docker del Front (${ENVIRONMENT})...'
+                    docker build -t experience-front-${ENVIRONMENT}:latest .
+                """
             }
         }
 
         // ===============================
         // 5️⃣ DESPLEGAR CON DOCKER COMPOSE
         // ===============================
-        stage('Desplegar Experience Front') {
+        stage('Desplegar experience Front') {
             steps {
                 dir(env.PROJECT_DIR) {
-                    sh '''
-                        echo "🚀 Desplegando entorno Frontend: ${ENVIRONMENT}"
+                    sh """
+                        echo '🚀 Desplegando entorno Frontend: ${ENVIRONMENT}'
                         docker compose -f ${COMPOSE_FILE} --env-file ${ENV_FILE} up -d --build
-                    '''
+                    """
                 }
             }
         }
@@ -116,3 +114,4 @@ pipeline {
         }
     }
 }
+
