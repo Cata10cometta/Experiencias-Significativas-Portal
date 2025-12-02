@@ -16,7 +16,7 @@ services:
     networks:
       - network_staging
     labels:
-      -  com.experienciasig.environment=staging
+      - com.experienciasig.environment=staging
 
 networks:
   network_staging:
