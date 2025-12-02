@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_DIR = 'Experience-Significativas'
+        PROJECT_DIR = '.'
         NETWORK_NAME = 'network_experiencesig'
     }
 
@@ -15,7 +15,7 @@ pipeline {
             steps {
                 echo "📥 Clonando repositorio Experience-portal..."
                 checkout scm
-                sh 'ls -R Experience || true'
+                sh 'ls -R experience || true'
             }
         }
 
@@ -72,24 +72,23 @@ pipeline {
             }
         }
 
-        // ===============================
-        // 4️⃣ CONSTRUIR IMAGEN DOCKER
-        // ===============================
-        stage('Construir imagen Docker') {
-            steps {
-                dir(env.PROJECT_DIR) {
-                    sh '''
-                        echo "🐳 Construyendo imagen Docker del Front (${ENVIRONMENT})..."
-                        docker build -t Experience-front-${ENVIRONMENT}:latest .
-                    '''
-                }
-            }
-        }
+      // ===============================
+// 4️⃣ CONSTRUIR IMAGEN DOCKER
+// ===============================
+stage('Construir imagen Docker') {
+    steps {
+        sh """
+            echo '🐳 Construyendo imagen Docker del Front (${ENVIRONMENT})...'
+            docker build -t experience-front-${ENVIRONMENT}:latest .
+        """
+    }
+}
+
 
         // ===============================
         // 5️⃣ DESPLEGAR CON DOCKER COMPOSE
         // ===============================
-        stage('Desplegar Experience Front') {
+        stage('Desplegar experience Front') {
             steps {
                 dir(env.PROJECT_DIR) {
                     sh '''
