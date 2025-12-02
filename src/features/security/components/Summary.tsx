@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import Joyride from 'react-joyride';
 import axios from 'axios';
+import { securitySummaryTourSteps, securityTourLocale, securityTourStyles } from '../../onboarding/securityTour';
 
 interface RawPerm { id: number; role?: string; form?: string; permission?: string; state?: boolean }
 
@@ -11,6 +13,7 @@ const Summary: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [runTour, setRunTour] = useState(false);
 
   const fetch = async () => {
     const token = localStorage.getItem('token');
@@ -27,6 +30,13 @@ const Summary: React.FC = () => {
   };
 
   useEffect(() => { fetch(); }, []);
+
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem('securitySummaryTourDone')) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
 
   // aggregate per (role, form)
   const grouped = React.useMemo(() => {
@@ -68,12 +78,40 @@ const Summary: React.FC = () => {
   if (error) return <div>{error}</div>;
 
   return (
-    <div className="max-w-full mx-auto -mt-1! p-6">
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <h2 className="text-2xl font-bold text-sky-700">Modelo de Seguridad</h2>
-        <p className="text-sm text-gray-500 mb-6">Vista general de permisos por rol y formulario</p>
+    <div className="max-w-full mx-auto -mt-1! p-6 security-summary-layout">
+      <Joyride
+        steps={securitySummaryTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={securityTourLocale}
+        styles={securityTourStyles}
+        callback={(data) => {
+          if (data.status === 'finished' || data.status === 'skipped') {
+            setRunTour(false);
+            localStorage.setItem('securitySummaryTourDone', 'true');
+          }
+        }}
+      />
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 security-summary-card">
+        <div className="flex items-center gap-4 mb-1 security-summary-header">
+          <div className="flex-shrink-0 -mt-8">
+            <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+              <mask id="path-1-inside-1_2506_2260" fill="white">
+                <path d="M0 16C0 7.16344 7.16344 0 16 0H32C40.8366 0 48 7.16344 48 16V32C48 40.8366 40.8366 48 32 48H16C7.16344 48 0 40.8366 0 32V16Z"/>
+              </mask>
+              <path d="M0 16C0 7.16344 7.16344 0 16 0H32C40.8366 0 48 7.16344 48 16V32C48 40.8366 40.8366 48 32 48H16C7.16344 48 0 40.8366 0 32V16Z" fill="#7CDDFE" fillOpacity="0.1"/>
+              <path d="M16 0V1H32V0V-1H16V0ZM48 16H47V32H48H49V16H48ZM32 48V47H16V48V49H32V48ZM0 32H1V16H0H-1V32H0ZM16 48V47C7.71573 47 1 40.2843 1 32H0H-1C-1 41.3888 6.61116 49 16 49V48ZM48 32H47C47 40.2843 40.2843 47 32 47V48V49C41.3888 49 49 41.3888 49 32H48ZM32 0V1C40.2843 1 47 7.71573 47 16H48H49C49 6.61116 41.3888 -1 32 -1V0ZM16 0V-1C6.61116 -1 -1 6.61116 -1 16H0H1C1 7.71573 7.71573 1 16 1V0Z" fill="#7CDDFE" fillOpacity="0.2" mask="url(#path-1-inside-1_2506_2260)"/>
+              <path d="M32 25C32 30 28.5 32.5 24.34 33.95C24.1222 34.0238 23.8855 34.0202 23.67 33.94C19.5 32.5 16 30 16 25V18C16 17.7347 16.1054 17.4804 16.2929 17.2929C16.4804 17.1053 16.7348 17 17 17C19 17 21.5 15.8 23.24 14.28C23.4519 14.099 23.7214 13.9995 24 13.9995C24.2786 13.9995 24.5481 14.099 24.76 14.28C26.51 15.81 29 17 31 17C31.2652 17 31.5196 17.1053 31.7071 17.2929C31.8946 17.4804 32 17.7347 32 18V25Z" stroke="#7CDDFE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-sky-700">Modelo de Seguridad</h2>
+            <p className="text-sm text-gray-500 mb-6">Vista general de permisos por rol y formulario</p>
+          </div>
+        </div>
 
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6 security-summary-cards">
           {Object.keys(rolesSummary).length === 0 ? (
             <div className="text-gray-500">No hay roles</div>
           ) : (
@@ -91,7 +129,7 @@ const Summary: React.FC = () => {
           )}
         </div>
 
-        <div className="mb-4 flex items-center gap-4">
+        <div className="mb-4 flex items-center gap-4 security-summary-search">
           <div className="flex-1">
             <div className="relative">
               <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Buscar en el modelo de seguridad..." className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm" />
@@ -101,11 +139,10 @@ const Summary: React.FC = () => {
             </div>
           </div>
           <div>
-            <button className="px-4 py-2 rounded bg-white border text-sm">Filtrar</button>
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-100 p-2 overflow-auto">
+        <div className="rounded-lg border border-gray-100 p-2 overflow-auto security-summary-table">
           <table className="min-w-full w-full table-auto">
             <thead className="text-left text-sm text-gray-600 bg-gray-50">
               <tr>
@@ -145,7 +182,7 @@ const Summary: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-500 security-summary-pagination">
           <div>
             {filtered.length === 0 ? (
               <>Mostrando 0 permisos</>
@@ -158,8 +195,8 @@ const Summary: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className={`px-3 py-1 rounded-full border ${currentPage === 1 ? 'text-gray-300 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}>Anterior</button>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>Anterior</button>
             {(() => {
               const pages: number[] = [];
               let start = Math.max(1, currentPage - 2);
@@ -167,10 +204,10 @@ const Summary: React.FC = () => {
               if (end - start < 4) start = Math.max(1, end - 4);
               for (let i = start; i <= end; i++) pages.push(i);
               return pages.map((p) => (
-                <button key={p} onClick={() => setCurrentPage(p)} aria-current={p === currentPage} className={`w-8 h-8 flex items-center justify-center rounded-full border text-sm ${p === currentPage ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{p}</button>
+                <button key={p} onClick={() => setCurrentPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
               ));
             })()}
-            <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className={`px-3 py-1 rounded-full border ${currentPage === totalPages ? 'text-gray-300 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}>Siguiente</button>
+            <button className="px-3 py-1 rounded border" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>Siguiente</button>
           </div>
         </div>
       </div>

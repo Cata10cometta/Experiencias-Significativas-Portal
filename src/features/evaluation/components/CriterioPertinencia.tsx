@@ -32,11 +32,10 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
       ...criteria,
       score,
     };
-
     onChange({
       ...value,
       criteriaEvaluations: [
-  ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
+        ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
         updatedCriteria,
       ],
     });
@@ -48,7 +47,6 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
       ...criteria,
       descriptionContribution: text,
     };
-
     onChange({
       ...value,
       criteriaEvaluations: [
@@ -84,7 +82,7 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
             <label key={num} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="pertinencia"
+                name="pertinencia-bloque1"
                 className="custom-radio"
                 value={num}
                 checked={criteria.score === num}
@@ -105,7 +103,7 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
             <label key={num} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="pertinencia"
+                name="pertinencia-bloque2"
                 className="custom-radio"
                 value={num}
                 checked={criteria.score === num}
@@ -126,7 +124,7 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
             <label key={num} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="pertinenciaGrupo3"
+                name="pertinencia-bloque3"
                 className="custom-radio"
                 value={num}
                 checked={criteria.score === num}
@@ -154,11 +152,7 @@ const CriterioPertinencia: React.FC<CriterioPertinenciaProps> = ({ value, onChan
               onChange={(e) => updateDescription(e.target.value)}
             />
             <span
-              className={`absolute bottom-2 right-2 text-xs ${
-                criteria.descriptionContribution.length >= MAX_CHARACTERS.descriptionContribution
-                  ? "text-green-500"
-                  : "text-red-500"
-              }`}
+              className="absolute bottom-2 right-2 text-xs text-gray-500"
             >
               {criteria.descriptionContribution?.length || 0}/{MAX_CHARACTERS.descriptionContribution}
             </span>

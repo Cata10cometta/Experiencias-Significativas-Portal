@@ -28,19 +28,31 @@ interface EvaluationProps {
 
 function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdated }: EvaluationProps) {
     const [activeStep, setActiveStep] = useState(0);
+    const CRITERIA_IDS = [1,2,3,4,5,6,7,8,9];
     const [form, setForm] = useState<Evaluation>({
         evaluationId: 0,
         typeEvaluation: "",
         accompanimentRole: "",
         comments: "",
         evaluationResult: "",
+        urlEvaPdf: "",
         experienceId: experienceId ?? 0,
         experienceName: "",
         stateId: 0,
         institutionName: "",
-        criteriaEvaluations: [],
+        criteriaEvaluations: CRITERIA_IDS.map(id => ({
+            criteriaId: id,
+            descriptionContribution: '',
+            score: 0,
+            evaluationId: 0,
+            id: 0,
+            state: true,
+            createdAt: null,
+            deletedAt: null
+        })),
         thematicLineNames: [],
-        userId: Number(localStorage.getItem("userId")) || 0
+        userId: Number(localStorage.getItem("userId")) || 0,
+        experience: {} as any // provide empty experience object to satisfy required type
     });
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -261,20 +273,19 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             console.debug('savePdfUrlToExperience error', e);
         }
     };
-    // Si se proporciona experienceId, intentar obtener una evaluación existente
+    // Buscar si ya existe una evaluación para este usuario y experiencia
     useEffect(() => {
         const fetchExistingEvaluation = async () => {
             if (!experienceId) return;
             const token = localStorage.getItem("token");
+            const userId = Number(localStorage.getItem("userId")) || 0;
             try {
-                // Intentar distintas rutas comunes para obtener la evaluación por experiencia.
-                // Si tu backend tiene otra ruta, ajusta aquí.
                 const urlsToTry = [
                     `/api/Evaluation/getByExperience/${experienceId}`,
                     `/api/Evaluation/by-experience/${experienceId}`,
-                    `/api/Evaluation/${experienceId}`, // fallback single
-                    `/api/Evaluation/List`, // try list endpoint and filter client-side
-                    `/api/Evaluation` // try generic list endpoint
+                    `/api/Evaluation/${experienceId}`,
+                    `/api/Evaluation/List`,
+                    `/api/Evaluation`
                 ];
 
                 let resp = null;
@@ -284,54 +295,45 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
                             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                         });
                         if (resp && resp.status === 200 && resp.data) break;
-                    } catch (e: any) {
-                        // continuar al siguiente intento si 404 u otro error manejable
+                    } catch (e) {
                         resp = null;
                     }
                 }
 
                 if (resp && resp.data) {
-                    console.debug("Respuesta fetchExistingEvaluation:", resp.data);
-                    let existing: any = resp.data;
-
-                    // Si la respuesta es un array (lista), buscar la evaluación que coincida con experienceId
+                    let existing = resp.data;
                     if (Array.isArray(existing)) {
-                        existing = existing.find((e: any) => {
+                        existing = existing.find((e) => {
                             return (
-                                e.experienceId === experienceId ||
-                                e.ExperienceId === experienceId ||
-                                e.experienceID === experienceId ||
-                                e.ExperienceID === experienceId
+                                (e.experienceId === experienceId || e.ExperienceId === experienceId || e.experienceID === experienceId || e.ExperienceID === experienceId)
+                                && (e.userId === userId || e.UserId === userId)
                             );
                         }) || null;
+                    } else if (existing && (existing.experienceId !== experienceId && existing.ExperienceId !== experienceId)) {
+                        existing = null;
                     }
 
                     if (existing) {
-                        console.debug("Evaluación encontrada para experienceId=", experienceId, existing);
-                        // Rellenar el form con la evaluación existente y activar modo edición
                         setForm(prev => ({
                             ...prev,
                             ...existing,
-                            // asegurar que experienceId y userId queden correctos
+                            criteriaEvaluations: Array.isArray(existing.criteriaEvaluations)
+                                ? existing.criteriaEvaluations
+                                : (Array.isArray(existing.CriteriaEvaluations) ? existing.CriteriaEvaluations : []),
                             experienceId: existing.experienceId ?? existing.ExperienceId ?? prev.experienceId,
                             userId: existing.userId ?? existing.UserId ?? prev.userId,
                         }));
                         setIsEditing(true);
                     } else {
-                        console.debug("No se encontró evaluación para experienceId=", experienceId);
                         setIsEditing(false);
                     }
                 } else {
-                    console.debug("No se obtuvo data al consultar posibles endpoints para evaluation");
                     setIsEditing(false);
                 }
             } catch (err) {
-                // No bloquear la UX si falla la comprobación: permitimos crear nueva evaluación
-                console.warn("No se pudo comprobar evaluación existente:", err);
                 setIsEditing(false);
             }
         };
-
         fetchExistingEvaluation();
     }, [experienceId]);
 
@@ -417,8 +419,24 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         setActiveStep((prev) => Math.max(prev - 1, 0));
     };
 
-    const handleChange = (changes: Partial<Evaluation>) => {
-        setForm((prev) => ({ ...prev, ...changes }));
+    const handleChange = (changes: Partial<Evaluation> & { criteriaEvaluation?: any }) => {
+        setForm((prev) => {
+            // Si viene un solo criterio (criteriaEvaluation), lo fusionamos
+            if (changes.criteriaEvaluation) {
+                const crit = changes.criteriaEvaluation;
+                const merged = prev.criteriaEvaluations.map(c => c.criteriaId === crit.criteriaId ? { ...c, ...crit } : c);
+                return { ...prev, ...changes, criteriaEvaluations: merged };
+            }
+            // Si viene un array de criterios (criteriaEvaluations), fusionamos cada uno
+            if (changes.criteriaEvaluations) {
+                let merged = [...prev.criteriaEvaluations];
+                changes.criteriaEvaluations.forEach((crit) => {
+                    merged = merged.map(c => c.criteriaId === crit.criteriaId ? { ...c, ...crit } : c);
+                });
+                return { ...prev, ...changes, criteriaEvaluations: merged };
+            }
+            return { ...prev, ...changes };
+        });
     };
 
     const handleSubmit = async () => {
@@ -426,118 +444,108 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
         setError(null);
         const token = localStorage.getItem("token");
         const userId = Number(localStorage.getItem("userId")) || 0;
-        const formToSend = { ...form, userId };
-        console.log("Formulario a enviar:", formToSend);
+        // Normalizar criterios antes de enviar
+        const CRITERIA_IDS = [1,2,3,4,5,6,7,8,9];
+        // Tomar los criterios seleccionados por el usuario
+        let criteriaEvaluationsToSend = Array.isArray(form.criteriaEvaluations) ? [...form.criteriaEvaluations] : [];
+        // Agregar criterios faltantes con valores por defecto
+        CRITERIA_IDS.forEach(id => {
+            if (!criteriaEvaluationsToSend.some(c => c.criteriaId === id)) {
+                criteriaEvaluationsToSend.push({
+                    criteriaId: id,
+                    descriptionContribution: '',
+                    score: 0,
+                    evaluationId: 0,
+                    id: 0,
+                    state: true,
+                    createdAt: null,
+                    deletedAt: null
+                });
+            }
+        });
+        // Ordenar por criteriaId ascendente
+        criteriaEvaluationsToSend = criteriaEvaluationsToSend.sort((a, b) => a.criteriaId - b.criteriaId);
+
+        // Transformar a evaluationCriteriaDetail para el backend
+        const evaluationCriteriaDetail = criteriaEvaluationsToSend.map(c => ({
+            criteriaId: c.criteriaId,
+            scores: [c.score],
+            descriptionContribution: c.descriptionContribution
+        }));
+
+        const formToSend = {
+            typeEvaluation: form.typeEvaluation,
+            comments: form.comments,
+            accompanimentRole: form.accompanimentRole,
+            userId,
+            experienceId: form.experienceId,
+            evaluationCriteriaDetail
+        };
+        // Log de depuración para ver exactamente lo que se envía
+        console.log("Formulario a enviar:", JSON.stringify(formToSend, null, 2));
         try {
+            let response;
             if (isEditing && form.evaluationId && form.evaluationId > 0) {
                 // Actualizar evaluación existente
-                const response = await axios.put(`/api/Evaluation/update/${form.evaluationId}`, formToSend, {
+                response = await axios.put(`/api/Evaluation/update/${form.evaluationId}`, formToSend, {
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                 });
-
-                const result = response?.data?.evaluationResult ?? response?.data?.message ?? "Actualizado correctamente";
-                setEvaluationResult(result);
-                setShowModal(true);
-
-                // intentar obtener la URL usando el id de la evaluación
-                const evalId = form.evaluationId || response?.data?.evaluationId || response?.data?.id || response?.data?.Id;
-                if (evalId) await fetchEvaluationUrl(evalId);
             } else {
-                // Antes de crear, verificar de nuevo si ya existe una evaluación para esta experiencia
-                // (caso en que la comprobación inicial falló o el form no tenía evaluationId)
-                if (form.experienceId) {
-                    try {
-                        const existingId = await locateCreatedEvaluationId(form.experienceId);
-                        if (existingId && existingId > 0) {
-                            // Si encontramos una evaluación existente, actualizarla en lugar de crear otra
-                            const respUpdate = await axios.put(`/api/Evaluation/update/${existingId}`, formToSend, {
-                                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                            });
-
-                            const resultUpd = respUpdate?.data?.evaluationResult ?? respUpdate?.data?.message ?? "Actualizado correctamente";
-                            setEvaluationResult(resultUpd);
-                            setShowModal(true);
-                            // asegurar estado
-                            setForm(prev => ({ ...prev, evaluationId: existingId }));
-                            setIsEditing(true);
-                            // intentar obtener la URL usando el id de la evaluación
-                            const evalId = existingId || respUpdate?.data?.evaluationId || respUpdate?.data?.id || respUpdate?.data?.Id;
-                            if (evalId) await fetchEvaluationUrl(evalId);
-                            // salimos del flujo de creación
-                            setIsSaving(false);
-                            return;
-                        }
-                    } catch (e) {
-                        console.debug('Error comprobando evaluación existente antes de crear:', e);
-                        // continuar con la creación si la comprobación falla
-                    }
-                }
-
                 // Crear nueva evaluación
-                const response = await axios.post("/api/Evaluation/create", formToSend, {
+                response = await axios.post("/api/Evaluation/create", formToSend, {
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                 });
+            }
 
-                // si el backend retorna el id creado, actualizar el estado para permitir posteriores updates
-                if (response?.data?.evaluationId) {
-                    setForm(prev => ({ ...prev, evaluationId: response.data.evaluationId }));
-                    setIsEditing(true);
-                }
+            // si el backend retorna el id creado, actualizar el estado para permitir posteriores updates
+            if (response?.data?.evaluationId) {
+                setForm(prev => ({ ...prev, evaluationId: response.data.evaluationId }));
+                setIsEditing(true);
+            }
 
-                const result = response?.data?.evaluationResult ?? response?.data?.message ?? "Creado correctamente";
-                setEvaluationResult(result);
-                setShowModal(true);
+            const result = response?.data?.evaluationResult ?? response?.data?.message ?? (isEditing ? "Actualizado correctamente" : "Creado correctamente");
+            setEvaluationResult(result);
+            setShowModal(true);
 
-                // determinar id de la evaluación (puede venir en distintos campos)
-                let createdId = response?.data?.evaluationId || response?.data?.id || response?.data?.Id || form.evaluationId || 0;
+            // determinar id de la evaluación (puede venir en distintos campos)
+            let createdId = response?.data?.evaluationId || response?.data?.id || response?.data?.Id || form.evaluationId || 0;
 
-                // Si el backend no devolvió el id directamente, intentar extraerlo de la cabecera Location
-                const locationHeader = response?.headers?.location || response?.headers?.Location;
-                if ((!createdId || createdId === 0) && locationHeader) {
-                    try {
-                        console.debug('Location header presente en la respuesta:', locationHeader);
-                        const match = String(locationHeader).match(/\/(\d+)(?:\/?$|\D.*$)/);
-                        if (match && match[1]) {
-                            const parsed = Number(match[1]);
-                            if (!isNaN(parsed) && parsed > 0) {
-                                createdId = parsed;
-                                console.debug('Id obtenido desde Location header:', createdId);
-                            }
+            // Si el backend no devolvió el id directamente, intentar extraerlo de la cabecera Location
+            const locationHeader = response?.headers?.location || response?.headers?.Location;
+            if ((!createdId || createdId === 0) && locationHeader) {
+                try {
+                    const match = String(locationHeader).match(/\/(\d+)(?:\/?$|\D.*$)/);
+                    if (match && match[1]) {
+                        const parsed = Number(match[1]);
+                        if (!isNaN(parsed) && parsed > 0) {
+                            createdId = parsed;
                         }
-                    } catch (e) {
-                        console.debug('No se pudo parsear Location header', e);
                     }
-                }
+                } catch (e) {}
+            }
 
-                // Si aún no hay id, intentar localizar la evaluación creada por experienceId
-                if ((!createdId || createdId === 0) && form.experienceId) {
-                    try {
-                        // pasar una huella (userId + campos clave) para mejorar el match
-                        const match = {
-                            userId: form.userId || userId,
-                            comments: form.comments,
-                            accompanimentRole: form.accompanimentRole,
-                            typeEvaluation: form.typeEvaluation
-                        };
-                        const foundId = await locateCreatedEvaluationId(form.experienceId, match);
-                        if (foundId && foundId > 0) createdId = foundId;
-                    } catch (e) {
-                        console.debug('Error buscando evaluación por experienceId', e);
-                    }
-                }
+            // Si aún no hay id, intentar localizar la evaluación creada por experienceId
+            if ((!createdId || createdId === 0) && form.experienceId) {
+                try {
+                    const match = {
+                        userId: form.userId || userId,
+                        comments: form.comments,
+                        accompanimentRole: form.accompanimentRole,
+                        typeEvaluation: form.typeEvaluation
+                    };
+                    const foundId = await locateCreatedEvaluationId(form.experienceId, match);
+                    if (foundId && foundId > 0) createdId = foundId;
+                } catch (e) {}
+            }
 
-                if (createdId && createdId !== 0) {
-                    // asegurar que el form tenga el id
-                    setForm(prev => ({ ...prev, evaluationId: createdId }));
-                    setIsEditing(true);
-                    await fetchEvaluationUrl(createdId);
-                } else {
-                    console.warn('No se pudo determinar el id de la evaluación creada. Response:', response?.data);
-                    setLastGenerateMessage('Creado pero no se pudo obtener el id automáticamente. Reintenta generar el PDF.');
-                }
+            if (createdId && createdId !== 0) {
+                setForm(prev => ({ ...prev, evaluationId: createdId }));
+                setIsEditing(true);
+                await fetchEvaluationUrl(createdId);
+            } else {
+                setLastGenerateMessage('Creado pero no se pudo obtener el id automáticamente. Reintenta generar el PDF.');
             }
         } catch (err) {
-            console.error("Error al guardar evaluación:", err);
             setError("Error al guardar la evaluación");
         } finally {
             setIsSaving(false);
@@ -729,7 +737,37 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
     };
 
     return (
-        <div className="w-full max-w-3xl bg-white rounded-lg shadow-md p-8 mx-auto">
+        <div
+            className="w-full max-w-3xl bg-white rounded-lg shadow-md p-8 mx-auto custom-scrollbar-transparent"
+            style={{
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                position: 'relative',
+                minHeight: '300px',
+                boxSizing: 'border-box',
+            }}
+        >
+            
+            {/* Botón X para cerrar el formulario principal */}
+            {onClose && (
+                <button
+                    onClick={onClose}
+                    style={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        background: 'transparent',
+                        border: 'none',
+                        fontSize: 28,
+                        cursor: 'pointer',
+                        color: '#888',
+                        zIndex: 20
+                    }}
+                    aria-label="Cerrar formulario"
+                >
+                    ×
+                </button>
+            )}
             {activeStep === 0 && (
                 <>
                     <h1 className="text-4xl font-bold !text-[#00aaff]  text-center mt-8">
@@ -784,49 +822,41 @@ function Evaluation({ experienceId, experiences = [], onClose, onExperienceUpdat
             {error && <div className="text-red-500 text-center mt-4">{error}</div>}
 
             {/* Modal para mostrar el resultado de la evaluación */}
-            <Modal open={showModal} onClose={() => setShowModal(false)}>
+            <Modal open={showModal} onClose={handleCloseModal}>
                 <Box
                     sx={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: 400,
-                        bgcolor: "background.paper",
-                        boxShadow: 24,
-                        p: 4,
-                        borderRadius: 2,
+                        
                     }}
                 >
-                    <h2 className="text-2xl font-bold text-center mb-4">Resultado de la Evaluación</h2>
-                    <p className="text-center text-green-500 font-semibold">{evaluationResult}</p>
+                    {/* Botón X para cerrar */}
+                    <button
+                        onClick={handleCloseModal}
+                        style={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            background: 'transparent',
+                            border: 'none',
+                            fontSize: 20,
+                            cursor: 'pointer',
+                            color: '#888',
+                            zIndex: 10
+                        }}
+                        aria-label="Cerrar"
+                    >
+                        ×
+                    </button>
+                    <h2 className="text-xl font-bold text-center mt-2 mb-2">Resultado de la Evaluación</h2>
+                    <p className="text-center text-green-500 font-semibold mb-2">{evaluationResult}</p>
                     {isUrlLoading ? (
-                        <p className="text-center text-gray-600 mt-2">Obteniendo documento...</p>
+                        <p className="text-center text-gray-600 mt-2">Generando PDF...</p>
                     ) : (
-                        evaluationUrl ? (
-                            <div className="text-center mt-4">
-                                <p className="text-sm text-gray-700">El PDF se ha generado. Aparecerá en la tarjeta de la experiencia en esta pantalla.</p>
-                                <div className="flex justify-center mt-3">
-                                    <Button variant="contained" color="primary" onClick={handleCloseModal}>
-                                        Cerrar
-                                    </Button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center gap-3 mt-4">
-                                <div className="flex gap-3">
-                                    <Button variant="contained" color="primary" onClick={handleGenerateClick} disabled={isUrlLoading}>
-                                        {isUrlLoading ? 'Generando...' : 'Generar PDF'}
-                                    </Button>
-                                    <Button variant="contained" color="primary" onClick={handleCloseModal}>
-                                        Cerrar
-                                    </Button>
-                                </div>
-                                {lastGenerateMessage && (
-                                    <p className="text-sm text-center text-gray-600 mt-2">{lastGenerateMessage}</p>
-                                )}
-                            </div>
-                        )
+                        <div className="text-center mt-2">
+                            <p className="text-sm text-gray-700 mb-3">PDF generado correctamente.</p>
+                            <Button variant="contained" color="primary" onClick={handleCloseModal} sx={{ fontSize: 14, px: 3, py: 1, borderRadius: 1 }}>
+                                Cerrar
+                            </Button>
+                        </div>
                     )}
                 </Box>
             </Modal>

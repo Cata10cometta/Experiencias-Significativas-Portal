@@ -24,6 +24,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
   const [documentType, setDocumentType] = useState<number | string>("");
   const [documentTypes, setDocumentTypes] = useState<DataSelectRequest[]>([]);
   const [codigoDaneOptions, setCodigoDaneOptions] = useState<DataSelectRequest[]>([]);
+  const [emailInstitucionalOptions, setEmailInstitucionalOptions] = useState<DataSelectRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +35,9 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
         setDocumentTypes(dt || []);
         const cd = await getEnum("CodeDane");
         setCodigoDaneOptions(cd || []);
+        const emailInstitucionalOpts = await getEnum("EmailInstitucional");
+        setEmailInstitucionalOptions(emailInstitucionalOpts || []);
+        // console.log("EmailInstitutional recibidos:", emailInstitucionalOpts);
       } catch (e) {
         // ignore
       }
@@ -113,7 +117,16 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
           </div>
           <div>
             <label className="block mb-2 font-semibold">Email Institucional</label>
-            <input type="email" className="w-full p-2 border rounded" value={emailInstitutional} onChange={e => setEmailInstitutional(e.target.value)} />
+            <select
+              className="w-full p-2 border rounded"
+              value={emailInstitutional}
+              onChange={e => setEmailInstitutional(e.target.value)}
+            >
+              <option value="">Seleccione...</option>
+              {emailInstitucionalOptions.map(opt => (
+                <option key={opt.id} value={opt.displayText}>{opt.displayText}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block mb-2 font-semibold">Teléfono</label>
@@ -123,7 +136,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({ onClose, onAdded }) => {
             <label className="block mb-2 font-semibold">Código Dane</label>
             <select className="w-full p-2 border rounded" value={codeDane} onChange={e => setCodeDane(e.target.value)}>
               <option value="">Seleccione...</option>
-              {codigoDaneOptions.map(c => <option key={c.id} value={c.displayText}>{c.displayText}</option>)}
+              {codigoDaneOptions.map(c => <option key={c.id} value={c.id}>{c.id}</option>)}
             </select>
           </div>
         </div>
@@ -357,7 +370,7 @@ const PersonsList: React.FC = () => {
           <div>
             <button
               onClick={() => setAddPersonOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl shadow hover:bg-sky-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
             >
               Agregar Persona
             </button>
@@ -379,11 +392,6 @@ const PersonsList: React.FC = () => {
             </div>
           </div>
           <div>
-            <button className="px-4 py-2 rounded bg-white border text-sm flex items-center gap-2">
-              {/* funnel icon */}
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-gray-600"><path d="M3 5h18v2L13 13v6l-2-1v-5L3 7V5z" fill="currentColor"/></svg>
-              <span>Filtrar</span>
-            </button>
           </div>
         </div>
 
@@ -439,11 +447,20 @@ const PersonsList: React.FC = () => {
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-4">
-                        <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditPerson(person)} title="Editar">✏️</button>
+                        <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditPerson(person)} title="Editar">
+                          {/* Nuevo ícono lápiz */}
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="#0ea5e9" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16.474 5.351a2.121 2.121 0 1 1 3 3l-9.193 9.193a2 2 0 0 1-.707.464l-3.326 1.108a.5.5 0 0 1-.634-.634l1.108-3.326a2 2 0 0 1 .464-.707l9.193-9.193Z"/></svg>
+                        </button>
                         {person.state ? (
-                          <button className="text-red-500 hover:text-red-700" onClick={() => handleDeactivate(person.id)} title="Desactivar">🗑️</button>
+                          <button className="text-red-500 hover:text-red-700" onClick={() => handleDeactivate(person.id)} title="Desactivar">
+                            {/* Nuevo ícono papelera */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="#ef4444" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12Z"/><path stroke="#ef4444" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 11v6m4-6v6"/></svg>
+                          </button>
                         ) : (
-                          <button className="text-emerald-500 hover:text-emerald-700" onClick={() => handleActivate(person.id)} title="Activar">♻️</button>
+                          <button className="text-emerald-500 hover:text-emerald-700" onClick={() => handleActivate(person.id)} title="Activar">
+                            {/* Nuevo ícono papelera (verde) para activar */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="#10b981" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12Z"/><path stroke="#10b981" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 11v6m4-6v6"/></svg>
+                          </button>
                         )}
                       </div>
                     </td>

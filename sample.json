@@ -1,0 +1,289 @@
+{
+  "nameExperiences": "eded",
+  "code": "410001",
+  "thematicLocation": "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES",
+  "developmenttime": "2025-11-25T12:28:07.6408969",
+  "recognition": "Sí, al interior de la Institución Educativa",
+  "socialization": "Producciones (videos, cuentas de redes sociales)",
+  "urlPdf": "https://clzjdaburaytuimossnf.supabase.co/storage/v1/object/sign/Experiencia-SignificativaPdf/Experiencia-2011.pdf?token=...",
+  "stateExperienceId": 1,
+  "stateExperience": null,
+  "userId": 1,
+  "user": {
+    "code": "0001",
+    "username": "mariaalejan1080@gmail.com",
+    "personId": 1,
+    "password": "202CB962AC59075B964B07152D234B70",
+    "person": null,
+    "recoveryCode": null,
+    "recoveryCodeExpiration": null,
+    "userRoles": [],
+    "experiences": [
+      null
+    ],
+    "evaluations": [],
+    "historyExperiences": [
+      {
+        "action": "Creación",
+        "tableName": "Experience",
+        "experienceId": 2011,
+        "experience": null,
+        "userId": 1,
+        "user": null,
+        "id": 2011,
+        "state": false,
+        "createdAt": "0001-01-01T00:00:00",
+        "deletedAt": null
+      }
+    ],
+    "id": 1,
+    "state": true,
+    "createdAt": "2025-11-24T00:46:47.5933833",
+    "deletedAt": null
+  },
+  "institucionId": 2011,
+  "institution": {
+    "address": "carrera 2 # 31-15 candido1",
+    "phone": 3142905172,
+    "codeDane": "410001",
+    "emailInstitucional": "",
+    "nameRector": "Sneider Perdomo",
+    "caracteristic": "",
+    "territorialEntity": "",
+    "testsKnow": "",
+    "experiences": [
+      null
+    ],
+    "addresss": [],
+    "eeZones": [
+      {
+        "institutionId": 2011,
+        "institution": null,
+        "code": "",
+        "name": "neknfkwenfk",
+        "id": 2011,
+        "state": true,
+        "createdAt": "2025-11-25T17:28:08.1929011",
+        "deletedAt": null
+      }
+    ],
+    "departaments": [
+      {
+        "institutionId": 2011,
+        "institution": null,
+        "code": "",
+        "name": "Huila",
+        "id": 2011,
+        "state": true,
+        "createdAt": "2025-11-25T17:28:08.1959133",
+        "deletedAt": null
+      }
+    ],
+    "municipalitis": [
+      {
+        "institutionId": 2011,
+        "institution": null,
+        "code": "",
+        "name": "Neiva",
+        "id": 2011,
+        "state": true,
+        "createdAt": "2025-11-25T17:28:08.1914379",
+        "deletedAt": null
+      }
+    ],
+    "communes": [],
+    "code": "",
+    "name": "Sneider Perdomo",
+    "id": 2011,
+    "state": true,
+    "createdAt": "2025-11-25T17:28:08.1839686",
+    "deletedAt": null
+  },
+  "documents": [
+    {
+      "name": "experiencia-3.pdf",
+      "urlLink": "https://www.personal.unam.mx/Docs/Cendi/cancionero.pdf",
+      "urlPdf": "...",
+      "urlPdfExperience": "...",
+      "experienceId": 2011,
+      "experience": null,
+      "id": 2011,
+      "state": false,
+      "createdAt": "0001-01-01T00:00:00",
+      "deletedAt": null
+    }
+  ],
+  "experienceLineThematics": [
+    {
+      "experienceId": 2011,
+      "lineThematicId": 8,
+      "experience": null,
+      "lineThematic": null,
+      "id": 2012,
+      "state": true,
+      "createdAt": "2025-11-25T17:28:08.2164492",
+      "deletedAt": null
+    }
+  ],
+  "experienceGrades": [
+    {
+      "gradeId": 5,
+      "experienceId": 2011,
+      "description": "once",
+      "grade": {
+        "description": "",
+        "experienceGrades": [
+          null
+        ],
+        "code": "05",
+        "name": "CLEI",
+        "id": 5,
+        "state": true,
+        "createdAt": "2025-11-24T00:46:47.5933833",
+        "deletedAt": null
+      },
+      "experience": null,
+      "id": 1010,
+      "state": false,
+      "createdAt": "0001-01-01T00:00:00",
+      "deletedAt": null
+    }
+  ],
+  "objectives": [
+    {
+      "descriptionProblem": "fewf",
+      "objectiveExperience": "ewfwe",
+      "enfoqueExperience": "fewfew",
+      "methodologias": "few",
+      "pmi": "si",
+      "nnaj": "si",
+      "innovationExperience": "si",
+      "experienceId": 2011,
+      "experience": null,
+      "monitorings": [
+        {
+          "monitoringEvaluation": "si",
+          "result": "",
+          "sustainability": "si",
+          "tranfer": "",
+          "objectiveId": 2011,
+          "objective": null,
+          "id": 2010,
+          "state": true,
+          "createdAt": "2025-11-25T17:28:08.2132253",
+          "deletedAt": null
+        }
+      ],
+      "supportInformations": [
+        {
+          "summary": "si",
+          "metaphoricalPhrase": "si",
+          "testimony": "si",
+          "followEvaluation": "si",
+          "objectiveId": 2011,
+          "objective": null,
+          "id": 2010,
+          "state": true,
+          "createdAt": "2025-11-25T17:28:08.2111891",
+          "deletedAt": null
+        }
+      ],
+      "id": 2011,
+      "state": true,
+      "createdAt": "2025-11-25T17:28:08.2069204",
+      "deletedAt": null
+    }
+  ],
+  "experiencePopulations": [
+    {
+      "experienceId": 2011,
+      "populationGradeId": 2,
+      "experience": null,
+      "populationGrade": {
+        "experiencePopulations": [
+          null
+        ],
+        "code": "02",
+        "name": "Afrodecendientes",
+        "id": 2,
+        "state": true,
+        "createdAt": "2025-11-24T00:46:47.5933833",
+        "deletedAt": null
+      },
+      "id": 1008,
+      "state": true,
+      "createdAt": "2025-11-25T17:28:08.2204847",
+      "deletedAt": null
+    }
+  ],
+  "evaluations": [],
+  "historyExperiences": [
+    {
+      "action": "Creación",
+      "tableName": "Experience",
+      "experienceId": 2011,
+      "experience": null,
+      "userId": 1,
+      "user": {
+        "code": "0001",
+        "username": "mariaalejan1080@gmail.com",
+        "personId": 1,
+        "password": "202CB962AC59075B964B07152D234B70",
+        "person": null,
+        "recoveryCode": null,
+        "recoveryCodeExpiration": null,
+        "userRoles": [],
+        "experiences": [
+          null
+        ],
+        "evaluations": [],
+        "historyExperiences": [
+          null
+        ],
+        "id": 1,
+        "state": true,
+        "createdAt": "2025-11-24T00:46:47.5933833",
+        "deletedAt": null
+      },
+      "id": 2011,
+      "state": false,
+      "createdAt": "0001-01-01T00:00:00",
+      "deletedAt": null
+    }
+  ],
+  "developments": [
+    {
+      "crossCuttingProject": "Contabilización De Operaciones Contables Y Financieras",
+      "population": "Tradicional",
+      "pedagogicalStrategies": "Practicante de Universidad pública",
+      "coverage": "Sí , Componente Gestión Comunitaria",
+      "covidPandemic": "",
+      "experienceId": 2011,
+      "experience": null,
+      "id": 2011,
+      "state": false,
+      "createdAt": "0001-01-01T00:00:00",
+      "deletedAt": null
+    }
+  ],
+  "leaders": [
+    {
+      "code": "",
+      "nameLeaders": "fwefwe",
+      "identityDocument": "5645",
+      "email": "catalina2005cometa@gmail.com",
+      "position": "ewfwef",
+      "phone": 3232,
+      "experienceId": 2011,
+      "experience": null,
+      "id": 2011,
+      "state": false,
+      "createdAt": "0001-01-01T00:00:00",
+      "deletedAt": null
+    }
+  ],
+  "id": 2011,
+  "state": true,
+  "createdAt": "2025-11-25T17:28:08.1808743",
+  "deletedAt": null
+}

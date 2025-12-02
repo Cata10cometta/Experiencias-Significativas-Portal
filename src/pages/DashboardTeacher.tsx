@@ -5,6 +5,7 @@ import StarT from "../shared/components/starT";
 import AgregarExperiencia from "../features/experience/components/AddExperience"; // moved to features
 import SessionExpiredModal from "../shared/components/SessionExpiredModal";
 import { setSessionExpiredHandler } from "../Api/Config/Config";
+import Information from "../features/Information/Information";
 
 const DashboardTeacher: React.FC = () => {
   const [activeContent, setActiveContent] = useState("dashboard");

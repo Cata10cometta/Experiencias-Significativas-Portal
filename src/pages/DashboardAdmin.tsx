@@ -24,6 +24,7 @@ import State from "../features/parameter/components/State";
 import ParameterMain from "../features/parameter/components/ParameterMain";
 import SessionExpiredModal from "../shared/components/SessionExpiredModal";
 import { setSessionExpiredHandler } from "../Api/Config/Config";
+import Information from "../features/Information/Information";
 
 const DashboardAdmin: React.FC = () => {
   const [activeContent, setActiveContent] = useState("dashboard");
@@ -48,8 +49,9 @@ const DashboardAdmin: React.FC = () => {
         {activeContent === "evaluation" && <Evaluation />}
         {activeContent === "users" && <UserList />}
         {activeContent === "roles" && <RolesList />}
-  {activeContent === "security" && <SecurityMain />}
+        {activeContent === "security" && <SecurityMain />}
         {activeContent === "permissions" && <Permissions />}
+        {activeContent === "experiensGestion" && <Information /> }
         {activeContent === "modules" && <Modules />}
         {activeContent === "forms" && <Forms />}
         {activeContent === "usersRol" && <UsersRol />}

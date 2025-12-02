@@ -30,13 +30,7 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
       score,
     };
 
-    onChange({
-      ...value,
-      criteriaEvaluations: [
-  ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
-        updatedCriteria,
-      ],
-    });
+    onChange({ criteriaEvaluation: updatedCriteria } as any);
   };
 
   const updateDescription = (desc: string) => {
@@ -46,13 +40,15 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
     };
 
     onChange({
-      ...value,
       criteriaEvaluations: [
         ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
         updatedCriteria,
       ],
-    });
+    } as any);
   };
+
+  // Character limit for descriptionContribution
+  const MAX_CHARACTERS = 50;
 
   return (
     <section className="w-full px-0 mt-4 min-h-[400px]">
@@ -90,11 +86,11 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
             <label key={val} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="fundamentacion"
+                name="fundamentacion-bloque1"
                 className="custom-radio"
                 value={val}
                 checked={criteria.score === val}
-                onChange={() => updateScore( val)}
+                onChange={() => updateScore(val)}
               />
               <span className="ml-2">{val}</span>
             </label>
@@ -115,7 +111,7 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
               <label key={val} className="inline-flex items-center cursor-pointer">
                 <input
                   type="radio"
-                  name="fundamentacion1"
+                  name="fundamentacion-bloque2"
                   className="custom-radio"
                   value={val}
                   checked={criteria.score === val}
@@ -143,7 +139,7 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
               <label key={val} className="inline-flex items-center cursor-pointer">
                 <input
                   type="radio"
-                  name="fundamentacion2"
+                  name="fundamentacion-bloque3"
                   className="custom-radio"
                   value={val}
                   checked={criteria.score === val}
@@ -161,15 +157,24 @@ const CriteriaFoundation: React.FC<CriteriaFoundationProps> = ({ value, onChange
             Aportes para el mejoramiento frente al criterio evaluado Fundamentación
             (Si no hay aportes favor escribir "NO APLICA")
           </label>
-          <textarea
-            className="w-full border rounded p-2 min-h-[60px] focus:ring-2 focus:ring-[#2196f3]"
-            placeholder="Tu respuesta"
-            value={criteria.descriptionContribution ?? ""}
-            onChange={(e) => updateDescription(e.target.value)}
-          />
+          <div className="relative">
+            <textarea
+              className="w-full border rounded p-2 min-h-[60px] focus:ring-2 focus:ring-[#2196f3] pr-14 pb-7"
+              placeholder="Tu respuesta"
+              value={criteria.descriptionContribution ?? ""}
+              maxLength={MAX_CHARACTERS}
+              onChange={(e) => updateDescription(e.target.value)}
+            />
+            <span
+              className="absolute bottom-2 right-3 text-xs text-gray-500 pointer-events-none bg-white px-1"
+              style={{ lineHeight: '1' }}
+            >
+              {criteria.descriptionContribution?.length || 0}/{MAX_CHARACTERS}
+            </span>
+          </div>
           {errors.descriptionContributionFoundation && (
-  <p className="text-red-500 text-sm mt-2">{errors.descriptionContributionFoundation}</p>
-)}
+            <p className="text-red-500 text-sm mt-2">{errors.descriptionContributionFoundation}</p>
+          )}
         </div>
       </div>
     </section>

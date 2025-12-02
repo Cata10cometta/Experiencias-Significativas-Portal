@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { parameterCriteriaTourSteps, parameterTourLocale, parameterTourStyles } from "../../onboarding/parameterTour";
+import { hasTourBeenSeen, markTourSeen } from "../../../shared/utils/tourStorage";
 import { Criteria } from "../types/criteria";
 
 
@@ -183,25 +186,29 @@ const CriteriaList: React.FC = () => {
   const [addCriteriaOpen, setAddCriteriaOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [onlyActive, setOnlyActive] = useState(true); // Estado para filtrar activos/inactivos
+  const [onlyState, setOnlyState] = useState<true | false>(true); // Mostrar activos por defecto
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [modal, setModal] = useState<{ open: boolean; type: 'success' | 'error'; message: string }>({ open: false, type: 'success', message: '' });
   const pageSize = 5;
+  const [runTour, setRunTour] = useState(false);
 
   const fetchCriteria = () => {
     const token = localStorage.getItem("token");
+    const params = { OnlyState: onlyState };
     axios
       .get(`/api/Criteria/getAll`, {
-        params: { OnlyActive: onlyActive }, // Usar el filtro OnlyActive
+        params,
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
         if (Array.isArray(res.data.data)) {
-          const criteriaNormalized = res.data.data.map((criterion: Criteria) => ({
-            ...criterion,
-            state: onlyActive, // Asignar el estado basado en el filtro OnlyActive
+          // Si OnlyState es true y no viene el campo state, asumimos activo; si es false, inactivo
+          const normalized = res.data.data.map((c: any) => ({
+            ...c,
+            state: c.state !== undefined ? (c.state === true || c.state === 1 || c.state === "1" || c.state === "true") : onlyState
           }));
-          setCriteria(criteriaNormalized);
+          setCriteria(normalized);
         } else {
           setCriteria([]);
         }
@@ -215,7 +222,14 @@ const CriteriaList: React.FC = () => {
 
   useEffect(() => {
     fetchCriteria();
-  }, [onlyActive]); // Refrescar cuando cambie el filtro
+  }, [onlyState]); // Refrescar cuando cambie el filtro
+
+  useEffect(() => {
+    if (!loading && !runTour && !hasTourBeenSeen("parameterCriteriaTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
 
   const filtered = criteria.filter((c) => {
     const q = searchTerm.trim().toLowerCase();
@@ -241,8 +255,10 @@ const CriteriaList: React.FC = () => {
       await axios.delete(`/api/Criteria/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchCriteria(); // Refrescar lista
+      setModal({ open: true, type: 'success', message: 'Criterio desactivado correctamente.' });
+      fetchCriteria();
     } catch (err) {
+      setModal({ open: true, type: 'error', message: 'Error al desactivar criterio.' });
       console.error("Error al desactivar criterio:", err);
     }
   };
@@ -253,85 +269,113 @@ const CriteriaList: React.FC = () => {
       await axios.patch(`/api/Criteria/restore/${id}`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      setModal({ open: true, type: 'success', message: 'Criterio activado correctamente.' });
       fetchCriteria();
     } catch (err) {
+      setModal({ open: true, type: 'error', message: 'Error al activar criterio.' });
       console.error("Error al activar criterio:", err);
     }
   };
 
   return (
-    <div className="max-w-full mx-auto mt-10 p-6">
+    <div className="max-w-full mx-auto mt-10 p-6 parameter-criteria-layout">
+      <Joyride
+        steps={parameterCriteriaTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={parameterTourLocale}
+        styles={parameterTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            markTourSeen("parameterCriteriaTourDone");
+          }
+        }}
+      />
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-4 parameter-criteria-header">
           <div>
             <h2 className="text-2xl font-bold text-sky-700">Lista de Criterios</h2>
             <p className="text-sm text-gray-500 mt-1">Administra los criterios del sistema</p>
           </div>
           <div>
-            <button onClick={() => setAddCriteriaOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-sky-600 text-white hover:bg-sky-700">
+            <button onClick={() => setAddCriteriaOpen(true)} className="inline-flex items-center gap-2 px-6 py-2 rounded-full! bg-sky-600 text-white hover:bg-sky-700 shadow-md transition-all parameter-criteria-create">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
               <span>Agregar Criterio</span>
             </button>
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center gap-4 parameter-criteria-toolbar">
           <div className="flex-1">
-            <div className="relative">
+            <div className="relative parameter-criteria-search">
               <input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Buscar criterios..." className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm" />
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
               </div>
             </div>
           </div>
-          <div>
-            <button className="px-4 py-2 rounded bg-white border text-sm flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-gray-600"><path d="M3 5h18v2L13 13v6l-2-1v-5L3 7V5z" fill="currentColor"/></svg>
-              <span>Filtrar</span>
+          <div className="flex gap-4 parameter-criteria-filters">
+            <button
+              className={`px-4 py-2 rounded font-semibold ${onlyState ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
+              onClick={() => { setOnlyState(true); setCurrentPage(1); }}
+              type="button"
+            >
+              Mostrar Activos
+            </button>
+            <button
+              className={`px-4 py-2 rounded font-semibold ${!onlyState ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-black'}`}
+              onClick={() => { setOnlyState(false); setCurrentPage(1); }}
+              type="button"
+            >
+              Mostrar Inactivos
             </button>
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-100 p-2 overflow-auto">
-          <table className="min-w-full border-collapse w-full table-auto">
-            <thead className="text-left text-sm text-gray-600 bg-gray-50">
+        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 parameter-criteria-table">
+          <table className="min-w-full rounded-lg overflow-hidden text-sm sm:text-base">
+            <thead className="text-left text-sm sm:text-base text-gray-600 bg-gray-50">
               <tr>
-                <th className="py-3 px-4 font-semibold text-gray-700">Código</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Nombre</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Contribución</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Tipo</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Valor de Evaluación</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Estado</th>
-                <th className="py-3 px-4 font-semibold text-gray-700">Acciones</th>
+                <th className="py-2 px-3 whitespace-break-spaces">Código</th>
+                <th className="py-2 px-3 whitespace-break-spaces">Nombre</th>
+                <th className="py-2 px-3 whitespace-break-spaces">Estado</th>
+                <th className="py-2 px-3 whitespace-break-spaces">Acciones</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-sm sm:text-base text-gray-700">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-6 px-4 text-center text-gray-500">No hay criterios para mostrar.</td>
+                  <td colSpan={4} className="py-4 px-3 text-center text-gray-500">No hay criterios para mostrar.</td>
                 </tr>
               ) : (
                 paginated.map((criterion) => (
-                  <tr key={criterion.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-2 px-4 border-b">{criterion.code}</td>
-                    <td className="py-2 px-4 border-b">{criterion.name}</td>
-                    <td className="py-2 px-4 border-b">{criterion.descriptionContribution}</td>
-                    <td className="py-2 px-4 border-b">{criterion.descruotionType}</td>
-                    <td className="py-2 px-4 border-b">{criterion.evaluationValue}</td>
-                    <td className="py-2 px-4 border-b">
-                      {criterion.state ? (
-                        <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm">Activo</span>
+                  <tr key={criterion.id} className="border-b last:border-b-0 hover:bg-gray-50">
+                    <td className="py-2 px-3 break-words max-w-xs">{criterion.code}</td>
+                    <td className="py-2 px-3 break-words max-w-xs">{criterion.name}</td>
+                    <td className="py-2 px-3">
+                      {(criterion.state === true || ['1', 'true'].includes(String(criterion.state))) ? (
+                        <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs sm:text-sm">Activo</span>
                       ) : (
-                        <span className="inline-block px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm">Inactivo</span>
+                        <span className="inline-block bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs sm:text-sm">Inactivo</span>
                       )}
                     </td>
-                    <td className="py-2 px-4 border-b flex gap-2">
-                      <button className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700 text-sm" onClick={() => setEditCriteria(criterion)}>Editar</button>
-                      {criterion.state ? (
-                        <button className="px-3 py-1 rounded bg-red-500 hover:bg-red-700 text-white text-sm" onClick={() => handleDeactivate(criterion.id)}>Desactivar</button>
-                      ) : (
-                        <button className="px-3 py-1 rounded bg-green-500 hover:bg-green-700 text-white text-sm" onClick={() => handleActivate(criterion.id)}>Activar</button>
-                      )}
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <button className="text-gray-400 hover:text-sky-600 p-1 sm:p-1.5" style={{minWidth:24}} onClick={() => setEditCriteria(criterion)} title="Editar">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
+                        </button>
+                        {criterion.state ? (
+                          <button className="text-red-400 hover:text-red-600 p-1 sm:p-1.5" style={{minWidth:24}} onClick={() => handleDeactivate(criterion.id)} title="Desactivar">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
+                          </button>
+                        ) : (
+                          <button className="text-emerald-500 hover:text-emerald-600 p-1 sm:p-1.5" style={{minWidth:24}} onClick={() => handleActivate(criterion.id)} title="Activar">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 sm:h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -340,8 +384,8 @@ const CriteriaList: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-          <div>
+        <div className="mt-6 flex items-center justify-between parameter-criteria-pagination">
+          <div className="text-sm text-gray-500">
             {filtered.length === 0 ? (
               <>Mostrando 0 criterios</>
             ) : (
@@ -352,9 +396,8 @@ const CriteriaList: React.FC = () => {
               })()
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className={`px-3 py-1 rounded-full border ${currentPage === 1 ? 'text-gray-300 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}>Anterior</button>
-
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>Anterior</button>
             {(() => {
               const pages: number[] = [];
               let start = Math.max(1, currentPage - 2);
@@ -362,11 +405,10 @@ const CriteriaList: React.FC = () => {
               if (end - start < 4) start = Math.max(1, end - 4);
               for (let i = start; i <= end; i++) pages.push(i);
               return pages.map((p) => (
-                <button key={p} onClick={() => goToPage(p)} aria-current={p === currentPage} className={`w-8 h-8 flex items-center justify-center rounded-full border text-sm ${p === currentPage ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{p}</button>
+                <button key={p} onClick={() => goToPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
               ));
             })()}
-
-            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className={`px-3 py-1 rounded-full border ${currentPage === totalPages ? 'text-gray-300 border-gray-200 bg-white' : 'text-gray-700 border-gray-200 bg-white hover:bg-gray-50'}`}>Siguiente</button>
+            <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>Siguiente</button>
           </div>
         </div>
       </div>
@@ -390,7 +432,27 @@ const CriteriaList: React.FC = () => {
           }}
         />
       )}
-    </div>
+    {/* Modal de éxito/error tipo inicio */}
+    {modal.open && (
+      <div className="fixed inset-0 flex items-center justify-center z-[2000] bg-black bg-opacity-40">
+        <div className="bg-white rounded-2xl shadow-lg p-8 min-w-[340px] max-w-sm flex flex-col items-center">
+          {modal.type === 'success' ? (
+            <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#B7EFC2" strokeWidth="3" fill="#F6FFF9"/><path d="M16 25l6 6 10-14" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          ) : (
+            <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#FECACA" strokeWidth="3" fill="#FFF6F6"/><path d="M17 17l14 14M31 17l-14 14" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"/></svg>
+          )}
+          <h3 className="text-2xl font-bold text-gray-700 mb-2">{modal.type === 'success' ? 'Éxito' : 'Error'}</h3>
+          <p className="text-gray-600 mb-6 text-center">{modal.message}</p>
+          <button
+            className="px-6 py-2 rounded bg-[#7B6EF6] text-white font-semibold text-base hover:bg-[#5f54c7] transition"
+            onClick={() => setModal({ ...modal, open: false })}
+          >
+            Continuar
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };
 

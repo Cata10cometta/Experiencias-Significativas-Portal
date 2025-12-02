@@ -1,5 +1,7 @@
 // src/pages/LoginPage.tsx
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
+import { loginPageTourSteps, loginPageTourStyles, loginPageTourLocale } from "../features/onboarding/loginPageTour";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -18,6 +20,7 @@ const LoginPage: React.FC = () => {
   const { login: setAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [flash, setFlash] = useState<boolean>(false);
+  const [runTour, setRunTour] = useState(false);
 
   useEffect(() => {
     // Limpiar token y rol antiguos al entrar a login
@@ -25,12 +28,14 @@ const LoginPage: React.FC = () => {
     localStorage.removeItem("role");
   }, []);
 
+  // Eliminar el efecto que muestra la guía automáticamente al cargar la página
+
   const onSubmit = async (data: FormData) => {
     try {
       const response = await login(data.username, data.password);
       // Si el backend devolvió una respuesta con status=false, mostrar el mensaje
       if (response?.data && response.data.status === false) {
-        const serverMsg = response.data.message || "Error en el servidor";
+        const serverMsg = response.data.message || "Usuario o contraseña incorrectos";
         Swal.fire({ title: "Error", text: serverMsg, icon: "error" });
         return;
       }
@@ -90,18 +95,78 @@ const LoginPage: React.FC = () => {
           navigate("/dashboard");
         });
     } catch (err: any) {
-      // Preferir el mensaje enviado por el servidor si existe
-      const serverMessage = err?.response?.data?.message || err?.response?.data || err?.message || "Error desconocido";
-      Swal.fire({ title: "Error", text: typeof serverMessage === 'string' ? serverMessage : JSON.stringify(serverMessage), icon: "error" });
+      // Si el error es de referencia nula o similar, mostrar mensaje claro en español
+      const msg = (err?.response?.data?.message || err?.response?.data || err?.message || "").toString();
+      if (
+        msg.includes("Object reference not set to an instance of an object") ||
+        msg.toLowerCase().includes("not set to an instance") ||
+        msg.toLowerCase().includes("nullreferenceexception")
+      ) {
+        Swal.fire({
+          title: "Usuario no registrado",
+          text: "El usuario no existe en el sistema. Por favor regístrate para crear una cuenta.",
+          icon: "error",
+          confirmButtonText: "Registrarme",
+          showCancelButton: true,
+          cancelButtonText: "Cerrar",
+          customClass: {
+            confirmButton: 'rounded-full px-6 py-2',
+            cancelButton: 'rounded-full px-6 py-2'
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate('/register');
+          }
+        });
+      } else {
+        Swal.fire({
+          title: "Usuario no registrado",
+          text: msg || "El usuario no existe en el sistema. Por favor regístrate para crear una cuenta.",
+          icon: "error",
+          confirmButtonText: "Registrarme",
+          showCancelButton: true,
+          cancelButtonText: "Cerrar",
+          customClass: {
+            confirmButton: 'rounded-full px-6 py-2',
+            cancelButton: 'rounded-full px-6 py-2'
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate('/register');
+          }
+        });
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0b1033] to-[#17132a] text-white overflow-hidden">
+      <Joyride
+        steps={loginPageTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={loginPageTourLocale}
+        styles={loginPageTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("loginPageTourDone", "true");
+          }
+        }}
+      />
       <header className="flex items-center justify-end px-8 py-5 relative z-30">
         <div className="flex items-center space-x-2!">
-          <button className="px-3 py-2 rounded-lg! bg-gray-600 text-white font-semibold shadow-sm text-base" onClick={() => navigate('/help')}>Ayuda</button>
-          <button className="px-4 py-2 rounded-lg! bg-blue-500 text-white font-semibold shadow-md text-base" onClick={() => navigate('/register')}>Registrate</button>
+          <button
+            className="btn-ayuda px-3 py-2 rounded-lg! bg-gray-600 text-white font-semibold shadow-sm text-base"
+            onClick={() => {
+              setRunTour(true);
+              localStorage.removeItem("loginPageTourDone");
+            }}
+          >
+            Ayuda
+          </button>
+          <button className="btn-register px-4 py-2 rounded-lg! bg-blue-500 text-white font-semibold shadow-md text-base" onClick={() => navigate('/register')}>Registrate</button>
         </div>
       </header>
 
@@ -127,7 +192,7 @@ const LoginPage: React.FC = () => {
               <div className="w-full max-w-none">
                 <h2 className="text-5xl! sm:text-6xl md:text-7xl font-extrabold text-orange-400 text-center mb-6 -mt-6!">Iniciar Sesión</h2>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="login-form space-y-6">
                   <div>
                     <label htmlFor="username" className="block text-xl sm:text-4xl md:text-3xl text-slate-300 mb-2">Ingrese el correo electrónico</label>
                     <input

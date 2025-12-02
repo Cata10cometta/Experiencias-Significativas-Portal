@@ -1,327 +1,370 @@
 import { useEffect, useState } from "react";
+import Joyride from "react-joyride";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
 import configApi from "../../Api/Config/Config";
 import { FollowUp } from "../types/FollowUp";
+import { trackingTourSteps, trackingTourLocale, trackingTourStyles } from "../../features/onboarding/trackingTour";
+import { ChevronDoubleRightIcon, UserGroupIcon, ChartBarIcon, BookOpenIcon, PresentationChartLineIcon } from '@heroicons/react/24/outline'; // Importaciones para iconos modernos
+
+// Colores de la paleta para los estados de las experiencias
+const colorNaciente = "#1c159eff"; // Un rojo/coral vibrante
+const colorCreciente = "#4744a9ff"; // Un turquesa refrescante
+const colorInspiradora = "#ef7c00ff"; // Un azul inspirador
+
+// Colores para las métricas de la barra
+const colorBarra1 = "#4831b0ff"; // Violeta suave para "Crec. nuevas"
+const colorBarra2 = "#ee520aff"; // Durazno suave para "Actualización"
+const colorBarra3 = "#0e0e73ff"; // Turquesa para "Registradas" (coherente con Creciente)
+
+// Iconos y colores para las tarjetas blancas
+const whiteCardMetrics = [
+  {
+    key: 'totalInstitutionsWithExperiences',
+    title: 'Instituciones educativas que registraron experiencias',
+    icon: <ChevronDoubleRightIcon className="h-6 w-6 text-blue-600" />,
+    iconBg: 'bg-blue-100',
+    textColor: 'text-blue-700',
+  },
+  {
+    key: 'participationInSEMEvents', // Asumiendo que se agregará un valor al trackingData
+    title: 'Participación de eventos SEM',
+    icon: <UserGroupIcon className="h-6 w-6 text-green-600" />,
+    iconBg: 'bg-green-100',
+    textColor: 'text-green-700',
+  },
+];
+
+// Iconos y colores para las tarjetas lila (ahora con un fondo morado más limpio)
+const purpleCardMetrics = [
+  {
+    key: 'totalExperiencesWithComments',
+    title: 'Experiencias con plan de mejoramiento',
+    icon: <ChartBarIcon className="h-6 w-6 text-purple-600" />,
+    iconBg: 'bg-purple-100',
+    bg: 'bg-purple-50',
+    textColor: 'text-purple-700',
+    valueColor: 'text-purple-800',
+  },
+  {
+    key: 'totalTeachersRegistered',
+    title: 'Cantidad de docentes formados mediante las rutas a la significación',
+    icon: <BookOpenIcon className="h-6 w-6 text-purple-600" />,
+    iconBg: 'bg-purple-100',
+    bg: 'bg-purple-50',
+    textColor: 'text-purple-700',
+    valueColor: 'text-purple-800',
+  },
+  {
+    key: 'totalExperiencesTestsKnow',
+    title: 'Número de experiencias que participan en eventos o convocatorias en la actual vigencia',
+    icon: <PresentationChartLineIcon className="h-6 w-6 text-purple-600" />,
+    iconBg: 'bg-purple-100',
+    bg: 'bg-purple-50',
+    textColor: 'text-purple-700',
+    valueColor: 'text-purple-800',
+  },
+];
+
 
 export const getSelectedCards = (trackingData: FollowUp | undefined, keys: (keyof FollowUp)[]) => {
-  if (!trackingData) return [];
-  return keys.map((key) => ({
-    title: String(key), // Personaliza el título según la clave
-    value: trackingData[key] ?? "Dato no disponible", // Manejar claves inexistentes
-    color: key === "totalExperiencesRegistradas" ? "blue-600" : key === "totalExperiencesCreadas" ? "green-600" : "orange-600", // Asignar colores dinámicamente
-  }));
+  if (!trackingData) return [];
+  return keys.map((key) => ({
+    title: String(key),
+    value: trackingData[key] ?? "Dato no disponible",
+    color: key === "totalExperiencesRegistradas" ? "blue-600" :
+      key === "totalExperiencesCreadas" ? "green-600" :
+        "orange-600",
+  }));
 };
 
 const Tracking = () => {
-  const [trackingData, setTrackingData] = useState<FollowUp | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+  const [trackingData, setTrackingData] = useState<FollowUp | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  const [runTour, setRunTour] = useState(false);
 
-  useEffect(() => {
-    const fetchTrackingSummary = async () => {
-      try {
-        const body = {
-          pageSize: 0,
-          pageNumber: 0,
-          filter: "",
-          columnFilter: "",
-          columnOrder: "",
-          directionOrder: "",
-          foreignKey: 0,
-          nameForeignKey: "",  
-          aplyPagination: true
-        };
-        const response = await configApi.post("/HistoryExperience/tracking-summary", body);
-        setTrackingData(response.data);
-      } catch (err) {
-        setError("Error al obtener datos");
-      }
-    };
-    fetchTrackingSummary();
-  }, []);
+  useEffect(() => {
+    const fetchTrackingSummary = async () => {
+      try {
+        const body = {
+          pageSize: 0,
+          pageNumber: 0,
+          filter: "",
+          columnFilter: "",
+          columnOrder: "",
+          directionOrder: "",
+          foreignKey: 0,
+          nameForeignKey: "",
+          aplyPagination: true
+        };
+        const response = await configApi.post("/HistoryExperience/tracking-summary", body);
+        console.log('Respuesta tracking-summary:', response.data);
+        setTrackingData(response.data);
+      } catch (err) {
+        setError("Error al obtener datos");
+      }
+    };
+    fetchTrackingSummary();
+  }, []);
 
-  if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
-  if (!trackingData) return <div className="text-center py-10 text-gray-500">Cargando...</div>;
+  useEffect(() => {
+    if (trackingData && !localStorage.getItem("trackingTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 500);
+      return () => window.clearTimeout(timer);
+    }
+  }, [trackingData]);
 
-  // Puedes mapear trackingData aquí si la estructura lo permite
-  // Ejemplo: trackingData?.totalExperiences, etc.
+  // --- Lógica de Manejo de Estados y Datos (Sin cambios) ---
+  if (error) return <div className="text-center py-10 text-xl font-semibold text-red-600 bg-white rounded-xl shadow-lg m-4">{error}</div>;
+  if (!trackingData) return <div className="text-center py-10 text-xl font-semibold text-gray-500">Cargando datos de seguimiento...</div>;
 
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 ml-0">
-      {/* Tarjeta 1 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-        {/* Icono */}
-        <div className="bg-blue-100 p-2 rounded-lg w-10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-blue-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"
-            />
-          </svg>
-        </div>
+  const total = trackingData?.totalExperiences || 1;
+  const naciente = trackingData?.experiencesNaciente || 0;
+  const creciente = trackingData?.experiencesCreciente || 0;
+  const inspiradora = trackingData?.experiencesInspiradora || 0;
 
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Número de experiencias registradas en la vigencia</p>
-          <p className="text-2xl font-bold text-blue-600">{trackingData?.totalExperiencesRegistradas}</p>
-        </div>
-      </div>
-
-      {/* Tarjeta 2 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-        {/* Icono */}
-        <div className="bg-blue-100 p-2 rounded-lg w-10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-green-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"
-            />
-          </svg>
-        </div>
+  // Porcentaje de cada estado respecto al total general
+  const nacientePct = total > 0 ? Math.round((naciente / total) * 100) : 0;
+  const crecientePct = total > 0 ? Math.round((creciente / total) * 100) : 0;
+  const inspiradoraPct = total > 0 ? Math.round((inspiradora / total) * 100) : 0;
 
 
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Crecimiento en la inscripción de experiencias nuevas en el proceso</p>
-          <p className="text-2xl font-bold text-green-600">{trackingData?.totalExperiencesCreadas}</p>
-        </div>
-      </div>
-    
+  // Datos para la torta
+  const pieData = [
+    { name: 'Naciente', value: naciente, color: colorNaciente, percent: nacientePct },
+    { name: 'Creciente', value: creciente, color: colorCreciente, percent: crecientePct },
+    { name: 'Inspiradora', value: inspiradora, color: colorInspiradora, percent: inspiradoraPct },
+  ];
 
-    {/* Tarjeta 3 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-        {/* Icono */}
-        <div className="bg-blue-100 p-2 rounded-lg w-10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-blue-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"
-            />
-          </svg>
-        </div>
+  const barMetrics = [
+    {
+      name: 'Crecimiento en la inscripción de experiencias nuevas',
+      shortName: 'Crec. nuevas',
+      value: trackingData?.totalExperiencesCreadas ?? 0,
+      color: colorBarra1,
+    },
+    {
+      name: 'Actualización de experiencias en proceso',
+      shortName: 'Actualización',
+      value: trackingData?.totalExperiencesWithComments ?? 0,
+      color: colorBarra2,
+    },
+    {
+      name: 'Número de experiencias registradas en la vigencia',
+      shortName: 'Registradas',
+      value: trackingData?.totalExperiencesRegistradas ?? 0,
+      color: colorBarra3,
+    },
+  ];
 
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Crecimiento en la inscripción de experiencias. Actualización que continúan en el proceso.</p>
-          <p className="text-2xl font-bold text-blue-600"></p>
-        </div>
-      </div>
+  const barData = barMetrics.map(({ name, shortName, value, color }) => ({
+    name,
+    shortName,
+    color,
+    value,
+  }));
 
+  // El máximo valor de cantidad para el eje Y
+  const maxBarValue = Math.max(100, ...barData.map((item) => item.value || 0));
 
-      {/* Tarjeta 4 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-        {/* Icono */}
-        <div className="bg-blue-100 p-2 rounded-lg w-10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-orange-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z"
-            />
+  // Etiqueta personalizada para mostrar porcentaje respecto al total general en la torta
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    index,
+  }: {
+    cx: number;
+    cy: number;
+    midAngle: number;
+    innerRadius: number;
+    outerRadius: number;
+    index: number;
+  }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.45; // Etiqueta más al centro
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const percent = pieData[index]?.percent;
+    return (
+      percent > 0 ? (
+        <text x={x} y={y} fill="#111827" fontSize={16} fontWeight="bold" textAnchor="middle" dominantBaseline="central">
+          {`${percent}%`}
+        </text>
+      ) : null
+    );
+  };
+  // --- Fin Lógica de Manejo de Estados y Datos ---
 
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z"
-            />
-          </svg>
-        </div>
+  return (
+    <div className="flex flex-col gap-8 w-full p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen tracking-layout">
+      {/* Tour de Bienvenida */}
+      <Joyride
+        steps={trackingTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={trackingTourLocale}
+        styles={trackingTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("trackingTourDone", "true");
+          }
+        }}
+      />
 
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Número de experiencias con plan de mejoramiento</p>
-          <p className="text-2xl font-bold text-orange-600">{trackingData?.totalExperiencesWithComments}</p>
-        </div>
-      </div>
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-4 border-b pb-2">Panel de Seguimiento </h1>
 
+      {/* Bloque de Tarjetas Informativas */}
+      <section className="flex flex-col gap-6 w-full tracking-cards">
+        
+        {/* Tarjetas Primarias (Blancas con Icono) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {whiteCardMetrics.map((metric) => (
+            <div
+              key={metric.key}
+              className="bg-white shadow-xl rounded-2xl p-6 flex items-center space-x-4 transition duration-300 ease-in-out hover:shadow-2xl h-full"
+            >
+              <div className={`${metric.iconBg} p-3 rounded-xl flex-shrink-0 flex items-center justify-center`}>
+                {metric.icon}
+              </div>
+              <div className="flex flex-col flex-1">
+                <p className="text-sm font-medium text-gray-600 line-clamp-2">{metric.title}</p>
+                <p className={`text-3xl font-extrabold ${metric.textColor} mt-1`}>
+                  {metric.key === 'totalInstitutionsWithExperiences' ? trackingData.totalInstitutionsWithExperiences : 'N/D'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
 
-      {/* Tarjeta 5 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-        {/* Icono */}
-        <div className="bg-blue-100 p-2 rounded-lg w-10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-blue-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5"
-            />
-          </svg>
-        </div>
+        {/* Tarjetas Secundarias (Moradas, centrado) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 tracking-purple-cards">
+          {purpleCardMetrics.map((metric) => (
+            <div
+              key={metric.key}
+              className={`${metric.bg} rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg transition duration-300 ease-in-out hover:shadow-xl h-40 min-w-0`}
+            >
+              <p className={`text-sm font-medium ${metric.textColor} mb-2 line-clamp-3`}>
+                {metric.title}
+              </p>
+              <p className={`text-4xl font-extrabold ${metric.valueColor}`}>
+                {trackingData[metric.key as keyof FollowUp] ?? 0}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        
+      <hr className="my-4 border-gray-200" />
 
+      {/* Bloque de Gráficas */}
+      <section className="flex flex-col gap-8 w-full lg:flex-row justify-center items-stretch">
 
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Cantidad de docentes formados mediante las rutas a la significación</p>
-          <p className="text-2xl font-bold text-blue-600">{trackingData?.totalTeachersRegistered}</p>
-        </div>
-      </div>
+        {/* Gráfico de Barras */}
+        <div className="bg-white rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col items-center justify-center shadow-xl w-full lg:w-2/3 min-w-0 tracking-line-chart">
+          <h2 className="text-xl font-bold text-gray-800 mb-6 w-full text-left">Métricas de Experiencias</h2>
+          <div className="w-full" style={{ minWidth: 0 }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={barData} margin={{ top: 30, right: 10, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E5E7EB" />
+                <XAxis
+                  dataKey="shortName"
+                  tick={{ fill: '#4B5563', fontSize: 13, fontWeight: 600 }}
+                  axisLine={{ stroke: '#D1D5DB' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(value) => `${value}`}
+                  tick={{ fill: '#6B7280', fontSize: 12 }}
+                  width={40}
+                  domain={[0, maxBarValue]}
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '8px' }}
+                  formatter={(value: number, _name: string, item: any) => [`${value}`, `${item?.payload?.name ?? ''}`]}
+                  labelFormatter={(label, payload) => payload?.[0]?.payload?.name ?? label}
+                  cursor={{ fill: 'rgba(148, 163, 184, 0.15)' }}
+                />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {barData.map((entry, index) => (
+                    <Cell key={`bar-${index}`} fill={entry.color} />
+                  ))}
+                  <LabelList dataKey="value" position="top" fill="#374151" fontSize={14} fontWeight={600} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-6 grid w-full gap-4 grid-cols-1 sm:grid-cols-3">
+            {barData.map((entry) => (
+              <div key={entry.name} className="flex items-center gap-3">
+                <span
+                  className="block h-4 w-4 rounded-full shadow-md"
+                  style={{ backgroundColor: entry.color }}
+                ></span>
+                <span className="text-sm font-medium text-gray-700 leading-snug">{entry.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
+        {/* Gráfico de Torta */}
+        <div className="bg-white rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col items-center shadow-xl w-full lg:w-1/3 min-w-0 tracking-pie-chart">
+          <h2 className="text-xl font-bold text-gray-800 mb-6 w-full text-left">Estado de Experiencias (%)</h2>
+          <div className="w-full flex justify-center items-center" style={{ minWidth: 0 }}>
+            <ResponsiveContainer width="100%" height={300} aspect={1}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80} // Radio más grande
+                  outerRadius={120} // Anillo más grueso
+                  paddingAngle={5} // Separación entre porciones
+                  label={renderCustomizedLabel as any}
+                  labelLine={false}
+                  isAnimationActive={true}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '8px' }}
+                  formatter={(value, name) => [`${value} experiencias`, name]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Leyenda debajo */}
+          <div className="w-full flex justify-start mt-6 tracking-pie-legend">
+            <ul className="flex flex-col items-start gap-3 w-full">
+              {pieData.map((entry, index) => (
+                <li key={`item-${index}`} className="flex items-center gap-3 w-full justify-between">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="block w-4 h-4 rounded-full border border-gray-200 shadow"
+                      style={{ backgroundColor: entry.color }}
+                    ></span>
+                    <span className="text-base text-gray-700 font-medium">{entry.name}</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{entry.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
 
-      {/* Tarjeta 6 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-        {/* Icono */}
-        <div className="bg-blue-100 p-2 rounded-lg w-10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-dark-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
-            />
-          </svg>
-        </div>
-
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Número de experiencias que participan en eventos o convocatorias en la actual vigencia</p>
-          <p className="text-2xl font-bold text-blue-600">{trackingData?.totalExperiencesTestsKnow}</p>
-        </div>
-      </div>
-
-
-      {/* Tarjeta 7 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-
-        
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Experiencias significativas en estado de desarrollo naciente</p>
-          <p className="text-2xl font-bold text-indigo-600">{trackingData?.experiencesNaciente}</p>
-        </div>
-      </div>
-      
-
-      {/* Tarjeta 8 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Experiencias significativas en estado de desarrollo creciente</p>
-          <p className="text-2xl font-bold text-indigo-600">{trackingData?.experiencesCreciente}</p>
-        </div>
-      </div>
-
-      
-      {/* Tarjeta 9 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Experiencias significativas en estado de desarrollo inspiradora</p>
-          <p className="text-2xl font-bold text-indigo-600">{trackingData?.experiencesInspiradora}</p>
-        </div>
-      </div>
-
-
-      {/* Tarjeta 10 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-        {/* Icono */}
-        <div className="bg-blue-100 p-2 rounded-lg w-10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-blue-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"
-            />
-          </svg>
-        </div>
-
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Instituciones educativas que registraron experiencias</p>
-          <p className="text-2xl font-bold text-blue-600">{trackingData?.totalInstitutionsWithExperiences}</p>
-        </div>
-      </div>
-
-
-      {/* Tarjeta 11 */}
-      <div className="bg-white shadow rounded-lg p-4 flex flex-col space-y-2 w-full h-40">
-        {/* Icono */}
-        <div className="bg-green-100 p-2 rounded-lg w-10">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-green-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 8c1.657 0 3-1.343 3-3S13.657 2 12 2 9 3.343 9 5s1.343 3 3 3zm0 2c-2.21 0-4 1.79-4 4v5h8v-5c0-2.21-1.79-4-4-4z"
-            />
-          </svg>
-        </div>
-
-        {/* Texto */}
-        <div>
-          <p className="text-gray-500 text-sm">Participación de eventos SEM</p>
-          <p className="text-2xl font-bold text-green-600"></p>
-        </div>
-      </div>
-    </div>
-    
-    
-    
-    
-  );
+      </section>
+    </div>
+  );
 };
 
-
 export default Tracking;
-
-
-

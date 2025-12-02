@@ -30,13 +30,7 @@ const CriteriaEmpowerment: React.FC<CriteriaEmpowermentProps> = ({ value, onChan
       score,
     };
 
-    onChange({
-      ...value,
-      criteriaEvaluations: [
-  ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
-        updatedCriteria,
-      ],
-    });
+    onChange({ criteriaEvaluation: updatedCriteria } as any);
   };
 
   const updateDescription = (desc: string) => {
@@ -46,12 +40,11 @@ const CriteriaEmpowerment: React.FC<CriteriaEmpowermentProps> = ({ value, onChan
     };
 
     onChange({
-      ...value,
       criteriaEvaluations: [
         ...value.criteriaEvaluations.filter((c: any) => c.criteriaId !== CRITERIA_ID),
         updatedCriteria,
       ],
-    });
+    } as any);
   };
 
   return (
@@ -88,7 +81,7 @@ const CriteriaEmpowerment: React.FC<CriteriaEmpowermentProps> = ({ value, onChan
             <label key={val} className="inline-flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="empoderamiento"
+                name="empoderamiento-bloque1"
                 className="custom-radio"
                 value={val}
                 checked={criteria.score === val}
@@ -124,7 +117,7 @@ const CriteriaEmpowerment: React.FC<CriteriaEmpowermentProps> = ({ value, onChan
               <label key={val} className="inline-flex items-center cursor-pointer">
                 <input
                   type="radio"
-                  name="empoderamiento2"
+                  name="empoderamiento-bloque2"
                   className="custom-radio"
                   value={val}
                   checked={criteria.score === val}
@@ -139,18 +132,26 @@ const CriteriaEmpowerment: React.FC<CriteriaEmpowermentProps> = ({ value, onChan
         {/* Textarea */}
         <div className="mb-2">
           <label className="block font-semibold !text-[#2196f3] mb-2">
-            Aportes para el mejoramiento frente al criterio evaluado Empoderamiento (Si no hay aportes
-            favor escribir "NO APLICA")
+            Aportes para el mejoramiento frente al criterio evaluado Empoderamiento (Si no hay aportes favor escribir "NO APLICA")
           </label>
-          <textarea
-            className="w-full border rounded p-2 min-h-[60px] focus:ring-2 focus:ring-[#2196f3]"
-            placeholder="Tu respuesta"
-            value={criteria.descriptionContribution ?? ""}
-            onChange={(e) => updateDescription(e.target.value)}
-          />
+          <div className="relative">
+            <textarea
+              className="w-full border rounded p-2 min-h-[60px] focus:ring-2 focus:ring-[#2196f3] pr-14 pb-7 resize-none"
+              placeholder="Tu respuesta"
+              value={criteria.descriptionContribution ?? ""}
+              maxLength={50}
+              onChange={(e) => updateDescription(e.target.value)}
+            />
+            <span
+              className="absolute bottom-2 right-3 text-xs text-gray-500 pointer-events-none bg-white px-1 z-10"
+              style={{ lineHeight: '1', borderRadius: '4px' }}
+            >
+              {criteria.descriptionContribution?.length || 0}/50
+            </span>
+          </div>
           {errors.descriptionContributionEmpowerment && (
-  <p className="text-red-500 text-sm mt-2">{errors.descriptionContributionEmpowerment}</p>
-)}
+            <p className="text-red-500 text-sm mt-2">{errors.descriptionContributionEmpowerment}</p>
+          )}
         </div>
       </div>
     </section>

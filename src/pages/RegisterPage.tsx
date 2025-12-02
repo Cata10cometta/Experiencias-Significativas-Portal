@@ -1,5 +1,7 @@
 // src/pages/RegisterPage.tsx
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
+import { registerPageTourSteps, registerPageTourLocale, registerPageTourStyles } from "../features/onboarding/registerPageTour";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { registerPerson } from "../Api/Services/Register";
@@ -9,6 +11,7 @@ import { DataSelectRequest } from "../shared/types/HelperTypes";
 
 
 const RegisterPage: React.FC = () => {
+  const [runTour, setRunTour] = useState(false);
   // ...existing code...
   const [codigoDaneFocus, setCodigoDaneFocus] = useState(false);
   const [emailInstitucionalFocus, setEmailInstitucionalFocus] = useState(false);
@@ -50,6 +53,10 @@ const RegisterPage: React.FC = () => {
     };
 
     fetchEnums();
+    // Iniciar el tour automáticamente solo la primera vez
+    if (!localStorage.getItem("registerTourDone")) {
+      setTimeout(() => setRunTour(true), 600);
+    }
   }, []);
 
 
@@ -116,6 +123,8 @@ const RegisterPage: React.FC = () => {
         }).then(() => {
           navigate("/login");
         });
+        // Marcar el tour como completado
+        localStorage.setItem("registerTourDone", "true");
       } else {
         Swal.fire({
           title: "Error",
@@ -135,9 +144,33 @@ const RegisterPage: React.FC = () => {
   return (
 
     <div className="min-h-screen bg-gradient-to-b from-[#0b1033] to-[#17132a] text-white overflow-hidden">
-      <header className="flex items-center justify-end px-8 py-5 relative z-30">
+      <Joyride
+        steps={registerPageTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={registerPageTourLocale}
+        styles={registerPageTourStyles}
+        disableScrolling={true}
+        spotlightClicks={true}
+        callback={data => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("registerTourDone", "true");
+          }
+        }}
+      />
+      <header className="flex items-center justify-end px-8 py-5 relative z-30 register-header">
         <div className="flex items-center space-x-2!">
-          <button className="px-3 py-2 rounded-lg! bg-gray-600 text-white font-semibold shadow-sm text-base" onClick={() => navigate('/help')}>Ayuda</button>
+          <button
+            className="px-3 py-2 rounded-lg! bg-gray-600 text-white font-semibold shadow-sm text-base register-help"
+            onClick={() => {
+              setRunTour(true);
+              localStorage.removeItem("registerTourDone");
+            }}
+          >
+            Ayuda
+          </button>
           <button className="px-4 py-2 rounded-lg! bg-orange-400 text-white font-semibold shadow-md text-base" onClick={() => navigate('/login')}>Inicio de sesión</button>
         </div>
       </header>
@@ -164,7 +197,7 @@ const RegisterPage: React.FC = () => {
               <div className="w-full max-w-none">
                 <h2 className="text-6xl sm:text-7xl md:text-7xl font-extrabold text-orange-400 text-center mb-6">Registro</h2>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6 register-form">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Primer Nombre:</label>
@@ -266,16 +299,14 @@ const RegisterPage: React.FC = () => {
                         required
                         minLength={8}
                         maxLength={10}
-                        className="mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className={`mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl placeholder:text-sm ${NumeroDocumento.length < 8 || NumeroDocumento.length > 10 ? "placeholder-red-500" : "placeholder-green-600"}`}
+                        placeholder={`${NumeroDocumento.length} / 8-10 `}
                       />
-                      <p className={`text-sm mt-1 ${NumeroDocumento.length < 8 || NumeroDocumento.length > 10 ? "text-red-500" : "text-green-600"}`}>
-                        {NumeroDocumento.length} / 8-10 caracteres
-                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative">
+                    <div className="relative register-dane">
                       <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Código DANE:</label>
                       <input
                         type="text"
@@ -322,7 +353,7 @@ const RegisterPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative">
+                    <div className="relative register-email-institucional">
                       <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Correo de la Institucion:</label>
                       <input
                         type="text"
@@ -382,51 +413,52 @@ const RegisterPage: React.FC = () => {
                         }}
                         required
                         maxLength={10}
-                        className="mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className={`mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl placeholder:text-sm ${telefono.length !== 10 ? "placeholder-red-500" : "placeholder-green-600"}`}
+                        placeholder={`${telefono.length} / 10 `}
                       />
-                      <p className={`text-sm mt-1 ${telefono.length !== 10 ? "text-red-500" : "text-green-600"}`}>
-                        {telefono.length} / 10 caracteres
-                      </p>
                     </div>
 
-                    <div className="relative">
+                    <div className="relative register-password">
                       <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Contraseña:</label>
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className={`mt-1 block w-full border border-gray-300 rounded-full pl-4 pr-14 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl transition-shadow duration-200 ${flash ? 'ring-4 ring-orange-300/40' : ''}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowPassword(prev => !prev);
-                          setFlash(true);
-                          window.setTimeout(() => setFlash(false), 260);
-                        }}
-                        aria-pressed={showPassword}
-                        aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                        className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                      >
-                        <span className={`inline-block transition-transform duration-200 ${showPassword ? 'rotate-180 scale-110' : 'rotate-0 scale-100'}`}>
-                          {showPassword ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-7 0-10-7-10-7a18.84 18.84 0 014.28-5.11M6.6 6.6A9.97 9.97 0 0112 5c7 0 10 7 10 7a18.8 18.8 0 01-3.56 4.68M3 3l18 18" />
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          )}
-                        </span>
-                      </button>
+                      <div className="relative flex items-center">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          className={`mt-1 block w-full border border-gray-300 rounded-full pl-4 pr-14 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl transition-shadow duration-200 ${flash ? 'ring-4 ring-orange-300/40' : ''}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPassword(prev => !prev);
+                            setFlash(true);
+                            window.setTimeout(() => setFlash(false), 260);
+                          }}
+                          aria-pressed={showPassword}
+                          aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                          className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none flex items-center justify-center"
+                          style={{ height: '2.5rem', width: '2.5rem' }}
+                        >
+                          <span className={`inline-block transition-transform duration-200 ${showPassword ? 'rotate-180 scale-110' : 'rotate-0 scale-100'}`}>
+                            {showPassword ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-7 0-10-7-10-7a18.84 18.84 0 014.28-5.11M6.6 6.6A9.97 9.97 0 0112 5c7 0 10 7 10 7a18.8 18.8 0 01-3.56 4.68M3 3l18 18" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            )}
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   <div className="mt-6 justify-center flex">
-                    <button type="submit" className="w-full max-w-md mx-auto bg-orange-400 text-white py-3 rounded-xl! font-extrabold text-xl shadow-md hover:bg-orange-500 transition-colors">Registrarse</button>
+                    <button type="submit" className="w-full max-w-md mx-auto bg-orange-400 text-white py-3 rounded-xl! font-extrabold text-xl shadow-md hover:bg-orange-500 transition-colors register-submit">Registrarse</button>
                   </div>
                 </form>
 
@@ -448,15 +480,15 @@ const RegisterPage: React.FC = () => {
           </div>
         </aside>
 
-        <div className="absolute left-0 bottom-0 w-full pointer-events-none z-10 overflow-visible" aria-hidden style={{ transform: 'translateY(90%)' }}>
-          <svg viewBox="0 0 1440 320" className="w-full h-[260px] lg:h-[420px] block">
-            <path
-              fill="#ffffff"
-              d="M0,1 C300,40 360,300 510,220 C400,200 600,330 1000,30 C1260,280 1320,180 1440,150 L1440,320 L0,320 Z"
-            ></path>
-          </svg>
-        </div>
-
+        {/* Línea blanca ondulada debajo del cohete */}
+          <div className="absolute left-0 bottom-0 w-full pointer-events-none z-10 overflow-visible" aria-hidden style={{ transform: 'translateY(90%)' }}>
+                  <svg viewBox="0 0 1440 320" className="w-full h-[260px] lg:h-[420px] block">
+                    <path
+                      fill="#ffffff"
+                      d="M0,1 C300,40 360,300 510,220 C400,200 600,330 1000,30 C1260,280 1320,180 1440,150 L1440,320 L0,320 Z"
+                    ></path>  
+                  </svg>
+                </div>
       </main>
     </div>
   );

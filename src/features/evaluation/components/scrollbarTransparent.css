@@ -1,0 +1,13 @@
+/* Oculta o hace transparente el scrollbar en navegadores modernos */
+.custom-scrollbar-transparent {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.custom-scrollbar-transparent::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+.custom-scrollbar-transparent::-webkit-scrollbar-thumb {
+  background: transparent;
+}

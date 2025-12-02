@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import Joyride from "react-joyride";
 import axios from "axios";
+import { securityTourLocale, securityTourStyles, securityUsersTourSteps } from "../../onboarding/securityTour";
 import { Person } from "../types/Person";
 import { User } from "../types/user";
 
@@ -210,7 +212,7 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onAdded }) => {
                 <option value="" disabled>Seleccione una persona</option>
                 {persons.map((person) => (
                   <option key={person.id} value={person.id}>
-                    {person.fullName} ({person.firstName} {person.firstLastName})
+                    {person.firstName} {person.firstLastName} {person.secondLastName ? person.secondLastName : ""} ({person.firstName} {person.firstLastName})
                   </option>
                 ))}
               </select>
@@ -243,6 +245,7 @@ const UserList: React.FC = () => {
   // UI states for search and pagination (must be top-level hooks)
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [runTour, setRunTour] = useState(false);
 
   const fetchUsers = () => {
     const token = localStorage.getItem("token");
@@ -330,6 +333,13 @@ const UserList: React.FC = () => {
     fetchPersons();
   }, []);
 
+  useEffect(() => {
+    if (!loading && !runTour && !localStorage.getItem("securityUsersTourDone")) {
+      const timer = window.setTimeout(() => setRunTour(true), 600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, runTour]);
+
   // derived states for pagination and helpers (defined before any early return to keep hook order stable)
   const pageSize = 5;
 
@@ -413,9 +423,23 @@ const UserList: React.FC = () => {
 
 
   return (
-    <div className="w-full max-w-7xl mx-auto mt-8">
+    <div className="w-full max-w-7xl mx-auto mt-8 security-users-layout">
+      <Joyride
+        steps={securityUsersTourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        locale={securityTourLocale}
+        styles={securityTourStyles}
+        callback={(data) => {
+          if (data.status === "finished" || data.status === "skipped") {
+            setRunTour(false);
+            localStorage.setItem("securityUsersTourDone", "true");
+          }
+        }}
+      />
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between security-users-header">
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 -mt-8!">
               <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
@@ -432,7 +456,7 @@ const UserList: React.FC = () => {
               <p className="text-sm text-gray-500 mt-1">Optimiza la eficiencia y seguridad de tus usuarios.</p>
             </div>
           </div>
-          <div>
+          <div className="security-users-create">
             <button
               onClick={() => setAddUser(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
@@ -445,7 +469,7 @@ const UserList: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-4 flex items-center gap-4 security-users-filters">
           {/* Filter buttons: Habilitados / Registrados / Inhabilitados */}
           <button onClick={() => setFilter('active')} className={`px-34 py-2 rounded-full! text-sm flex items-center gap-2 ${filter === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-700 border'}`}>
             <span>Habilitados</span>
@@ -458,26 +482,19 @@ const UserList: React.FC = () => {
             Inhabilitados <span className="ml-2 bg-red-200 px-2 rounded-full text-xs">{inactiveCount}</span>
           </button>
         </div>
-
-        <div className="mt-4 flex items-center gap-4">
-          <button className="px-3 py-2 rounded-lg border bg-white text-sm flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 16 16" className="h-4 w-4 text-gray-600" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-              <path d="M1.5 1.5C1.5 1.22386 1.72386 1 2 1H14C14.2761 1 14.5 1.22386 14.5 1.5V3.5C14.5 3.62352 14.4543 3.74267 14.3716 3.83448L10 8.69187V13.5C10 13.7152 9.86228 13.9063 9.65811 13.9743L6.65811 14.9743C6.50564 15.0252 6.33803 14.9996 6.20764 14.9056C6.07726 14.8116 6 14.6607 6 14.5V8.69187L1.62835 3.83448C1.54572 3.74267 1.5 3.62352 1.5 3.5V1.5ZM2.5 2V3.30813L6.87165 8.16552C6.95428 8.25733 7 8.37648 7 8.5V13.8063L9 13.1396V8.5C9 8.37648 9.04572 8.25733 9.12835 8.16552L13.5 3.30813V2H2.5Z" />
-            </svg>
-            Filtrar
-          </button>
-
+  <div className="mt-4 flex items-center gap-4 security-users-search">
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
               </svg>
-            </div>
+            </span>
             <input
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              placeholder="Buscar"
-              className="w-full pl-10 p-2 border rounded-lg"
+              placeholder="Buscar roles..."
+              className="pl-10 pr-4 h-12 border rounded-full w-full bg-white shadow-sm"
+              style={{ minWidth: 0 }}
             />
           </div>
         </div>
@@ -485,96 +502,60 @@ const UserList: React.FC = () => {
   <div className="mt-6 pt-6">
           <div className="overflow-x-auto">
             {/* outer card like example: rounded box with subtle border and header bg */}
-            <div className="rounded-lg border border-gray-100 bg-white shadow-sm">
+            <div className="rounded-lg border border-gray-100 bg-white shadow-sm security-users-table">
               <table className="min-w-full">
                 <thead className="text-left text-sm text-gray-600 bg-gray-50">
-              <tr className="border-b">
-                <th className="py-3 px-4">Nombres</th>
-                <th className="py-3 px-4">Correo</th>
-                <th className="py-3 px-4">Tipo de usuario</th>
-                <th className="py-3 px-4">Estado</th>
-                <th className="py-3 px-4">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm text-gray-700">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-6 px-4 text-center text-gray-500">No hay usuarios para mostrar.</td>
-                </tr>
-              ) : (
-                paginated.map((user) => {
-                  const embeddedPerson = (user as any).person as Person | undefined;
-                  const person = embeddedPerson || (user.personId ? personsMap[user.personId as number] : undefined);
-                  // Nombres: preferir FirstName + FirstLastName (con algunos alias comunes), si no usar fullName, si no mostrar '-' (no username)
-                  const getFirst = (p: any) => p?.firstName || p?.first_name || p?.nombre || p?.nombres || "";
-                  const getLast = (p: any) => p?.firstLastName || p?.first_last_name || p?.primerApellido || p?.lastName || p?.apellido || "";
-                  let name = "";
-                  const first = String(getFirst(person)).trim();
-                  const last = String(getLast(person)).trim();
-                  if (first || last) {
-                    name = `${first} ${last}`.replace(/\s+/g, ' ').trim();
-                  } else if (person && (person as any).first_name) {
-                    name = String((person as any).first_name).trim();
-                  } else {
-                    name = "-";
-                  }
-                  // Correo: aquí mostramos lo que antes aparecía en el campo "nombres" (username o code)
-                  const correo = user.username || user.code || (person?.email) || "";
-                  const role = rolesMap[user.id] || (user as any).roleName || (user as any).role || "Administrador";
-                  // Fecha: usar user.createdAt, si no existe usar person.createdAt o person.birthDate
-                  // note: usamos (person as any) para soportar propiedades que el tipo Person podría no declarar exactamente
-
-                  return (
-                    <tr key={user.id} className="border-b last:border-b-0">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 flex-shrink-0 rounded-full bg-sky-50 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-sky-500" viewBox="0 0 20 20" fill="currentColor"><path d="M13 7a3 3 0 11-6 0 3 3 0 016 0z"/><path fillRule="evenodd" d="M2 13.5A5.5 5.5 0 0110 8h0a5.5 5.5 0 018 5.5V15a1 1 0 01-1 1H3a1 1 0 01-1-1v-1.5z" clipRule="evenodd"/></svg>
-                          </div>
-                          <div>
-                            {/* Prefer the person's displayed full name when available */}
-                            <div className="font-semibold">
-                              {person?.fullName || name || first || user.username || user.code || '-'}
-                            </div>
-                            {/* optional small secondary line (first + last) if available to give more detail */}
-                            {(first || last) && (
-                              <div className="text-xs text-gray-400">{`${first} ${last}`.trim()}</div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-gray-500">{correo}</td>
-                      <td className="py-4 px-4">{role}</td>
-                      <td className="py-4 px-4">
-                        {user.state ? <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm">Activo</span> : <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">Inactivo</span>}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <button className="text-gray-500 hover:text-sky-600" onClick={() => setEditUser(user)} title="Editar">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
-                          </button>
-                          {user.state ? (
-                            <button className="text-gray-500 hover:text-red-600" onClick={() => handleDeactivate(user.id)} title="Desactivar">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
-                            </button>
-                          ) : (
-                            <button className="text-gray-500 hover:text-emerald-600" onClick={() => handleActivate(user.id)} title="Activar">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                  <tr className="border-b">
+                    <th className="py-3 px-4">Correo</th>
+                    <th className="py-3 px-4">Tipo de usuario</th>
+                    <th className="py-3 px-4">Estado</th>
+                    <th className="py-3 px-4">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm text-gray-700">
+                  {paginated.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 px-4 text-center text-gray-500">No hay usuarios para mostrar.</td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
+                  ) : (
+                    paginated.map((user) => {
+                      const person = user.personId ? personsMap[user.personId as number] : undefined;
+                      const correo = user.username || user.code || (person?.email) || "";
+                      const role = rolesMap[user.id] || (user as any).roleName || (user as any).role || "Administrador";
+                      return (
+                        <tr key={user.id} className="border-b last:border-b-0">
+                          <td className="py-4 px-4 text-gray-500">{correo}</td>
+                          <td className="py-4 px-4">{role}</td>
+                          <td className="py-4 px-4">
+                            {user.state ? <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm">Activo</span> : <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">Inactivo</span>}
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditUser(user)} title="Editar">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
+                              </button>
+                              {user.state ? (
+                                <button className="text-red-400 hover:text-red-600" onClick={() => handleDeactivate(user.id)} title="Desactivar">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
+                                </button>
+                              ) : (
+                                <button className="text-emerald-500 hover:text-emerald-600" onClick={() => handleActivate(user.id)} title="Activar">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
           </table>
             </div>
             </div>
 
           {/* pagination */}
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between security-users-pagination">
             <div className="text-sm text-gray-500">
               {filtered.length === 0 ? (
                 <>Mostrando 0 usuarios</>
