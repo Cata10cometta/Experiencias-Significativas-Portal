@@ -1,22 +1,25 @@
-version: "3.8"
+version: "3.9"
 
 services:
-  # 🌐 API principal - DEVELOP
-  exp-api-develop:
-    container_name: experiencia-api-develop
+  # Frontend GESCOMPH - Desarrollo
+  experience-front-develop:
+    container_name: ${CONTAINER_NAME}
     build:
-      context: ../..     # Ruta al Dockerfile desde Devops/develop
-      dockerfile: API/Dockerfile
+      context: ../..
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME}:latest
     restart: always
+    ports:
+      - "4201:${PORT}"
     env_file:
       - .env.dev
-    ports:
-      - "5100:8080"
     networks:
       - network_experiencesig
     labels:
-      - com.experienciasig.environment=develop
+      -  com.experienciasig.environment=develop
 
+# Red externa compartida con backend
 networks:
   network_experiencesig:
     external: true
+
