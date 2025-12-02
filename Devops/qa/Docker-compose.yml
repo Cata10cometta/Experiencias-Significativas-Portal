@@ -12,7 +12,7 @@ services:
       - "4202:${PORT}"
     restart: always
     env_file:
-      - .env
+      - .env.qa
     networks:
       - network_qa
     labels:
