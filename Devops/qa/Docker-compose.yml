@@ -1,22 +1,23 @@
 version: "3.8"
 
 services:
-  # 🌐 API principal - QA
-  exp-api-qa:
-    container_name: experiencia-api-qa
+  # Frontend  - QA
+  experience-front-qa:
+    container_name: ${CONTAINER_NAME}
     build:
       context: ../..
-      dockerfile: API/Dockerfile
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME}:latest
+    ports:
+      - "4202:${PORT}"
     restart: always
     env_file:
-      - .env.qa
-    ports:
-      - "5101:8080"
+      - .env
     networks:
-      - network_experiencesig
+      - network_qa
     labels:
       - com.experienciasig.environment=qa
 
 networks:
-  network_experiencesig:
-    external: true
+  network_qa:
+    driver: bridge
