@@ -44,7 +44,7 @@ pipeline {
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
                     env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-compose.yml"
-                    env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
+                    env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
                     echo """
                      Rama detectada: ${env.BRANCH_NAME}

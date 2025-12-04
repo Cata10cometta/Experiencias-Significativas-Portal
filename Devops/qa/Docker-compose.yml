@@ -14,10 +14,10 @@ services:
     env_file:
       - .env.qa
     networks:
-      - network_qa
+      -  network_experiencesig
     labels:
       - com.experienciasig.environment=qa
 
 networks:
-  network_qa:
-    driver: bridge
+  network_experiencesig:
+      external: true
