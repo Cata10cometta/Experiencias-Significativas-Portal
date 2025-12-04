@@ -14,10 +14,10 @@ services:
     env_file:
       - .env.staging
     networks:
-      - network_staging
+      -  network_experiencesig
     labels:
       - com.experienciasig.environment=staging
 
 networks:
-  network_staging:
-    driver: bridge
+  network_experiencesig:
+     external: true
