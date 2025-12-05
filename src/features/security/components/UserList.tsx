@@ -64,31 +64,29 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onClose, onUpdated })
   };
 
   return (
-    <div className="fixed inset-0 flex items-start justify-center z-50 pt-20 px-4 sm:px-6">
-      <div className="w-full max-w-3xl">
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-lg">
+    <div className="fixed inset-0 flex items-start justify-center z-50 pt-10 sm:pt-20 px-2 sm:px-6">
+      <div className="w-full max-w-xs sm:max-w-3xl">
+        <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h3 className="text-2xl font-bold text-sky-700">Editar Usuario</h3>
-              <p className="text-sm text-gray-500">Actualiza la información del usuario seleccionado.</p>
+              <h3 className="text-lg sm:text-2xl font-bold text-sky-700">Editar Usuario</h3>
+              <p className="text-xs sm:text-sm text-gray-500">Actualiza la información del usuario seleccionado.</p>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-2 sm:mt-4">
             <div>
-              <label className="block mb-2 font-semibold">Código</label>
-              <input value={user.code} disabled className="w-full p-2 border rounded bg-gray-100" />
+              <label className="block mb-2 font-semibold text-xs sm:text-sm">Código</label>
+              <input value={user.code} disabled className="w-full p-2 border rounded bg-gray-100 text-xs sm:text-sm" />
             </div>
             <div>
-              <label className="block mb-2 font-semibold">Nombre de Usuario</label>
-              <input value={username} onChange={e => setUsername(e.target.value)} className="w-full p-2 border rounded" />
+              <label className="block mb-2 font-semibold text-xs sm:text-sm">Nombre de Usuario</label>
+              <input value={username} onChange={e => setUsername(e.target.value)} className="w-full p-2 border rounded text-xs sm:text-sm" />
             </div>
           </div>
-
-          {error && <div className="text-red-500 mt-3">{error}</div>}
-          <div className="flex gap-4 justify-end mt-6">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200">Cancelar</button>
-            <button type="submit" disabled={loading} className="px-5 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700">{loading ? "Guardando..." : "Guardar"}</button>
+          {error && <div className="text-red-500 mt-3 text-xs sm:text-sm">{error}</div>}
+          <div className="flex gap-2 sm:gap-4 justify-end mt-4 sm:mt-6">
+            <button type="button" onClick={onClose} className="px-3 sm:px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-xs sm:text-sm">Cancelar</button>
+            <button type="submit" disabled={loading} className="px-4 sm:px-5 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-xs sm:text-sm">{loading ? "Guardando..." : "Guardar"}</button>
           </div>
         </form>
       </div>
@@ -162,52 +160,50 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onAdded }) => {
   };
 
   return (
-    <div className="fixed inset-0 flex items-start justify-center z-50 pt-20 px-4 sm:px-6">
-      <div className="w-full max-w-3xl">
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl! shadow-lg">
+    <div className="fixed inset-0 flex items-start justify-center z-50 pt-10 sm:pt-20 px-2 sm:px-6">
+      <div className="w-full max-w-xs sm:max-w-3xl">
+        <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h3 className="text-2xl font-bold text-sky-700">Crear Usuario</h3>
-              <p className="text-sm text-gray-500">Completa los datos para crear un nuevo usuario.</p>
+              <h3 className="text-lg sm:text-2xl font-bold text-sky-700">Crear Usuario</h3>
+              <p className="text-xs sm:text-sm text-gray-500">Completa los datos para crear un nuevo usuario.</p>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-2 sm:mt-4">
             <div>
-              <label className="block mb-2 font-semibold">Código</label>
+              <label className="block mb-2 font-semibold text-xs sm:text-sm">Código</label>
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded text-xs sm:text-sm"
                 placeholder="Ingrese el código"
               />
             </div>
             <div>
-              <label className="block mb-2 font-semibold">Nombre de Usuario</label>
+              <label className="block mb-2 font-semibold text-xs sm:text-sm">Nombre de Usuario</label>
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded text-xs sm:text-sm"
                 placeholder="Ingrese el nombre de usuario"
               />
             </div>
-
             <div>
-              <label className="block mb-2 font-semibold">Contraseña</label>
+              <label className="block mb-2 font-semibold text-xs sm:text-sm">Contraseña</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded text-xs sm:text-sm"
                 placeholder="Ingrese la contraseña"
               />
             </div>
             <div>
-              <label className="block mb-2 font-semibold">Persona</label>
+              <label className="block mb-2 font-semibold text-xs sm:text-sm">Persona</label>
               <select
                 value={personId || ""}
                 onChange={(e) => setPersonId(Number(e.target.value))}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded text-xs sm:text-sm"
               >
                 <option value="" disabled>Seleccione una persona</option>
                 {persons.map((person) => (
@@ -218,11 +214,10 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onAdded }) => {
               </select>
             </div>
           </div>
-
-          {error && <div className="text-red-500 mt-3">{error}</div>}
-          <div className="flex gap-4 justify-end mt-6">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200">Cancelar</button>
-            <button type="submit" disabled={loading} className="px-5 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700">{loading ? "Guardando..." : "Guardar"}</button>
+          {error && <div className="text-red-500 mt-3 text-xs sm:text-sm">{error}</div>}
+          <div className="flex gap-2 sm:gap-4 justify-end mt-4 sm:mt-6">
+            <button type="button" onClick={onClose} className="px-3 sm:px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-xs sm:text-sm">Cancelar</button>
+            <button type="submit" disabled={loading} className="px-4 sm:px-5 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-xs sm:text-sm">{loading ? "Guardando..." : "Guardar"}</button>
           </div>
         </form>
       </div>
@@ -423,7 +418,7 @@ const UserList: React.FC = () => {
 
 
   return (
-    <div className="w-full max-w-7xl mx-auto mt-8 security-users-layout">
+    <div className="w-full max-w-7xl mx-auto mt-4 sm:mt-8 security-users-layout">
       <Joyride
         steps={securityUsersTourSteps}
         run={runTour}
@@ -438,11 +433,11 @@ const UserList: React.FC = () => {
           }
         }}
       />
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex items-start justify-between security-users-header">
-          <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 -mt-8!">
-              <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <div className="bg-white rounded-2xl! shadow-lg p-2 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-0 security-users-header">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex-shrink-0 -mt-4 sm:-mt-8">
+              <svg width="40" height="40" viewBox="0 0 48 48" className="w-8 h-8 sm:w-11 sm:h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
                 <mask id="path-1-inside-1_2506_2260" fill="white">
                   <path d="M0 16C0 7.16344 7.16344 0 16 0H32C40.8366 0 48 7.16344 48 16V32C48 40.8366 40.8366 48 32 48H16C7.16344 48 0 40.8366 0 32V16Z"/>
                 </mask>
@@ -452,14 +447,14 @@ const UserList: React.FC = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl font-semibold">Administración de usuario</h1>
-              <p className="text-sm text-gray-500 mt-1">Optimiza la eficiencia y seguridad de tus usuarios.</p>
+              <h1 className="text-lg sm:text-2xl font-semibold">Administración de usuario</h1>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">Optimiza la eficiencia y seguridad de tus usuarios.</p>
             </div>
           </div>
-          <div className="security-users-create">
+          <div className="security-users-create mt-2 sm:mt-0">
             <button
               onClick={() => setAddUser(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-sky-600 text-white rounded-2xl! shadow hover:bg-sky-700 text-xs sm:text-sm"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -469,23 +464,23 @@ const UserList: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-4 security-users-filters">
+        <div className="mt-2 sm:mt-4 flex flex-col sm:flex-row items-center gap-2 sm:gap-4 security-users-filters">
           {/* Filter buttons: Habilitados / Registrados / Inhabilitados */}
-          <button onClick={() => setFilter('active')} className={`px-34 py-2 rounded-full! text-sm flex items-center gap-2 ${filter === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-700 border'}`}>
+          <button onClick={() => setFilter('active')} className={`px-34 py-2 rounded-full! text-xs sm:text-sm flex items-center gap-2 ${filter === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-700 border'}`}>
             <span>Habilitados</span>
             <span className="bg-emerald-200 px-2 rounded-full text-xs">{activeCount}</span>
           </button>
-          <button onClick={() => setFilter('registered')} className={`px-34 py-2 rounded-full! text-sm ${filter === 'registered' ? 'bg-yellow-100 text-gray-800' : 'bg-white text-gray-700 border'}`}>
+          <button onClick={() => setFilter('registered')} className={`px-34 py-2 rounded-full! text-xs sm:text-sm ${filter === 'registered' ? 'bg-yellow-100 text-gray-800' : 'bg-white text-gray-700 border'}`}>
             Registrados <span className="ml-2 bg-yellow-50 px-2 rounded-full text-xs">{registeredCount}</span>
           </button>
-          <button onClick={() => setFilter('inactive')} className={`px-34    py-2 rounded-full! text-sm ${filter === 'inactive' ? 'bg-red-100 text-red-700' : 'bg-white text-gray-700 border'}`}>
+          <button onClick={() => setFilter('inactive')} className={`px-34 py-2 rounded-full! text-xs sm:text-sm ${filter === 'inactive' ? 'bg-red-100 text-red-700' : 'bg-white text-gray-700 border'}`}>
             Inhabilitados <span className="ml-2 bg-red-200 px-2 rounded-full text-xs">{inactiveCount}</span>
           </button>
         </div>
-  <div className="mt-4 flex items-center gap-4 security-users-search">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <div className="mt-2 sm:mt-4 flex items-center gap-2 sm:gap-4 security-users-search">
+          <div className="relative flex-1 w-full">
+            <span className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
               </svg>
             </span>
@@ -493,29 +488,28 @@ const UserList: React.FC = () => {
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               placeholder="Buscar roles..."
-              className="pl-10 pr-4 h-12 border rounded-full w-full bg-white shadow-sm"
+              className="pl-8 sm:pl-10 pr-2 sm:pr-4 h-10 sm:h-12 border rounded-full w-full bg-white shadow-sm text-xs sm:text-sm"
               style={{ minWidth: 0 }}
             />
           </div>
         </div>
 
-  <div className="mt-6 pt-6">
+  <div className="mt-4 sm:mt-6 pt-4 sm:pt-6">
           <div className="overflow-x-auto">
-            {/* outer card like example: rounded box with subtle border and header bg */}
-            <div className="rounded-lg border border-gray-100 bg-white shadow-sm security-users-table">
-              <table className="min-w-full">
-                <thead className="text-left text-sm text-gray-600 bg-gray-50">
+            <div className="rounded-lg! border border-gray-100 bg-white shadow-sm security-users-table">
+              <table className="min-w-full text-xs sm:text-sm">
+                <thead className="text-left text-xs sm:text-sm text-gray-600 bg-gray-50 ">
                   <tr className="border-b">
-                    <th className="py-3 px-4">Correo</th>
-                    <th className="py-3 px-4">Tipo de usuario</th>
-                    <th className="py-3 px-4">Estado</th>
-                    <th className="py-3 px-4">Acciones</th>
+                    <th className="py-2 sm:py-3 px-2 sm:px-4">Correo</th>
+                    <th className="py-2 sm:py-3 px-2 sm:px-4">Tipo de usuario</th>
+                    <th className="py-2 sm:py-3 px-2 sm:px-4">Estado</th>
+                    <th className="py-2 sm:py-3 px-2 sm:px-4">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="text-sm text-gray-700">
+                <tbody className="text-xs sm:text-sm text-gray-700">
                   {paginated.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-6 px-4 text-center text-gray-500">No hay usuarios para mostrar.</td>
+                      <td colSpan={4} className="py-4 sm:py-6 px-2 sm:px-4 text-center text-gray-500">No hay usuarios para mostrar.</td>
                     </tr>
                   ) : (
                     paginated.map((user) => {
@@ -524,23 +518,23 @@ const UserList: React.FC = () => {
                       const role = rolesMap[user.id] || (user as any).roleName || (user as any).role || "Administrador";
                       return (
                         <tr key={user.id} className="border-b last:border-b-0">
-                          <td className="py-4 px-4 text-gray-500">{correo}</td>
-                          <td className="py-4 px-4">{role}</td>
-                          <td className="py-4 px-4">
-                            {user.state ? <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm">Activo</span> : <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">Inactivo</span>}
+                          <td className="py-2 sm:py-4 px-2 sm:px-4 text-gray-500">{correo}</td>
+                          <td className="py-2 sm:py-4 px-2 sm:px-4">{role}</td>
+                          <td className="py-2 sm:py-4 px-2 sm:px-4">
+                            {user.state ? <span className="inline-block bg-emerald-100 text-emerald-700 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm">Activo</span> : <span className="inline-block bg-red-100 text-red-700 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm">Inactivo</span>}
                           </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
+                          <td className="py-2 sm:py-4 px-2 sm:px-4">
+                            <div className="flex items-center gap-2 sm:gap-3">
                               <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditUser(user)} title="Editar">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
                               </button>
                               {user.state ? (
                                 <button className="text-red-400 hover:text-red-600" onClick={() => handleDeactivate(user.id)} title="Desactivar">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
                                 </button>
                               ) : (
                                 <button className="text-emerald-500 hover:text-emerald-600" onClick={() => handleActivate(user.id)} title="Activar">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
                                 </button>
                               )}
                             </div>
@@ -553,10 +547,8 @@ const UserList: React.FC = () => {
           </table>
             </div>
             </div>
-
-          {/* pagination */}
-          <div className="mt-4 flex items-center justify-between security-users-pagination">
-            <div className="text-sm text-gray-500">
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 security-users-pagination">
+            <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-0">
               {filtered.length === 0 ? (
                 <>Mostrando 0 usuarios</>
               ) : (
@@ -567,9 +559,8 @@ const UserList: React.FC = () => {
                 })()
               )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>Anterior</button>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button className="px-2 sm:px-3 py-1 rounded border text-xs sm:text-sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>Anterior</button>
               {(() => {
                 const pages: number[] = [];
                 let start = Math.max(1, currentPage - 2);
@@ -580,11 +571,11 @@ const UserList: React.FC = () => {
                   <button
                     key={p}
                     onClick={() => goToPage(p)}
-                    className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}
+                    className={`px-2 sm:px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'} text-xs sm:text-sm`}
                   >{p}</button>
                 ));
               })()}
-              <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>Siguiente</button>
+              <button className="px-2 sm:px-3 py-1 rounded border text-xs sm:text-sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>Siguiente</button>
             </div>
           </div>
         </div>

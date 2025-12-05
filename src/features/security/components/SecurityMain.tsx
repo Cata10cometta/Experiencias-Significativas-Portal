@@ -34,11 +34,11 @@ const SecurityMain: React.FC = () => {
   }, [activeTab, visibleTabs]);
 
   return (
-    <>
+    <div className="w-full max-w-full mx-auto px-2 sm:px-6 py-4 sm:py-6">
       {/* Single white card that contains only the tab titles */}
-      <div className="bg-white rounded-full! shadow-sm py-2 px-3 mb-3 security-tabs-container">
+      <div className="bg-white rounded-full! shadow-sm py-2 px-2 sm:px-3 mb-3 security-tabs-container">
         <div className="mb-0">
-          <nav className="flex space-x-5! security-tabs-nav">
+          <nav className="flex flex-wrap gap-2 sm:gap-5 security-tabs-nav">
             {/* Example: hideTabs can be used to hide specific tabs without removing them from the array */}
             {visibleTabs.map((t) => (
               <button
@@ -67,7 +67,7 @@ const SecurityMain: React.FC = () => {
         {activeTab === "rolFormPermission" && <RolFormPermission />}
         
       </div>
-    </>
+    </div>
   );
 };
 

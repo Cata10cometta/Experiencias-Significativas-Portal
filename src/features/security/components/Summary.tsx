@@ -78,7 +78,7 @@ const Summary: React.FC = () => {
   if (error) return <div>{error}</div>;
 
   return (
-    <div className="max-w-full mx-auto -mt-1! p-6 security-summary-layout">
+    <div className="max-w-full mx-auto -mt-1! p-2 sm:p-6 security-summary-layout">
       <Joyride
         steps={securitySummaryTourSteps}
         run={runTour}
@@ -93,8 +93,8 @@ const Summary: React.FC = () => {
           }
         }}
       />
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 security-summary-card">
-        <div className="flex items-center gap-4 mb-1 security-summary-header">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2 sm:p-6 security-summary-card">
+        <div className="flex flex-col sm:flex-row items-center gap-4 mb-1 security-summary-header">
           <div className="flex-shrink-0 -mt-8">
             <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
               <mask id="path-1-inside-1_2506_2260" fill="white">
@@ -108,10 +108,11 @@ const Summary: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold text-sky-700">Modelo de Seguridad</h2>
             <p className="text-sm text-gray-500 mb-6">Vista general de permisos por rol y formulario</p>
+            <div className="mb-8"></div>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mb-6 security-summary-cards">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 security-summary-cards">
           {Object.keys(rolesSummary).length === 0 ? (
             <div className="text-gray-500">No hay roles</div>
           ) : (
@@ -129,8 +130,8 @@ const Summary: React.FC = () => {
           )}
         </div>
 
-        <div className="mb-4 flex items-center gap-4 security-summary-search">
-          <div className="flex-1">
+        <div className="mb-4 flex flex-col sm:flex-row items-center gap-4 security-summary-search">
+          <div className="flex-1 w-full">
             <div className="relative">
               <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Buscar en el modelo de seguridad..." className="pl-10 pr-4 h-12 border rounded-full w-full bg-gray-50 shadow-sm" />
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -138,12 +139,10 @@ const Summary: React.FC = () => {
               </div>
             </div>
           </div>
-          <div>
-          </div>
         </div>
 
-        <div className="rounded-lg border border-gray-100 p-2 overflow-auto security-summary-table">
-          <table className="min-w-full w-full table-auto">
+        <div className="rounded-lg border border-gray-100 p-2 sm:p-4 overflow-x-auto overflow-y-auto max-h-[60vh] security-summary-table">
+          <table className="min-w-[700px] w-full table-auto">
             <thead className="text-left text-sm text-gray-600 bg-gray-50">
               <tr>
                 <th className="py-3 px-4 font-semibold text-gray-700">Rol</th>
@@ -182,7 +181,7 @@ const Summary: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-500 security-summary-pagination">
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-gray-500 security-summary-pagination">
           <div>
             {filtered.length === 0 ? (
               <>Mostrando 0 permisos</>

@@ -197,8 +197,8 @@ const Tracking = () => {
   };
   // --- Fin Lógica de Manejo de Estados y Datos ---
 
-  return (
-    <div className="flex flex-col gap-8 w-full p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen tracking-layout">
+	return (
+		<div className="flex flex-col gap-8 w-full p-2 sm:p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen tracking-layout overflow-y-auto" style={{maxHeight: '100vh'}}>
       {/* Tour de Bienvenida */}
       <Joyride
         steps={trackingTourSteps}
@@ -218,10 +218,10 @@ const Tracking = () => {
       <h1 className="text-3xl font-extrabold text-gray-900 mb-4 border-b pb-2">Panel de Seguimiento </h1>
 
       {/* Bloque de Tarjetas Informativas */}
-      <section className="flex flex-col gap-6 w-full tracking-cards">
+	<section className="flex flex-col gap-6 w-full tracking-cards">
         
         {/* Tarjetas Primarias (Blancas con Icono) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+	<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {whiteCardMetrics.map((metric) => (
             <div
               key={metric.key}
@@ -241,7 +241,7 @@ const Tracking = () => {
         </div>
 
         {/* Tarjetas Secundarias (Moradas, centrado) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 tracking-purple-cards">
+	<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 tracking-purple-cards">
           {purpleCardMetrics.map((metric) => (
             <div
               key={metric.key}
@@ -260,14 +260,14 @@ const Tracking = () => {
 
       <hr className="my-4 border-gray-200" />
 
-      {/* Bloque de Gráficas */}
-      <section className="flex flex-col gap-8 w-full lg:flex-row justify-center items-stretch">
+	{/* Bloque de Gráficas */}
+	<section className="flex flex-col gap-8 w-full lg:flex-row justify-center items-stretch flex-shrink-0">
 
         {/* Gráfico de Barras */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col items-center justify-center shadow-xl w-full lg:w-2/3 min-w-0 tracking-line-chart">
+	<div className="bg-white rounded-2xl p-2 sm:p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center shadow-xl w-full lg:w-2/3 min-w-0 tracking-line-chart">
           <h2 className="text-xl font-bold text-gray-800 mb-6 w-full text-left">Métricas de Experiencias</h2>
-          <div className="w-full" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height={300}>
+					<div className="w-full min-h-[220px]" style={{ minWidth: 0 }}>
+						<ResponsiveContainer width="100%" height={220} minHeight={180}>
               <BarChart data={barData} margin={{ top: 30, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E5E7EB" />
                 <XAxis
@@ -300,7 +300,7 @@ const Tracking = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-6 grid w-full gap-4 grid-cols-1 sm:grid-cols-3">
+		  <div className="mt-4 grid w-full gap-2 sm:gap-4 grid-cols-1 sm:grid-cols-3">
             {barData.map((entry) => (
               <div key={entry.name} className="flex items-center gap-3">
                 <span
@@ -314,10 +314,10 @@ const Tracking = () => {
         </div>
 
         {/* Gráfico de Torta */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col items-center shadow-xl w-full lg:w-1/3 min-w-0 tracking-pie-chart">
+	<div className="bg-white rounded-2xl p-2 sm:p-4 md:p-6 lg:p-8 flex flex-col items-center shadow-xl w-full lg:w-1/3 min-w-0 tracking-pie-chart">
           <h2 className="text-xl font-bold text-gray-800 mb-6 w-full text-left">Estado de Experiencias (%)</h2>
-          <div className="w-full flex justify-center items-center" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height={300} aspect={1}>
+					<div className="w-full min-h-[220px] flex justify-center items-center" style={{ minWidth: 0 }}>
+						<ResponsiveContainer width="100%" height={220} minHeight={180} aspect={1}>
               <PieChart>
                 <Pie
                   data={pieData}
@@ -344,8 +344,8 @@ const Tracking = () => {
             </ResponsiveContainer>
           </div>
           {/* Leyenda debajo */}
-          <div className="w-full flex justify-start mt-6 tracking-pie-legend">
-            <ul className="flex flex-col items-start gap-3 w-full">
+					<div className="w-full flex justify-start mt-4 tracking-pie-legend">
+						<ul className="flex flex-col items-start gap-2 w-full">
               {pieData.map((entry, index) => (
                 <li key={`item-${index}`} className="flex items-center gap-3 w-full justify-between">
                   <div className="flex items-center gap-3">

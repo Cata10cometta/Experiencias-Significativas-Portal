@@ -1,12 +1,14 @@
 // src/components/Widgets.tsx
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Joyride from "react-joyride";
 import { MagnifyingGlassIcon, BellAlertIcon, EyeIcon, XMarkIcon } from '@heroicons/react/24/outline'; // Iconos modernos
+import Swal from 'sweetalert2';
 
 import ExperienceModal from "../../features/experience/components/ExperienceModal";
 import NotificationsModal from './NotificationsModal';
 import { widgetsTourSteps, widgetsTourStyles, widgetsTourLocale } from "../../features/onboarding/widgetsTour";
 import { hasTourBeenSeen, markTourSeen } from "../utils/tourStorage";
+import { startNotificationHub, stopNotificationHub } from "../Service/notificationsHub";
 
 const Widgets: React.FC = () => {
   const tourKey = "widgetsTourDone";
@@ -19,14 +21,78 @@ const Widgets: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [notifModalOpen, setNotifModalOpen] = useState<boolean>(false);
-  const [notifCount, setNotifCount] = useState<number>(0);
-  const [runWidgetsTour, setRunWidgetsTour] = useState(false);
+  const [notifModalOpen, setNotifModalOpen] = useState<boolean>(false);
+  const [notifCount, setNotifCount] = useState<number>(0);
+  const [runWidgetsTour, setRunWidgetsTour] = useState(false);
 
-  // Referencia para controlar el scroll del carrusel (se usa para ambos)
-  const carouselRef = useRef<HTMLDivElement | null>(null);
-  
-  // --- Lógica de Carga de Datos (SIN CAMBIOS) ---
+  // Referencia para controlar el scroll del carrusel (se usa para ambos)
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+
+  // Función para reproducir sonido de notificación
+  const playNotificationSound = useCallback(() => {
+    try {
+      // Crear un sonido de notificación usando Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Configurar el sonido (tono agradable de notificación)
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Frecuencia inicial
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1); // Baja un poco
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2); // Sube de nuevo
+      
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.log('No se pudo reproducir el sonido de notificación:', error);
+    }
+  }, []);
+
+  // Manejar notificaciones en tiempo real de SignalR
+  const handleSignalRNotification = useCallback((message: any) => {
+    console.log('🔔 Nueva notificación recibida en Widgets:', message);
+    
+    if (!message) return;
+
+    // Reproducir sonido de notificación
+    playNotificationSound();
+
+    // Extraer información del mensaje
+    const experienceName = message.ExperienceName ?? message.experienceName ?? message.Title ?? message.title ?? 'Nueva experiencia';
+    const createdBy = message.CreatedBy ?? message.createdBy ?? message.userName ?? 'Usuario';
+    
+    // Mostrar toast de nueva notificación (5 minutos = 300000 ms)
+    // Solo muestra el toast, NO abre el modal ni incrementa el contador
+    Swal.fire({
+      title: '🔔 Nueva Experiencia Registrada',
+      html: `<strong>${experienceName}</strong><br/>Creada por: ${createdBy}`,
+      icon: 'info',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      showCloseButton: true,
+      timer: 300000, // 5 minutos
+      timerProgressBar: true,
+    });
+  }, [playNotificationSound]);
+
+  // Iniciar conexión SignalR al montar el componente
+  useEffect(() => {
+    console.log('🚀 Iniciando conexión SignalR para notificaciones...');
+    startNotificationHub(handleSignalRNotification);
+    
+    return () => {
+      console.log('🛑 Deteniendo conexión SignalR...');
+      stopNotificationHub();
+    };
+  }, [handleSignalRNotification]);  // --- Lógica de Carga de Datos (SIN CAMBIOS) ---
   React.useEffect(() => {
     const token = localStorage.getItem("token");
     fetch("/api/Experience/getAll", {

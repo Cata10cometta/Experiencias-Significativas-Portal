@@ -143,7 +143,7 @@ const RegisterPage: React.FC = () => {
 
   return (
 
-    <div className="min-h-screen bg-gradient-to-b from-[#0b1033] to-[#17132a] text-white overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-r from-[#383855] from-17% to-[#4343CD] to-75% text-white overflow-hidden">
       <Joyride
         steps={registerPageTourSteps}
         run={runTour}
@@ -175,7 +175,7 @@ const RegisterPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="relative flex flex-col lg:flex-row items-center lg:items-stretch px-8 lg:px-16 py-0 lg:py-4 h-[560px] mt-0">
+      <main className="relative flex flex-col lg:flex-row items-center lg:items-stretch px-4 sm:px-6 lg:px-16 py-4 lg:py-4 min-h-[500px] lg:min-h-[600px]">
 
         {/* Stars background */}
         <div className="absolute inset-0 pointer-events-none z-10">
@@ -187,20 +187,18 @@ const RegisterPage: React.FC = () => {
           <img src="/images/Star%2014.png" aria-hidden alt="" className="absolute w-3 h-3 hidden sm:block" style={{ top: '24%', left: '40%' }} />
         </div>
 
-  <section className="z-20 max-w-3xl lg:flex-1 flex flex-col justify-center mt-50! sm:mt-16 lg:mt-20 lg:ml-[120px]">
-          <div className="relative w-[640px] sm:w-[700px] md:w-[760px] max-w-full">
-            <div className="absolute -inset-1 rounded-3xl bg-white/10 blur-md opacity-90 pointer-events-none" />
+  <section className="z-20 w-full max-w-[90vw] sm:max-w-md md:max-w-lg lg:max-w-2xl lg:flex-1 flex flex-col justify-center -mt-8 sm:-mt-6 lg:-mt-20 mx-auto lg:mx-0 lg:ml-40! xl:ml-50! 2xl:ml-80!">
+          <div className="relative w-full max-w-[95vw] sm:max-w-[540px] md:max-w-[620px] lg:max-w-[680px] px-2 sm:px-0 mx-auto lg:mx-0">
+            <div className="absolute -inset-1 rounded-2xl bg-white/10 blur-md opacity-90 pointer-events-none" />
 
-            <div className="relative bg-[#1b1333] rounded-3xl shadow-[0_20px_60px_rgba(2,6,23,0.7)] w-full p-8 sm:p-10 md:p-14 border border-white/20 backdrop-blur-md min-h-[420px] sm:min-h-[520px] md:min-h-[600px] flex flex-col justify-center overflow-visible">
-              {/* soft drop shadow under card to mimic floating look */}
-              <div className="absolute -bottom-6 left-6 right-6 h-8 bg-black/40 rounded-2xl blur-md opacity-60 pointer-events-none" />
-              <div className="w-full max-w-none">
-                <h2 className="text-6xl sm:text-7xl md:text-7xl font-extrabold text-orange-400 text-center mb-6">Registro</h2>
+            <div className="relative bg-[#1b1333] rounded-2xl shadow-2xl shadow-[0_10px_36px_rgba(2,6,23,0.6)] w-full p-5 sm:p-6 md:p-8 lg:p-10 border border-white/20 backdrop-blur-md flex flex-col justify-center">
+              <div className="w-full">
+                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-orange-400 text-center mb-3 sm:mb-4 md:mb-5">Registro</h2>
 
-                <form onSubmit={handleSubmit} className="space-y-6 register-form">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-5 register-form">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Primer Nombre:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Primer Nombre:</label>
                       <input
                         type="text"
                         value={PrimerNombre}
@@ -211,12 +209,12 @@ const RegisterPage: React.FC = () => {
                           }
                         }}
                         required
-                        className="w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Segundo Nombre:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Segundo Nombre:</label>
                       <input
                         type="text"
                         value={SegundoNombre}
@@ -226,14 +224,14 @@ const RegisterPage: React.FC = () => {
                             setSegundoNombre(e.target.value);
                           }
                         }}
-                        className="w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Primer Apellido:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Primer Apellido:</label>
                       <input
                         type="text"
                         value={PrimerApellido}
@@ -244,12 +242,12 @@ const RegisterPage: React.FC = () => {
                           }
                         }}
                         required
-                        className="w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Segundo Apellido:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Segundo Apellido:</label>
                       <input
                         type="text"
                         value={SegundoApellido}
@@ -259,19 +257,19 @@ const RegisterPage: React.FC = () => {
                             setSegundoApellido(e.target.value);
                           }
                         }}
-                        className="w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Tipo de Documento:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Tipo de Documento:</label>
                       <select
                         value={TipoDocumento}
                         onChange={(e) => setTipoDocumento(e.target.value)}
                         required
-                        className="mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="mt-1 block w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                       >
                         <option value="">Seleccione...</option>
                         {documentTypes.map((doc) => (
@@ -286,7 +284,7 @@ const RegisterPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Número de Documento:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Número de Documento:</label>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -299,15 +297,15 @@ const RegisterPage: React.FC = () => {
                         required
                         minLength={8}
                         maxLength={10}
-                        className={`mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl placeholder:text-sm ${NumeroDocumento.length < 8 || NumeroDocumento.length > 10 ? "placeholder-red-500" : "placeholder-green-600"}`}
+                        className={`mt-1 block w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base placeholder:text-xs ${NumeroDocumento.length < 8 || NumeroDocumento.length > 10 ? "placeholder-red-500" : "placeholder-green-600"}`}
                         placeholder={`${NumeroDocumento.length} / 8-10 `}
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                     <div className="relative register-dane">
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Código DANE:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Código DANE:</label>
                       <input
                         type="text"
                         value={CodigoDane}
@@ -315,7 +313,7 @@ const RegisterPage: React.FC = () => {
                         onFocus={() => setCodigoDaneFocus(true)}
                         onBlur={() => setTimeout(() => setCodigoDaneFocus(false), 100)}
                         required
-                        className="mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="mt-1 block w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                         placeholder="Seleccione o escriba..."
                         autoComplete="off"
                       />
@@ -341,20 +339,20 @@ const RegisterPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Nombre de Usuario:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Nombre de Usuario:</label>
                       <input
                         type="text"
                         value={NombreUsuario}
                         onChange={(e) => setNombreUsuario(e.target.value)}
                         required
-                        className="mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="mt-1 block w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                     <div className="relative register-email-institucional">
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Correo de la Institucion:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Correo Institucional:</label>
                       <input
                         type="text"
                         value={emailInstitucional}
@@ -362,7 +360,7 @@ const RegisterPage: React.FC = () => {
                         onFocus={() => setEmailInstitucionalFocus(true)}
                         onBlur={() => setTimeout(() => setEmailInstitucionalFocus(false), 100)}
                         required
-                        className="mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="mt-1 block w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                         placeholder="Seleccione o escriba..."
                         autoComplete="off"
                       />
@@ -388,20 +386,20 @@ const RegisterPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Correo Personal:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Correo Personal:</label>
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl"
+                        className="mt-1 block w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                     <div>
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Teléfono:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Teléfono:</label>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -413,20 +411,20 @@ const RegisterPage: React.FC = () => {
                         }}
                         required
                         maxLength={10}
-                        className={`mt-1 block w-full border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl placeholder:text-sm ${telefono.length !== 10 ? "placeholder-red-500" : "placeholder-green-600"}`}
+                        className={`mt-1 block w-full border border-gray-300 rounded-full px-3 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base placeholder:text-xs ${telefono.length !== 10 ? "placeholder-red-500" : "placeholder-green-600"}`}
                         placeholder={`${telefono.length} / 10 `}
                       />
                     </div>
 
                     <div className="relative register-password">
-                      <label className="block text-base sm:text-lg md:text-xl text-slate-300 mb-2">Contraseña:</label>
+                      <label className="block text-xs sm:text-sm md:text-base text-slate-300 mb-1 sm:mb-2">Contraseña:</label>
                       <div className="relative flex items-center">
                         <input
                           type={showPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           required
-                          className={`mt-1 block w-full border border-gray-300 rounded-full pl-4 pr-14 py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-lg sm:text-xl transition-shadow duration-200 ${flash ? 'ring-4 ring-orange-300/40' : ''}`}
+                          className={`mt-1 block w-full border border-gray-300 rounded-full pl-3 pr-12 py-1.5 sm:py-2 shadow-sm focus:ring-orange-300 focus:border-orange-300 bg-white text-black text-sm sm:text-base transition-shadow duration-200 ${flash ? 'ring-4 ring-orange-300/40' : ''}`}
                         />
                         <button
                           type="button"
@@ -457,38 +455,49 @@ const RegisterPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-6 justify-center flex">
-                    <button type="submit" className="w-full max-w-md mx-auto bg-orange-400 text-white py-3 rounded-xl! font-extrabold text-xl shadow-md hover:bg-orange-500 transition-colors register-submit">Registrarse</button>
+                  <div className="mt-3 sm:mt-4 md:mt-6 justify-center flex">
+                    <button type="submit" className="w-full max-w-md mx-auto bg-orange-400 text-white py-2 sm:py-3 rounded-xl! font-extrabold text-sm sm:text-base lg:text-lg shadow-md hover:bg-orange-500 transition-colors register-submit">Registrarse</button>
                   </div>
                 </form>
 
-                <div className="mt-6 text-center text-base">
-                  <a href="/login" className="block text-orange-300 hover:underline text-lg md:text-xl">¿Quieres iniciar sesión?</a>
+                <div className="mt-3 sm:mt-4 md:mt-6 text-center text-base">
+                  <a href="/login" className="block text-orange-300 hover:underline text-xs sm:text-sm md:text-base">¿Quieres iniciar sesión?</a>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <aside className="mt-8 lg:mt-0 lg:ml-8 lg:flex-1 flex justify-center items-center relative z-20">
-          <div className="max-w-[420px] sm:max-w-[560px] lg:max-w-[920px] w-full relative flex items-center justify-center">
+        {/* Cohete fijo alineado con la ola blanca */}
+        <div className="hidden lg:block fixed z-20 right-[1%] xl:right-[3%] 2xl:right-[5%]" style={{ bottom: 'calc(-80px + 180px)', }} aria-hidden>
+          <img
+            src="/images/Cohete.png"
+            alt="Cohete ilustración"
+            className="w-auto h-[500px] xl:h-[700px] 2xl:h-[920px] object-contain drop-shadow-2xl"
+          />
+        </div>
+
+        {/* Versión móvil/tablet del cohete */}
+        <aside className="lg:hidden mt-6 flex-1 flex justify-center items-center relative z-20">
+          <div className="max-w-[300px] sm:max-w-[400px] w-full relative flex items-center justify-center">
             <img
               src="/images/Cohete.png"
               alt="Cohete ilustración"
-              className="w-auto h-[340px] lg:h-[920px] object-contain mx-auto block relative z-30 drop-shadow-2xl mt-50 -translate-x-20"
+              className="w-auto h-[200px] sm:h-[280px] object-contain mx-auto block relative z-30 drop-shadow-2xl"
             />
           </div>
         </aside>
 
-        {/* Línea blanca ondulada debajo del cohete */}
-          <div className="absolute left-0 bottom-0 w-full pointer-events-none z-10 overflow-visible" aria-hidden style={{ transform: 'translateY(90%)' }}>
-                  <svg viewBox="0 0 1440 320" className="w-full h-[260px] lg:h-[420px] block">
-                    <path
-                      fill="#ffffff"
-                      d="M0,1 C300,40 360,300 510,220 C400,200 600,330 1000,30 C1260,280 1320,180 1440,150 L1440,320 L0,320 Z"
-                    ></path>  
-                  </svg>
-                </div>
+        {/* Línea blanca ondulada - fija en la parte inferior */}
+        <div className="fixed left-0 w-full pointer-events-none z-10" style={{ bottom: '-80px' }} aria-hidden>
+          <img
+            src="/images/Smoke.svg"
+            alt="Línea blanca ondulada"
+            className="w-full h-[180px] sm:h-[220px] md:h-[300px] lg:h-[500px] xl:h-[550px] 2xl:h-[600px] block"
+            style={{ maxWidth: 'none' }}
+            draggable="false"
+          />
+        </div>
       </main>
     </div>
   );

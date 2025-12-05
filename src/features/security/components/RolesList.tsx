@@ -43,19 +43,19 @@ const EditRoleForm: React.FC<EditRoleFormProps> = ({ role, onClose, onUpdated })
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
-        <h3 className="text-xl font-bold mb-4 text-sky-700">Editar Rol</h3>
-        <label className="block mb-2 font-semibold">Código</label>
-        <input value={role.code} disabled className="w-full mb-4 p-2 border rounded bg-gray-100" />
-        <label className="block mb-2 font-semibold">Nombre</label>
-        <input value={name} onChange={e => setName(e.target.value)} className="w-full mb-4 p-2 border rounded" />
-        <label className="block mb-2 font-semibold">Descripción</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} className="w-full mb-4 p-2 border rounded" />
-        {error && <div className="text-red-500 mb-2">{error}</div>}
-        <div className="flex gap-4 justify-end">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">Cancelar</button>
-          <button type="submit" disabled={loading} className="px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-0">
+      <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-xl shadow-lg w-full max-w-xs sm:max-w-md">
+        <h3 className="text-lg sm:text-xl font-bold mb-4 text-sky-700">Editar Rol</h3>
+        <label className="block mb-2 font-semibold text-xs sm:text-sm">Código</label>
+        <input value={role.code} disabled className="w-full mb-4 p-2 border rounded bg-gray-100 text-xs sm:text-sm" />
+        <label className="block mb-2 font-semibold text-xs sm:text-sm">Nombre</label>
+        <input value={name} onChange={e => setName(e.target.value)} className="w-full mb-4 p-2 border rounded text-xs sm:text-sm" />
+        <label className="block mb-2 font-semibold text-xs sm:text-sm">Descripción</label>
+        <input value={description} onChange={e => setDescription(e.target.value)} className="w-full mb-4 p-2 border rounded text-xs sm:text-sm" />
+        {error && <div className="text-red-500 mb-2 text-xs sm:text-sm">{error}</div>}
+        <div className="flex gap-2 sm:gap-4 justify-end">
+          <button type="button" onClick={onClose} className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-xs sm:text-sm">Cancelar</button>
+          <button type="submit" disabled={loading} className="px-3 sm:px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700 text-xs sm:text-sm">
             {loading ? "Guardando..." : "Guardar"}
           </button>
         </div>
@@ -144,18 +144,18 @@ const AddRoleForm: React.FC<AddRoleFormProps> = ({ onClose, onAdded }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
-        <h3 className="text-xl font-bold mb-4 text-sky-700">Agregar Rol</h3>
-        <label className="block mb-2 font-semibold">Código</label>
-        <input value={code} onChange={e => setCode(e.target.value)} className="w-full mb-4 p-2 border rounded" required />
-        <label className="block mb-2 font-semibold">Nombre</label>
-        <input value={name} onChange={e => setName(e.target.value)} className="w-full mb-4 p-2 border rounded" required />
-        <label className="block mb-2 font-semibold">Descripción</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} className="w-full mb-4 p-2 border rounded" required />
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-0">
+      <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-xl shadow-lg w-full max-w-xs sm:max-w-md">
+        <h3 className="text-lg sm:text-xl font-bold mb-4 text-sky-700">Agregar Rol</h3>
+        <label className="block mb-2 font-semibold text-xs sm:text-sm">Código</label>
+        <input value={code} onChange={e => setCode(e.target.value)} className="w-full mb-4 p-2 border rounded text-xs sm:text-sm" required />
+        <label className="block mb-2 font-semibold text-xs sm:text-sm">Nombre</label>
+        <input value={name} onChange={e => setName(e.target.value)} className="w-full mb-4 p-2 border rounded text-xs sm:text-sm" required />
+        <label className="block mb-2 font-semibold text-xs sm:text-sm">Descripción</label>
+        <input value={description} onChange={e => setDescription(e.target.value)} className="w-full mb-4 p-2 border rounded text-xs sm:text-sm" required />
 
-        <label className="block mb-2 font-semibold">Asignar a Usuario</label>
-        <select value={selectedUserId ?? ''} onChange={e => setSelectedUserId(e.target.value ? Number(e.target.value) : null)} className="w-full mb-4 p-2 border rounded">
+        <label className="block mb-2 font-semibold text-xs sm:text-sm">Asignar a Usuario</label>
+        <select value={selectedUserId ?? ''} onChange={e => setSelectedUserId(e.target.value ? Number(e.target.value) : null)} className="w-full mb-4 p-2 border rounded text-xs sm:text-sm">
           <option value="">-- No asignar ahora --</option>
           {users.map(u => {
               const display = (
@@ -168,10 +168,10 @@ const AddRoleForm: React.FC<AddRoleFormProps> = ({ onClose, onAdded }) => {
               return <option key={u.id} value={u.id}>{label}</option>;
             })}
         </select>
-        {error && <div className="text-red-500 mb-2">{error}</div>}
-        <div className="flex gap-4 justify-end">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">Cancelar</button>
-          <button type="submit" disabled={loading} className="px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700">
+        {error && <div className="text-red-500 mb-2 text-xs sm:text-sm">{error}</div>}
+        <div className="flex gap-2 sm:gap-4 justify-end">
+          <button type="button" onClick={onClose} className="px-3 sm:px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-xs sm:text-sm">Cancelar</button>
+          <button type="submit" disabled={loading} className="px-3 sm:px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700 text-xs sm:text-sm">
             {loading ? "Agregando..." : "Agregar"}
           </button>
         </div>
@@ -348,7 +348,7 @@ const RolesList: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg security-roles-layout">
+    <div className="max-w-7xl mx-auto mt-4 sm:mt-10 p-2 sm:p-6 bg-white rounded-lg sm:rounded-xl shadow-lg security-roles-layout">
       <Joyride
         steps={securityRolesTourSteps}
         run={runTour}
@@ -363,11 +363,11 @@ const RolesList: React.FC = () => {
           }
         }}
       />
-      <div className="flex items-start justify-between mb-4 security-roles-header">
+      <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-2 sm:gap-0 security-roles-header">
         <div>
-          <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 -mt-8">
-              <svg width="55" height="55" viewBox="0 0 48 48" className="w-11 h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex-shrink-0 -mt-4 sm:-mt-8">
+              <svg width="40" height="40" viewBox="0 0 48 48" className="w-8 h-8 sm:w-11 sm:h-11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
                 <mask id="path-1-inside-1_2506_2260" fill="white">
                   <path d="M0 16C0 7.16344 7.16344 0 16 0H32C40.8366 0 48 7.16344 48 16V32C48 40.8366 40.8366 48 32 48H16C7.16344 48 0 40.8366 0 32V16Z"/>
                 </mask>
@@ -377,15 +377,15 @@ const RolesList: React.FC = () => {
               </svg>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-sky-700">Gestión de Roles</h2>
-              <p className="text-sm text-gray-500 mt-1">Administra los roles y permisos del sistema</p>
+              <h2 className="text-lg sm:text-2xl font-bold text-sky-700">Gestión de Roles</h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">Administra los roles y permisos del sistema</p>
             </div>
           </div>
         </div>
-        <div className="security-roles-create">
+        <div className="security-roles-create mt-2 sm:mt-0">
           <button
             onClick={() => setAddRoleOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-2xl!   shadow hover:bg-sky-700"
+            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-sky-600 text-white rounded-xl! shadow hover:bg-sky-700 text-xs sm:text-sm"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
             Crear rol
@@ -394,83 +394,79 @@ const RolesList: React.FC = () => {
       </div>
 
       {/* Search row below header */}
-      <div className="mb-6 flex items-center gap-4 security-roles-search">
-        <div className="flex-1">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-center gap-2 sm:gap-4 security-roles-search">
+        <div className="flex-1 w-full">
           <div className="relative">
             <input
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               placeholder="Buscar roles..."
-              className="pl-10 pr-3 py-2 border rounded-2xl! w-full bg-gray-50"
+              className="pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 border rounded-xl w-full bg-gray-50 text-xs sm:text-sm"
             />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
+            <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.414-1.414l4.387 4.386-1.414 1.415-4.387-4.387zM10 16a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd"/></svg>
             </div>
           </div>
         </div>
-        <div>
-        </div>
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 security-roles-table">
-        <table className="min-w-full rounded-lg overflow-hidden">
-          <thead className="text-left text-sm text-gray-600 bg-gray-50">
+      <div className="overflow-x-auto bg-white rounded-lg sm:rounded-2xl border border-gray-200 shadow-sm p-2 sm:p-4 security-roles-table">
+        <table className="min-w-full rounded-lg overflow-hidden text-xs sm:text-sm">
+          <thead className="text-left text-xs sm:text-sm text-gray-600 bg-gray-50">
             <tr>
-              <th className="py-3 px-4">Rol</th>
-              <th className="py-3 px-4">Descripción</th>
-              <th className="py-3 px-4">Usuarios</th>
-              <th className="py-3 px-4">Permisos</th>
-              <th className="py-3 px-4">Estado</th>
-              <th className="py-3 px-4">Acciones</th>
+              <th className="py-2 sm:py-3 px-2 sm:px-4">Rol</th>
+              <th className="py-2 sm:py-3 px-2 sm:px-4">Descripción</th>
+              <th className="py-2 sm:py-3 px-2 sm:px-4">Usuarios</th>
+              <th className="py-2 sm:py-3 px-2 sm:px-4">Permisos</th>
+              <th className="py-2 sm:py-3 px-2 sm:px-4">Estado</th>
+              <th className="py-2 sm:py-3 px-2 sm:px-4">Acciones</th>
             </tr>
           </thead>
-          <tbody className="text-sm text-gray-700">
+          <tbody className="text-xs sm:text-sm text-gray-700">
             {paginatedRoles.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-6 px-4 text-center text-gray-500">No hay roles para mostrar.</td>
+                <td colSpan={6} className="py-4 sm:py-6 px-2 sm:px-4 text-center text-gray-500">No hay roles para mostrar.</td>
               </tr>
             ) : (
               paginatedRoles.map((role) => {
                 const usersCount = usersCountById[String((role as any).id)] ?? usersCountByCode[String((role as any).code)] ?? (role as any).usersCount ?? (role as any).users?.length ?? 0;
                 const permsCount = permsCountById[String((role as any).id)] ?? permsCountByCode[String((role as any).code)] ?? (role as any).permissionsCount ?? (role as any).permissions?.length ?? 0;
-                
                 return (
                   <tr key={role.code} className="border-b last:border-b-0 hover:bg-gray-50">
-                    <td className="py-4 px-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-600 ring-1 ring-sky-100"> 
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a4 4 0 00-2 7.5A6 6 0 104 18h12a6 6 0 00-6-8 4 4 0 000-8z"/></svg>
+                    <td className="py-2 sm:py-4 px-2 sm:px-4 flex items-center gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-600 ring-1 ring-sky-100"> 
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a4 4 0 00-2 7.5A6 6 0 104 18h12a6 6 0 00-6-8 4 4 0 000-8z"/></svg>
                       </div>
                       <div>
-                        <div className="font-semibold text-gray-800">{role.name}</div>
+                        <div className="font-semibold text-gray-800 text-xs sm:text-sm">{role.name}</div>
                         <div className="text-xs text-gray-400">{role.code}</div>
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-gray-600">{role.description}</td>
-                    <td className="py-4 px-4">
-                      <div className="inline-flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path d="M13 7a3 3 0 11-6 0 3 3 0 016 0z"/><path fillRule="evenodd" d="M2 13.5A5.5 5.5 0 0110 8h0a5.5 5.5 0 018 5.5v.5H2v-.5z" clipRule="evenodd"/></svg>
-                        <span className="bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full text-xs">{usersCount}</span>
+                    <td className="py-2 sm:py-4 px-2 sm:px-4 text-gray-600">{role.description}</td>
+                    <td className="py-2 sm:py-4 px-2 sm:px-4">
+                      <div className="inline-flex items-center gap-1 sm:gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path d="M13 7a3 3 0 11-6 0 3 3 0 016 0z"/><path fillRule="evenodd" d="M2 13.5A5.5 5.5 0 0110 8h0a5.5 5.5 0 018 5.5v.5H2v-.5z" clipRule="evenodd"/></svg>
+                        <span className="bg-sky-100 text-sky-700 px-1 sm:px-2 py-0.5 rounded-full text-xs">{usersCount}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full text-xs">{permsCount}</span>
+                    <td className="py-2 sm:py-4 px-2 sm:px-4">
+                      <span className="bg-sky-100 text-sky-700 px-1 sm:px-2 py-0.5 rounded-full text-xs">{permsCount}</span>
                     </td>
-                    <td className="py-4 px-4">
-                      {role.state ? <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm">Activo</span> : <span className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">Inactivo</span>}
+                    <td className="py-2 sm:py-4 px-2 sm:px-4">
+                      {role.state ? <span className="inline-block bg-emerald-100 text-emerald-700 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm">Activo</span> : <span className="inline-block bg-gray-100 text-gray-700 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm">Inactivo</span>}
                     </td>
-                    
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
+                    <td className="py-2 sm:py-4 px-2 sm:px-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         <button className="text-gray-400 hover:text-sky-600" onClick={() => setEditRole(role)} title="Editar">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 010 2.828l-9.193 9.193a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464L14.586 2.586a2 2 0 012.828 0z"/></svg>
                         </button>
                         {role.state ? (
                           <button className="text-red-400 hover:text-red-600" onClick={() => handleDeactivate(role.id)} title="Desactivar">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 000 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 10-2 0v7a1 1 0 102 0V7z" clipRule="evenodd"/></svg>
                           </button>
                         ) : (
                           <button className="text-emerald-500 hover:text-emerald-600" onClick={() => handleActivate(role.id)} title="Activar">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 10a7 7 0 1114 0 1 1 0 102 0 9 9 0 10-18 0 1 1 0 102 0z"/><path d="M10 6v5l3 3"/></svg>
                           </button>
                         )}
                       </div>
@@ -483,8 +479,8 @@ const RolesList: React.FC = () => {
         </table>
       </div>
 
-      <div className="mt-6 flex items-center justify-between security-roles-pagination">
-        <div className="text-sm text-gray-500">
+      <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 security-roles-pagination">
+        <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-0">
           {filteredRoles.length === 0 ? (
             <>Mostrando 0 roles</>
           ) : (
@@ -495,8 +491,8 @@ const RolesList: React.FC = () => {
             })()
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>Anterior</button>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button className="px-2 sm:px-3 py-1 rounded border text-xs sm:text-sm" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>Anterior</button>
             {(() => {
               const pages: number[] = [];
               let start = Math.max(1, currentPage - 2);
@@ -504,10 +500,10 @@ const RolesList: React.FC = () => {
               if (end - start < 4) start = Math.max(1, end - 4);
               for (let i = start; i <= end; i++) pages.push(i);
               return pages.map((p) => (
-                <button key={p} onClick={() => goToPage(p)} className={`px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'}`}>{p}</button>
+                <button key={p} onClick={() => goToPage(p)} className={`px-2 sm:px-3 py-1 rounded ${currentPage === p ? 'bg-sky-600 text-white' : 'bg-white border'} text-xs sm:text-sm`}>{p}</button>
               ));
             })()}
-          <button className="px-3 py-1 rounded border" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>Siguiente</button>
+          <button className="px-2 sm:px-3 py-1 rounded border text-xs sm:text-sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>Siguiente</button>
         </div>
       </div>
 

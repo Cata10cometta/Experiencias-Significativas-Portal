@@ -758,7 +758,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 						</div>
 					</div>
 
-					<div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 experiences-table">
+					<div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 experiences-table" style={{ maxHeight: '60vh', overflowY: 'auto', scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.1) transparent' }}>
 						<div className="text-left text-sm text-gray-600 bg-gray-50 rounded-t-md px-4 py-3 font-semibold">
 							<div className={`grid ${showEvaluationColumn ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center`}>
 								<div className="text-center font-semibold">Nombre de la experiencia</div>
@@ -874,8 +874,14 @@ const Experiences: React.FC<ExperiencesProps> = ({ onAgregar }) => {
 																	e.preventDefault();
 																	// Role-aware behavior: professors request edit, others open detail view
 																	try {
-																		setModalEditable(true);
-																		await fetchAndShowDetail(exp.id as number);
+																		if (isProfessor()) {
+																			// Profesor: primero solicitar edición
+																			await requestEdit(exp);
+																		} else {
+																			// Otros roles: abrir detalle directamente
+																			setModalEditable(true);
+																			await fetchAndShowDetail(exp.id as number);
+																		}
 																	} catch (err) {
 																		console.error('Error handling pencil click', err);
 																	}

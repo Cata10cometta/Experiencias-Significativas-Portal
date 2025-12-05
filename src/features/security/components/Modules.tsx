@@ -354,7 +354,7 @@ const Modules: React.FC = () => {
 
 
   return (
-    <div className="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg security-modules-layout">
+    <div className="max-w-7xl mx-auto mt-10 p-2 sm:p-6 bg-white rounded-xl shadow-lg security-modules-layout">
       <Joyride
         steps={securityModulesTourSteps}
         run={runTour}
@@ -369,7 +369,7 @@ const Modules: React.FC = () => {
           }
         }}
       />
-      <div className="flex items-start justify-between mb-4 security-modules-header">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2 security-modules-header">
         <div>
           <div className="flex items-center gap-4">
             <div className="flex-shrink-0 -mt-8">
@@ -400,8 +400,8 @@ const Modules: React.FC = () => {
       </div>
 
       {/* Search row below header */}
-      <div className="mb-6 flex items-center gap-4 security-modules-filters">
-        <div className="flex-1">
+      <div className="mb-6 flex flex-col sm:flex-row items-center gap-4 security-modules-filters">
+        <div className="flex-1 w-full">
           <div className="relative">
             <input
               value={search}
@@ -414,7 +414,7 @@ const Modules: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-4 sm:mt-0">
           <label className="text-sm text-gray-600">Estado:</label>
           <select
             className="border rounded px-2 py-1 text-sm"
@@ -433,8 +433,8 @@ const Modules: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 security-modules-table">
-        <table className="min-w-full rounded-lg overflow-hidden">
+      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-2 sm:p-4 security-modules-table">
+        <table className="min-w-[700px] w-full rounded-lg overflow-hidden">
           <thead className="text-left text-sm text-gray-600 bg-gray-50">
             <tr>
               <th className="py-3 px-4">Módulo</th>
@@ -509,7 +509,7 @@ const Modules: React.FC = () => {
         </table>
       </div>
 
-      <div className="mt-6 flex items-center justify-between security-modules-pagination">
+      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-2 security-modules-pagination">
         <div className="text-sm text-gray-500">
           {filtered.length === 0 ? (
             <>Mostrando 0 módulos</>

@@ -388,7 +388,7 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
                 const isApproving = expId ? approvingIds.includes(expId) : false;
                 return (
                   <li key={n.id ?? i}>
-                    <div className="bg-indigo-700 rounded-xl p-5 flex items-start justify-between gap-4">
+                    <div className="bg-indigo-700 rounded-xl! p-5 flex items-start justify-between gap-4">
                       <div className="flex-1 pr-4">
                         <div className="text-white font-semibold text-lg leading-tight truncate">{n.experienceName ?? 'Nombre de experiencia'}</div>
                         <div className="text-white/90 mt-3 truncate">{n.userName ?? 'Nombre usuario'}</div>
@@ -399,7 +399,7 @@ const NotificationsModal: React.FC<Props> = ({ open, onClose, onCountChange }) =
                           <button
                             onClick={() => approveEdit(Number(expId))}
                             disabled={isApproving}
-                            className={`ml-2 px-3 py-1 rounded-full text-sm text-white ${isApproving ? 'bg-gray-400' : 'bg-orange-400 hover:bg-orange-500'}`}
+                            className={`ml-2 px-3 py-1 rounded-full! text-sm text-white ${isApproving ? 'bg-gray-400' : 'bg-orange-400 hover:bg-orange-500'}`}
                           >
                             {isApproving ? 'Aprobando...' : 'Permitir'}
                           </button>

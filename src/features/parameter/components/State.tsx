@@ -258,7 +258,7 @@ const StateList: React.FC = () => {
   };
 
   return (
-    <div className="max-w-full mx-auto mt-10 p-6 parameter-states-layout">
+    <div className="w-full max-w-full mx-auto mt-6 px-2 sm:px-6 py-4 sm:py-6 parameter-states-layout">
       <Joyride
         steps={parameterStatesTourSteps}
         run={runTour}
@@ -273,7 +273,7 @@ const StateList: React.FC = () => {
           }
         }}
       />
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2 sm:p-6">
         <div className="flex items-start justify-between mb-4 parameter-states-header">
           <div>
             <h2 className="text-2xl font-bold text-sky-700">Lista de Estados</h2>
@@ -292,8 +292,8 @@ const StateList: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4 parameter-states-toolbar">
-          <div className="flex-1">
+        <div className="mb-6 flex flex-col sm:flex-row items-center gap-4 parameter-states-toolbar">
+          <div className="flex-1 w-full">
             <div className="relative parameter-states-search">
               <input
                 value={searchTerm}
@@ -315,7 +315,7 @@ const StateList: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="flex gap-4 parameter-states-filters">
+          <div className="flex gap-4 parameter-states-filters w-full sm:w-auto">
             <button
               className={`px-4 py-2 rounded font-semibold ${onlyState ? "bg-green-500 hover:bg-green-600 text-white" : "bg-gray-300 hover:bg-gray-400 text-black"}`}
               onClick={() => {
@@ -339,8 +339,8 @@ const StateList: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-4 parameter-states-table">
-          <table className="min-w-full rounded-lg overflow-hidden text-sm sm:text-base">
+        <div className="overflow-x-auto overflow-y-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-2 sm:p-4 max-h-[60vh] parameter-states-table">
+          <table className="min-w-[600px] w-full rounded-lg overflow-hidden text-sm sm:text-base">
             <thead className="text-left text-sm sm:text-base text-gray-600 bg-gray-50">
               <tr>
                 <th className="py-2 px-3 whitespace-break-spaces">Codigo</th>
@@ -421,7 +421,7 @@ const StateList: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-6 flex items-center justify-between parameter-states-pagination">
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-2 parameter-states-pagination">
           <div className="text-sm text-gray-500">
             {filtered.length === 0 ? (
               <>Mostrando 0 estados</>
@@ -482,8 +482,8 @@ const StateList: React.FC = () => {
       )}
 
       {modal.open && (
-        <div className="fixed inset-0 flex items-center justify-center z-[2000]">
-          <div className="bg-white rounded-2xl shadow-lg p-8 min-w-[340px] max-w-sm flex flex-col items-center">
+        <div className="fixed inset-0 flex items-center justify-center z-[2000] bg-black bg-opacity-40 p-2">
+          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-8 min-w-[260px] max-w-sm w-full flex flex-col items-center">
             {modal.type === "success" ? (
               <svg className="w-16 h-16 mb-4" viewBox="0 0 48 48" fill="none">
                 <circle cx="24" cy="24" r="22" stroke="#B7EFC2" strokeWidth="3" fill="#F6FFF9" />
@@ -498,7 +498,7 @@ const StateList: React.FC = () => {
             <h3 className="text-2xl font-bold text-gray-700 mb-2">{modal.type === "success" ? "Exito" : "Error"}</h3>
             <p className="text-gray-600 mb-6 text-center">{modal.message}</p>
             <button
-              className="px-6 py-2 rounded bg-[#7B6EF6] text-white font-semibold text-base hover:bg-[#5f54c7] transition"
+              className="px-6 py-2 rounded bg-[#7B6EF6] text-white font-semibold text-base hover:bg-[#5f54c7] transition w-full"
               onClick={() => setModal({ ...modal, open: false })}
             >
               Continuar
